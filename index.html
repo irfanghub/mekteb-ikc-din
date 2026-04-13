@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mekteb IKC DIN">
+<title>Mekteb Tracker — IKC DIN Eindhoven</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:system-ui,-apple-system,sans-serif}
+#root{max-width:480px;margin:0 auto;min-height:100vh;background:#f0f4f0}
+input:focus,textarea:focus{outline:2px solid #1a5c2e;outline-offset:0}
+::-webkit-scrollbar{display:none}
+textarea,select,input{font-family:inherit}
+button:active{opacity:.8;transform:scale(.97)}
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#f0f4f0">
+    <div style="font-size:48px">☽</div>
+    <div style="font-size:15px;color:#4a6a4a;font-family:system-ui">Mekteb Tracker laden...</div>
+  </div>
+</div>
+<script type="text/babel">
+const {useState,useEffect,useRef} = React;
+
+const DB = supabase.createClient(
+  'https://zoubpnicqnmgvnasvekt.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvdWJwbmljcW5tZ3ZuYXN2ZWt0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU5OTYwNDgsImV4cCI6MjA5MTU3MjA0OH0.41gzbB1MJhmuVX6z_xqY9AQs_hWQWXiN0Izx3ySlhCo'
+);
+
+const PR='#1a5c2e', ACC='#c8932a';
+const CODE='DIN2026';
+const gId=()=>Date.now().toString(36)+Math.random().toString(36).substr(2);
+const dag=()=>new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});
+const apct=l=>!l?.length?0:Math.round(l.filter(a=>a.aanwezig).length/l.length*100);
+const telObj=o=>Object.values(o||{}).filter(Boolean).length;
+const nivInfo=n=>[{id:1,nl:'Niveau 1',bs:'Nivo 1',sub_nl:'Beginners',sub_bs:'Početnici',bg:'#e8f5e9',color:'#1a5c2e'},{id:2,nl:'Niveau 2',bs:'Nivo 2',sub_nl:'Gevorderd',sub_bs:'Napredniji',bg:'#fff3e0',color:'#e65100'},{id:3,nl:'Niveau 3',bs:'Nivo 3',sub_nl:'Expert',sub_bs:'Ekspert',bg:'#fce4ec',color:'#880e4f'}].find(x=>x.id===n)||{id:1,nl:'Niveau 1',bs:'Nivo 1',sub_nl:'Beginners',sub_bs:'Početnici',bg:'#e8f5e9',color:'#1a5c2e'};
+
+const NIVEAUS=[{id:1,nl:'Niveau 1',bs:'Nivo 1',sub_nl:'Beginners',sub_bs:'Početnici',bg:'#e8f5e9',color:'#1a5c2e'},{id:2,nl:'Niveau 2',bs:'Nivo 2',sub_nl:'Gevorderd',sub_bs:'Napredniji',bg:'#fff3e0',color:'#e65100'},{id:3,nl:'Niveau 3',bs:'Nivo 3',sub_nl:'Expert',sub_bs:'Ekspert',bg:'#fce4ec',color:'#880e4f'}];
+
+const VAARD=[
+  {id:'alfabet',nl:'Arabisch alfabet',bs:'Arapsko pismo',icon:'📖'},
+  {id:'wudhu',nl:'Wudhu / Abdest',bs:'Abdest',icon:'💧'},
+  {id:'namaz',nl:'Namaz (5x per dag)',bs:'Namaz (5x dnevno)',icon:'🕌'},
+  {id:'duas_eten',nl:'Dua voor eten',bs:'Dova prije jela',icon:'🍽️'},
+  {id:'duas_slaap',nl:'Dua voor slapen',bs:'Dova prije spavanja',icon:'🌙'},
+  {id:'quran',nl:'Quran lezen',bs:'Čitanje Kur\'ana',icon:'📜'},
+  {id:'tajweed',nl:'Tajweed (basis)',bs:'Tedžvid (osnove)',icon:'🎵'},
+  {id:'vijf_zuilen',nl:'5 zuilen islam',bs:'5 stubova islama',icon:'🕋'},
+  {id:'zes_geloof',nl:'6 geloofsartikelen',bs:'6 vjerskih uvjerenja',icon:'⭐'},
+  {id:'adhan',nl:'Ezan kennen',bs:'Znati ezan',icon:'📣'},
+];
+
+const SURAS=[
+  {id:'fatiha',nl:'Al-Fatiha',bs:'El-Fatiha',niv:1},
+  {id:'ikhlas',nl:'Al-Ikhlas',bs:'El-Ihlas',niv:1},
+  {id:'falaq',nl:'Al-Falaq',bs:'El-Felek',niv:1},
+  {id:'nas',nl:'An-Nas',bs:'En-Nas',niv:1},
+  {id:'kawthar',nl:'Al-Kawthar',bs:'El-Kevser',niv:1},
+  {id:'asr',nl:'Al-Asr',bs:'El-Asr',niv:1},
+  {id:'maun',nl:"Al-Ma'un",bs:'El-Maun',niv:2},
+  {id:'kafirun',nl:'Al-Kafirun',bs:'El-Kafirun',niv:2},
+  {id:'nasr',nl:'An-Nasr',bs:'En-Nasr',niv:2},
+  {id:'fil',nl:'Al-Fil',bs:'El-Fil',niv:2},
+  {id:'masad',nl:'Al-Masad',bs:'El-Mesed',niv:3},
+  {id:'humaza',nl:'Al-Humaza',bs:'El-Humeze',niv:3},
+  {id:'quraysh',nl:'Al-Quraysh',bs:"El-Kurejš",niv:3},
+];
+
+const ILMIHAL=[
+  {id:'akaid',icon:'🌙',nl:'Akaid (Geloof)',bs:'Akaid (Vjera)',lessen:[
+    {id:'ak1',nl:'Allah dž.š.',bs:'Allah dž.š.',niv:1},{id:'ak2',nl:'6 geloofsartikelen',bs:'6 vjerskih uvjerenja',niv:1},
+    {id:'ak3',nl:'Engelen (Meleki)',bs:'Meleki',niv:1},{id:'ak4',nl:'Heilige Boeken',bs:'Svete knjige',niv:1},
+    {id:'ak5',nl:'Profeten en Boodschappers',bs:'Poslanici i Vjerovjesnici',niv:2},{id:'ak6',nl:'Hz. Muhammed s.a.v.s.',bs:'Hz. Muhammed s.a.v.s.',niv:2},
+    {id:'ak7',nl:'Dag des Oordeels',bs:'Sudnji dan',niv:2},{id:'ak8',nl:'Paradijs en Hel',bs:'Džennet i Džehennem',niv:2},
+    {id:'ak9',nl:'Kader en Kismet',bs:'Kader i Kismet',niv:3},{id:'ak10',nl:'Tevhid',bs:'Tevhid',niv:3},
+  ]},
+  {id:'ibadet',icon:'🕌',nl:'Ibadet (Aanbidding)',bs:'Ibadet',lessen:[
+    {id:'ib1',nl:'5 zuilen van de Islam',bs:'5 stubova Islama',niv:1},{id:'ib2',nl:'Kelime-i Šehadet',bs:'Kelime-i Šehadet',niv:1},
+    {id:'ib3',nl:'Abdest stap voor stap',bs:'Abdest korak po korak',niv:1},{id:'ib4',nl:'Gusul',bs:'Gusul',niv:2},
+    {id:'ib5',nl:'Namaz — 5 gebeden',bs:'Namaz — 5 namaza',niv:1},{id:'ib6',nl:'Namaz uitvoeren',bs:'Kako klanjati',niv:2},
+    {id:'ib7',nl:'Džuma namaz',bs:'Džuma namaz',niv:2},{id:'ib8',nl:'Ramazan en Vasten',bs:'Ramazan i Post',niv:2},
+    {id:'ib9',nl:'Zekat',bs:'Zekat',niv:3},{id:'ib10',nl:'Hadj',bs:'Hadž',niv:3},
+  ]},
+  {id:'ahlak',icon:'💚',nl:'Ahlak (Ethiek)',bs:'Ahlak (Etika)',lessen:[
+    {id:'ah1',nl:'Eerlijkheid en waarheid',bs:'Istinitost i pravda',niv:1},{id:'ah2',nl:'Respect voor ouders',bs:'Poštovanje roditelja',niv:1},
+    {id:'ah3',nl:'Vriendelijkheid',bs:'Ljubaznost',niv:1},{id:'ah4',nl:'Begroeting (Selam)',bs:'Pozdrav (Selam)',niv:1},
+    {id:'ah5',nl:'Geduld (Sabur)',bs:'Strpljivost (Sabur)',niv:2},{id:'ah6',nl:'Dankbaarheid (Šukur)',bs:'Zahvalnost (Šukur)',niv:2},
+    {id:'ah7',nl:'Eerlijkheid in handel',bs:'Poštenje u trgovini',niv:3},{id:'ah8',nl:'Negatieve eigenschappen',bs:'Loše osobine',niv:3},
+  ]},
+  {id:'siyer',icon:'📚',nl:'Siyer (Leven v.d. Profeet)',bs:'Siyer (Život Poslanika)',lessen:[
+    {id:'si1',nl:'Geboorte Hz. Muhammed',bs:'Rođenje Hz. Muhammeda',niv:1},{id:'si2',nl:'Jeugd en opvoeding',bs:'Mladost i odgoj',niv:1},
+    {id:'si3',nl:'Begin van de Openbaring',bs:'Početak Objave',niv:2},{id:'si4',nl:'Hidžra naar Medina',bs:'Hidžra u Medinu',niv:2},
+    {id:'si5',nl:'De grote Slagen',bs:'Velike bitke',niv:2},{id:'si6',nl:'Overlijden van de Profeet',bs:'Smrt Poslanika',niv:3},
+    {id:'si7',nl:'De Sahabe',bs:'Ashabi',niv:3},
+  ]},
+  {id:'duas',icon:'🤲',nl:"Dua's & Dhikr",bs:'Dove i Zikr',lessen:[
+    {id:'du1',nl:'Dua voor eten',bs:'Dova prije jela',niv:1},{id:'du2',nl:'Dua na eten',bs:'Dova poslije jela',niv:1},
+    {id:'du3',nl:'Dua voor slapen',bs:'Dova prije spavanja',niv:1},{id:'du4',nl:'Dua na slapen',bs:'Dova po buđenju',niv:1},
+    {id:'du5',nl:'Dua moskee betreden',bs:'Dova pri ulasku u džamiju',niv:1},{id:'du6',nl:'Dua moskee verlaten',bs:'Dova pri izlasku',niv:1},
+    {id:'du7',nl:'Subhanallah / Elhamdulillah',bs:'Subhanallah / Elhamdulillah',niv:1},{id:'du8',nl:'Estağfirullah',bs:'Estagfirullah',niv:2},
+    {id:'du9',nl:'Dua voor ouders',bs:'Dova za roditelje',niv:2},{id:'du10',nl:'Kunut dua',bs:'Kunut dova',niv:3},
+  ]},
+  {id:'hist',icon:'🏛️',nl:'Islamitische Geschiedenis',bs:'Islamska Historija',lessen:[
+    {id:'ih1',nl:'De Kaaba en Mekka',bs:'Kaaba i Mekka',niv:1},{id:'ih2',nl:'4 Kaliefen',bs:'4 Halife',niv:2},
+    {id:'ih3',nl:'Islam in Bosnië',bs:'Islam u Bosni',niv:2},{id:'ih4',nl:'Islamitische Beschaving',bs:'Islamska Civilizacija',niv:3},
+    {id:'ih5',nl:'Gazi Husrev-beg',bs:'Gazi Husrev-beg',niv:3},
+  ]},
+];
+
+const TOTAL_ILM = ILMIHAL.reduce((s,c)=>s+c.lessen.length,0);
+const emptyV=()=>VAARD.reduce((o,v)=>({...o,[v.id]:false}),{});
+const emptyS=()=>SURAS.reduce((o,s)=>({...o,[s.id]:false}),{});
+const emptyI=()=>ILMIHAL.reduce((o,cat)=>cat.lessen.reduce((oo,l)=>({...oo,[l.id]:false}),o),{});
+
+function App(){
+  const [scherm,setScherm]=useState('welkom');
+  const [taal,setTaal]=useState(localStorage.getItem('mktaal')||'nl');
+  const [donker,setDonker]=useState(localStorage.getItem('mktheme')==='1');
+  const [leerlingen,setSL]=useState([]);
+  const [laden,setLaden]=useState(true);
+  const [huidig,setHuidig]=useState(null);
+  const [efTab,setEfTab]=useState('klas');
+  const [dTab,setDTab]=useState('profiel');
+  const [ilmCat,setIlmCat]=useState(null);
+  const [gevonden,setGev]=useState(null);
+  const [zoek,setZoek]=useState('');
+  const [code,setCode]=useState('');
+  const [codeErr,setCErr]=useState(false);
+  const [form,setForm]=useState(false);
+  const [notitie,setNot]=useState('');
+  const [bericht,setBer]=useState('');
+  const [nieuw,setNieuw]=useState({naam:'',ouder:'',niveau:1,pin:''});
+  const [hwTxt,setHwTxt]=useState('');
+  const [pinInp,setPinInp]=useState('');
+  const [pinErr,setPinErr]=useState(false);
+  const [opslaan,setOpslaan]=useState(false);
+
+  const bs=taal==='bs';
+
+  // Load data
+  useEffect(()=>{
+    laadAlles();
+    const sub=DB.channel('leerlingen-changes')
+      .on('postgres_changes',{event:'*',schema:'public',table:'leerlingen'},()=>laadAlles())
+      .subscribe();
+    return()=>sub.unsubscribe();
+  },[]);
+
+  const laadAlles=async()=>{
+    const{data}=await DB.from('leerlingen').select('*').order('created_at');
+    if(data)setSL(data);
+    setLaden(false);
+  };
+
+  const toast=m=>{setBer(m);setTimeout(()=>setBer(''),2500)};
+  const ga=(s,l=null)=>{setScherm(s);if(l)setHuidig(l);setDTab('profiel');setIlmCat(null)};
+  const login=()=>{if(code===CODE){setScherm('ef');setCode('');setCErr(false);}else setCErr(true)};
+  const slaT=v=>{setTaal(v);localStorage.setItem('mktaal',v)};
+  const slaD=v=>{setDonker(v);localStorage.setItem('mktheme',v?'1':'0')};
+
+  const upsert=async(l)=>{
+    setOpslaan(true);
+    const{error}=await DB.from('leerlingen').upsert(l);
+    if(error)toast('❌ Fout: '+error.message);
+    setOpslaan(false);
+    return !error;
+  };
+
+  const voegToe=async()=>{
+    if(!nieuw.naam.trim())return;
+    const l={id:gId(),naam:nieuw.naam.trim(),ouder:nieuw.ouder.trim(),niveau:nieuw.niveau,pin:nieuw.pin,
+      punten:0,aanwezigheid:[],vaardigheden:emptyV(),suras:emptyS(),ilmihal:emptyI(),huiswerk:[],notities:[]};
+    const ok=await upsert(l);
+    if(ok){setNieuw({naam:'',ouder:'',niveau:1,pin:''});setForm(false);toast(`${l.naam} ${bs?'dodan!':'toegevoegd!'}`)}
+  };
+
+  const updateL=async(id,fn)=>{
+    const l=leerlingen.find(x=>x.id===id);
+    if(!l)return;
+    const updated=fn({...l});
+    setSL(prev=>prev.map(x=>x.id===id?updated:x));
+    setHuidig(updated);
+    await upsert(updated);
+  };
+
+  const markeer=async(id,aanwezig)=>{
+    const datum=dag();
+    await updateL(id,l=>{
+      const b=l.aanwezigheid.find(a=>a.datum===datum);
+      const lijst=b?l.aanwezigheid.map(a=>a.datum===datum?{...a,aanwezig}:a):[...l.aanwezigheid,{datum,aanwezig}];
+      return{...l,aanwezigheid:lijst};
+    });
+    toast(aanwezig?'✓ Aanwezig':'✗ Afwezig');
+  };
+
+  const toggleV=async(id,key)=>updateL(id,l=>{const v=!l.vaardigheden[key];return{...l,vaardigheden:{...l.vaardigheden,[key]:v},punten:v?l.punten+10:Math.max(0,l.punten-10)}});
+  const toggleS=async(id,key)=>updateL(id,l=>{const v=!l.suras[key];return{...l,suras:{...l.suras,[key]:v},punten:v?l.punten+15:Math.max(0,l.punten-15)}});
+  const toggleI=async(id,key)=>updateL(id,l=>{const v=!l.ilmihal[key];return{...l,ilmihal:{...l.ilmihal,[key]:v},punten:v?l.punten+20:Math.max(0,l.punten-20)}});
+  const updateNiv=async(id,niveau)=>updateL(id,l=>({...l,niveau}));
+
+  const slaNotitie=async(id)=>{
+    if(!notitie.trim())return;
+    await updateL(id,l=>({...l,notities:[{datum:dag(),tekst:notitie.trim()},...l.notities]}));
+    setNot('');toast('✓');
+  };
+
+  const voegHW=async(id)=>{
+    if(!hwTxt.trim())return;
+    await updateL(id,l=>({...l,huiswerk:[...l.huiswerk,{id:gId(),datum:dag(),opdracht:hwTxt.trim(),afgerond:false}]}));
+    setHwTxt('');toast('Huiswerk toegevoegd!');
+  };
+
+  const toggleHW=async(id,hid)=>updateL(id,l=>({...l,huiswerk:l.huiswerk.map(h=>h.id===hid?{...h,afgerond:!h.afgerond}:h)}));
+  const verwijderHW=async(id,hid)=>updateL(id,l=>({...l,huiswerk:l.huiswerk.filter(h=>h.id!==hid)}));
+
+  const verwijder=async(id)=>{
+    await DB.from('leerlingen').delete().eq('id',id);
+    setSL(prev=>prev.filter(l=>l.id!==id));
+    setScherm('ef');toast('Verwijderd');
+  };
+
+  const zoekL=()=>{const g=leerlingen.find(l=>l.naam.toLowerCase().includes(zoek.toLowerCase()));setGev(g||null);if(!g)toast('Niet gevonden')};
+  const zoekPIN=()=>{const g=leerlingen.find(l=>l.pin&&l.pin===pinInp);if(g){setGev(g);setPinErr(false);}else setPinErr(true)};
+
+  // ── STYLES ──
+  const bg=donker?'#0d1a0f':'#f0f4f0';
+  const cbg=donker?'#1a2a1a':'#fff';
+  const t1=donker?'#e0f0e0':'#1a2a1a';
+  const t2=donker?'#7ab07a':'#4a6a4a';
+  const tm=donker?'#4a6a4a':'#8aaa8a';
+  const bo=donker?'#2a4a2a':'#e0ede0';
+  const ib=donker?'#0d1a0f':'#f8faf8';
+  const bb=donker?'#2a3a2a':'#e8ede8';
+  const okbg=donker?'#0d2a15':'#f0fff4';
+  const okbo=donker?'#1a5c2e':'#a8d8b8';
+
+  const C=(ex={})=>({background:cbg,borderRadius:14,padding:16,marginBottom:10,border:`1px solid ${bo}`,...ex});
+  const L=(ex={})=>({fontSize:10,fontWeight:700,color:t2,textTransform:'uppercase',letterSpacing:1,marginBottom:4,display:'block',...ex});
+  const IN=(ex={})=>({width:'100%',padding:'11px 13px',borderRadius:9,border:`1.5px solid ${bo}`,fontSize:14,background:ib,boxSizing:'border-box',marginBottom:10,color:t1,...ex});
+  const BA=(ex={})=>({background:bb,borderRadius:6,height:7,overflow:'hidden',margin:'2px 0 5px',...ex});
+  const FI=(p,c)=>({width:`${p}%`,height:'100%',background:c,borderRadius:6});
+  const BD=(c,bg)=>({background:bg,color:c,borderRadius:20,padding:'2px 10px',fontSize:11,fontWeight:700,display:'inline-block'});
+  const TO=on=>({width:40,height:23,borderRadius:12,background:on?PR:'#aaa',cursor:'pointer',position:'relative',flexShrink:0});
+  const TD=on=>({position:'absolute',top:2.5,left:on?19:2.5,width:18,height:18,borderRadius:'50%',background:'#fff',boxShadow:'0 1px 3px rgba(0,0,0,.25)'});
+  const BT=(ex={})=>({background:PR,color:'#fff',border:'none',borderRadius:10,padding:'12px 16px',fontSize:14,fontWeight:600,cursor:'pointer',width:'100%',marginTop:8,display:'block',...ex});
+  const BO=(ex={})=>({background:'transparent',color:PR,border:`1.5px solid ${PR}`,borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer',width:'100%',marginTop:8,display:'block',...ex});
+  const BS=(ex={})=>({border:'none',borderRadius:8,padding:'8px 12px',fontSize:13,fontWeight:600,cursor:'pointer',...ex});
+  const HD={background:'linear-gradient(135deg,#1a5c2e,#0d3a1e)',padding:'18px 20px 22px'};
+  const BB={background:'none',border:'none',color:'rgba(255,255,255,.6)',cursor:'pointer',fontSize:13,marginBottom:8,padding:0,display:'block'};
+  const TS={position:'fixed',bottom:20,left:'50%',transform:'translateX(-50%)',background:PR,color:'#fff',padding:'10px 20px',borderRadius:20,fontSize:13,fontWeight:600,zIndex:999};
+
+  if(laden)return(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',flexDirection:'column',gap:16,background:bg}}>
+      <div style={{fontSize:48}}>☽</div>
+      <div style={{fontSize:14,color:t2}}>Laden...</div>
+    </div>
+  );
+
+  // ── WELKOM ──
+  if(scherm==='welkom')return(
+    <div style={{background:bg,minHeight:'100vh'}}>
+      <div style={HD}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:36}}>☽</span>
+          <div><div style={{fontSize:21,fontWeight:700,color:'#fff'}}>Mekteb Tracker</div><div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>IKC DIN Eindhoven</div></div>
+        </div>
+      </div>
+      <div style={{padding:'20px 16px 0'}}>
+        <p style={{fontSize:13,color:tm,textAlign:'center',marginBottom:16}}>{bs?'Odaberi svoju ulogu':'Selecteer jouw rol'}</p>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:14}}>
+          {[{s:'ef-login',icon:'👨‍🏫',nl:'Efendija',bs:'Efendija'},{s:'ouder',icon:'👪',nl:'Ouder',bs:'Roditelj'},{s:'kind',icon:'⭐',nl:'Kind',bs:'Dijete'}].map(r=>(
+            <div key={r.s} onClick={()=>{setZoek('');setGev(null);setPinInp('');setPinErr(false);setScherm(r.s);}}
+              style={{background:cbg,border:`1.5px solid ${bo}`,borderRadius:14,padding:'16px 6px',cursor:'pointer',textAlign:'center'}}>
+              <div style={{fontSize:26,marginBottom:5}}>{r.icon}</div>
+              <div style={{fontSize:13,fontWeight:700,color:t1}}>{bs?r.bs:r.nl}</div>
+            </div>
+          ))}
+        </div>
+        <div style={C({background:okbg,border:`1px solid ${okbo}`,display:'flex',alignItems:'center',gap:12,padding:14})}>
+          <span style={{fontSize:24}}>📚</span>
+          <div><div style={{fontWeight:700,fontSize:13,color:PR}}>{TOTAL_ILM} {bs?'lekcija ilmihala':'ilmihal lessen'}</div>
+          <div style={{fontSize:11,color:t2}}>{bs?'6 kategorija':'6 categorieën'} · {leerlingen.length} {bs?'učenika':'leerlingen'}</div></div>
+        </div>
+        <div style={{display:'flex',justifyContent:'center',gap:8,marginTop:10}}>
+          {['nl','bs'].map(l=>(<button key={l} onClick={()=>slaT(l)} style={{padding:'7px 16px',borderRadius:20,border:`1.5px solid ${taal===l?PR:bo}`,background:taal===l?PR:'transparent',color:taal===l?'#fff':t2,fontSize:13,fontWeight:600,cursor:'pointer'}}>{l==='nl'?'🇳🇱 NL':'🇧🇦 BS'}</button>))}
+          <button onClick={()=>slaD(!donker)} style={{padding:'7px 14px',borderRadius:20,border:`1.5px solid ${bo}`,background:'transparent',color:t2,fontSize:14,cursor:'pointer'}}>{donker?'☀️':'🌙'}</button>
+        </div>
+        {opslaan&&<p style={{textAlign:'center',fontSize:11,color:tm,marginTop:8}}>💾 Opslaan...</p>}
+      </div>
+      {bericht&&<div style={TS}>{bericht}</div>}
+    </div>
+  );
+
+  // ── EF LOGIN ──
+  if(scherm==='ef-login')return(
+    <div style={{background:bg,minHeight:'100vh'}}>
+      <div style={HD}><button style={BB} onClick={()=>setScherm('welkom')}>← {bs?'Nazad':'Terug'}</button><div style={{fontSize:20,fontWeight:700,color:'#fff'}}>Efendija</div></div>
+      <div style={{padding:'24px 16px'}}>
+        <div style={C()}>
+          <span style={L()}>{bs?'Pristupni kod':'Toegangscode'}</span>
+          <input style={{...IN(),letterSpacing:6,textAlign:'center',fontSize:22}} type="password" placeholder="••••••" value={code} onChange={e=>{setCode(e.target.value);setCErr(false);}} onKeyDown={e=>e.key==='Enter'&&login()}/>
+          {codeErr&&<p style={{color:'#c62828',fontSize:13,textAlign:'center',margin:'0 0 8px'}}>{bs?'Pogrešan kod':'Onjuiste code'}</p>}
+          <button style={BT()} onClick={login}>{bs?'Prijava':'Inloggen'}</button>
+        </div>
+        <p style={{fontSize:11,color:tm,textAlign:'center',marginTop:8}}>Code: DIN2026</p>
+      </div>
+    </div>
+  );
+
+  // ── EFENDIJA ──
+  if(scherm==='ef'){
+    const todayM=l=>l.aanwezigheid.find(a=>a.datum===dag());
+    const totA=leerlingen.filter(l=>todayM(l)?.aanwezig).length;
+    return(
+      <div style={{background:bg,minHeight:'100vh',paddingBottom:65}}>
+        <div style={HD}><div style={{fontSize:20,fontWeight:700,color:'#fff'}}>Efendija {opslaan&&<span style={{fontSize:11,opacity:.6}}>💾</span>}</div><div style={{fontSize:11,color:'rgba(255,255,255,.5)'}}>{leerlingen.length} {bs?'učenika':'leerlingen'} · IKC DIN</div></div>
+        <div style={{display:'flex',background:cbg,borderBottom:`1px solid ${bo}`}}>
+          {[{id:'klas',icon:'👥',nl:'Klas',bs:'Razred'},{id:'vandaag',icon:'📋',nl:'Vandaag',bs:'Danas'},{id:'inst',icon:'⚙️',nl:'Inst.',bs:'Post.'}].map(tb=>(
+            <div key={tb.id} onClick={()=>setEfTab(tb.id)} style={{flex:1,padding:'11px 0',textAlign:'center',cursor:'pointer',borderBottom:`2.5px solid ${efTab===tb.id?PR:'transparent'}`}}>
+              <div style={{fontSize:18}}>{tb.icon}</div>
+              <div style={{fontSize:10,color:efTab===tb.id?PR:tm,fontWeight:efTab===tb.id?700:400,marginTop:1}}>{bs?tb.bs:tb.nl}</div>
+            </div>
+          ))}
+        </div>
+
+        {efTab==='klas'&&<div style={{padding:'14px 0'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,padding:'0 16px',marginBottom:12}}>
+            {[{l:bs?'Učenika':'Leerlingen',v:leerlingen.length,c:PR},{l:bs?'Danas prisutno':'Vandaag aanwezig',v:totA,c:PR}].map(st=>(<div key={st.l} style={C({padding:'12px',margin:0,textAlign:'center'})}><div style={{fontSize:22,fontWeight:700,color:st.c}}>{st.v}</div><div style={{fontSize:9,color:tm,marginTop:1}}>{st.l}</div></div>))}
+          </div>
+          {leerlingen.length===0&&<div style={C({margin:'0 16px',textAlign:'center',padding:28})}><div style={{fontSize:32,marginBottom:8}}>🌱</div><p style={{margin:0,fontSize:14,color:tm}}>{bs?'Nema učenika':'Geen leerlingen'}</p></div>}
+          {NIVEAUS.map(n=>{
+            const groep=leerlingen.filter(l=>l.niveau===n.id);
+            if(!groep.length)return null;
+            return(<div key={n.id}>
+              <div style={{padding:'4px 16px 8px',display:'flex',alignItems:'center',gap:8}}><span style={BD(n.color,n.bg)}>{bs?n.bs:n.nl}</span><span style={{fontSize:12,color:tm}}>{groep.length}</span></div>
+              {groep.map(l=>{
+                const tm2=todayM(l);const ap=apct(l.aanwezigheid);
+                const ip=Math.round(telObj(l.ilmihal)/TOTAL_ILM*100);
+                const warn=l.aanwezigheid.filter(a=>!a.aanwezig).length>=3;
+                return(<div key={l.id} style={C({margin:'0 16px 10px'})}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10}}>
+                      <div style={{width:36,height:36,borderRadius:'50%',background:okbg,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:PR,fontSize:15}}>{l.naam.charAt(0).toUpperCase()}</div>
+                      <div><div style={{fontWeight:700,fontSize:14,color:t1}}>{l.naam}{warn&&' ⚠️'}</div><div style={{fontSize:11,color:tm}}>{l.ouder||'—'}</div></div>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:600,color:ACC}}>⭐{l.punten}</div>
+                  </div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:10}}>
+                    {[[bs?'Prisust.':'Aanwez.',ap,PR],[bs?'Ilmihal':'Ilmihal',ip,'#1565c0'],[bs?'Sure':'Sura\'s',Math.round(telObj(l.suras)/SURAS.length*100),'#880e4f']].map(([lb,val,col])=>(<div key={lb}><div style={{fontSize:10,color:tm}}>{lb}</div><div style={BA()}><div style={FI(val,col)}/></div><div style={{fontSize:11,fontWeight:600,color:col}}>{val}%</div></div>))}
+                  </div>
+                  <div style={{display:'flex',gap:6}}>
+                    <button onClick={()=>markeer(l.id,true)} style={{flex:1,padding:'8px 4px',borderRadius:8,border:`1.5px solid ${PR}`,background:tm2?.aanwezig?PR:'transparent',color:tm2?.aanwezig?'#fff':PR,fontSize:12,fontWeight:600,cursor:'pointer'}}>✓ {bs?'Prisutan':'Aanwezig'}</button>
+                    <button onClick={()=>markeer(l.id,false)} style={{flex:1,padding:'8px 4px',borderRadius:8,border:'1.5px solid #c62828',background:tm2&&!tm2.aanwezig?'#c62828':'transparent',color:tm2&&!tm2.aanwezig?'#fff':'#c62828',fontSize:12,fontWeight:600,cursor:'pointer'}}>✗ {bs?'Odsutan':'Afwezig'}</button>
+                    <button onClick={()=>ga('detail',l)} style={{padding:'8px 12px',borderRadius:8,border:`1.5px solid ${bo}`,background:'transparent',color:PR,fontSize:13,fontWeight:600,cursor:'pointer'}}>→</button>
+                  </div>
+                </div>);
+              })}
+            </div>);
+          })}
+          {!form?(<div style={{padding:'4px 16px 8px'}}><button style={BT()} onClick={()=>setForm(true)}>+ {bs?'Dodaj učenika':'Leerling toevoegen'}</button></div>):(
+            <div style={C({margin:'0 16px'})}>
+              <div style={{fontWeight:700,fontSize:15,color:t1,marginBottom:14}}>{bs?'Novi učenik':'Nieuwe leerling'}</div>
+              <span style={L()}>{bs?'Ime djeteta':'Naam kind'} *</span>
+              <input style={IN()} placeholder={bs?'Ime':'Naam'} value={nieuw.naam} onChange={e=>setNieuw({...nieuw,naam:e.target.value})}/>
+              <span style={L()}>{bs?'Ime roditelja':'Naam ouder'}</span>
+              <input style={IN()} placeholder={bs?'Opcionalno':'Optioneel'} value={nieuw.ouder} onChange={e=>setNieuw({...nieuw,ouder:e.target.value})}/>
+              <span style={L()}>PIN (4 {bs?'cifre':'cijfers'})</span>
+              <input style={IN()} type="number" placeholder="1234" value={nieuw.pin} onChange={e=>setNieuw({...nieuw,pin:e.target.value.slice(0,4)})}/>
+              <span style={L()}>{bs?'Nivo':'Niveau'}</span>
+              <div style={{display:'flex',gap:8,marginBottom:14}}>
+                {NIVEAUS.map(n=>(<div key={n.id} style={{flex:1,padding:'10px 4px',borderRadius:10,border:`2px solid ${nieuw.niveau===n.id?n.color:bo}`,cursor:'pointer',textAlign:'center',background:nieuw.niveau===n.id?n.bg:cbg}} onClick={()=>setNieuw({...nieuw,niveau:n.id})}><div style={{fontSize:11,fontWeight:700,color:n.color}}>{bs?n.bs:n.nl}</div></div>))}
+              </div>
+              <button style={BT()} onClick={voegToe}>{bs?'Sačuvaj':'Opslaan'}</button>
+              <button style={BO()} onClick={()=>{setForm(false);setNieuw({naam:'',ouder:'',niveau:1,pin:''})}}>{bs?'Otkaži':'Annuleren'}</button>
+            </div>
+          )}
+        </div>}
+
+        {efTab==='vandaag'&&<div style={{padding:'14px 0'}}>
+          <div style={C({margin:'0 16px',background:okbg,border:`1px solid ${okbo}`})}><div style={{fontWeight:700,color:PR,marginBottom:4}}>📋 {dag()}</div><div style={{fontSize:13,color:t2}}>{totA} {bs?'prisutno':'aanwezig'}</div></div>
+          {leerlingen.map(l=>{const tm2=l.aanwezigheid.find(a=>a.datum===dag());return(
+            <div key={l.id} style={C({margin:'0 16px 8px',display:'flex',alignItems:'center',gap:12,padding:'14px 16px'})}>
+              <div style={{width:32,height:32,borderRadius:'50%',background:okbg,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:PR,fontSize:14,flexShrink:0}}>{l.naam.charAt(0).toUpperCase()}</div>
+              <div style={{flex:1}}><div style={{fontWeight:700,fontSize:14,color:t1}}>{l.naam}</div><div style={{fontSize:11,color:tm2?.aanwezig?PR:tm2&&!tm2.aanwezig?'#c62828':tm}}>{tm2?.aanwezig?'✓':tm2&&!tm2.aanwezig?'✗':'–'}</div></div>
+              <div style={{display:'flex',gap:5}}>
+                <button onClick={()=>markeer(l.id,true)} style={{width:34,height:34,borderRadius:8,border:`1.5px solid ${PR}`,background:tm2?.aanwezig?PR:'transparent',color:tm2?.aanwezig?'#fff':PR,fontSize:15,cursor:'pointer',padding:0}}>✓</button>
+                <button onClick={()=>markeer(l.id,false)} style={{width:34,height:34,borderRadius:8,border:'1.5px solid #c62828',background:tm2&&!tm2.aanwezig?'#c62828':'transparent',color:tm2&&!tm2.aanwezig?'#fff':'#c62828',fontSize:15,cursor:'pointer',padding:0}}>✗</button>
+              </div>
+            </div>);})}
+        </div>}
+
+        {efTab==='inst'&&<div style={{padding:'14px 0'}}>
+          <div style={C({margin:'0 16px'})}>
+            <div style={{fontWeight:700,fontSize:15,color:t1,marginBottom:14}}>🌐 Taal / Jezik</div>
+            <div style={{display:'flex',gap:8}}>{['nl','bs'].map(l=>(<button key={l} onClick={()=>slaT(l)} style={{flex:1,padding:'11px',borderRadius:10,border:`1.5px solid ${taal===l?PR:bo}`,background:taal===l?PR:'transparent',color:taal===l?'#fff':t2,fontSize:13,fontWeight:600,cursor:'pointer'}}>{l==='nl'?'🇳🇱 Nederlands':'🇧🇦 Bosanski'}</button>))}</div>
+          </div>
+          <div style={C({margin:'0 16px'})}>
+            <div style={{fontWeight:700,fontSize:15,color:t1,marginBottom:12}}>🌗 {bs?'Tema':'Thema'}</div>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}><span style={{fontSize:14,color:t2}}>{donker?(bs?'Tamna':'Donker'):(bs?'Svijetla':'Licht')}</span><div style={TO(donker)} onClick={()=>slaD(!donker)}><div style={TD(donker)}/></div></div>
+          </div>
+          <div style={C({margin:'0 16px'})}>
+            <div style={{fontWeight:700,fontSize:15,color:t1,marginBottom:10}}>📊 {bs?'Statistike':'Statistieken'}</div>
+            {NIVEAUS.map(n=>{const g=leerlingen.filter(l=>l.niveau===n.id);return g.length?(<div key={n.id} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`0.5px solid ${bo}`}}><span style={BD(n.color,n.bg)}>{bs?n.sub_bs:n.sub_nl}</span><span style={{fontSize:13,color:t2,fontWeight:600}}>{g.length}</span></div>):null;})}
+            <div style={{display:'flex',justifyContent:'space-between',padding:'10px 0 0'}}><span style={{fontSize:13,color:tm}}>Totaal punten</span><span style={{fontSize:13,fontWeight:700,color:ACC}}>⭐ {leerlingen.reduce((s,l)=>s+l.punten,0)}</span></div>
+          </div>
+          <div style={{padding:'4px 16px'}}><button style={BO()} onClick={()=>setScherm('welkom')}>← {bs?'Odjava':'Uitloggen'}</button></div>
+        </div>}
+        {bericht&&<div style={TS}>{bericht}</div>}
+      </div>
+    );
+  }
+
+  // ── DETAIL ──
+  if(scherm==='detail'&&huidig){
+    const l=huidig;const ni=nivInfo(l.niveau);const ap=apct(l.aanwezigheid);
+    const warn=l.aanwezigheid.filter(a=>!a.aanwezig).length>=3;
+
+    const IlmihalTab=()=>{
+      const ilmData=l.ilmihal||emptyI();
+      const totalDone=telObj(ilmData);
+      if(ilmCat){
+        const cat=ILMIHAL.find(c=>c.id===ilmCat);
+        const catDone=cat.lessen.filter(ls=>ilmData[ls.id]).length;
+        return(<div style={{padding:'0 16px 20px'}}>
+          <button onClick={()=>setIlmCat(null)} style={BS({background:'transparent',color:PR,border:`1px solid ${bo}`,marginBottom:12})}>← {bs?'Nazad':'Terug'}</button>
+          <div style={C()}>
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+              <span style={{fontSize:26}}>{cat.icon}</span>
+              <div><div style={{fontWeight:700,fontSize:15,color:t1}}>{bs?cat.bs:cat.nl}</div><div style={{fontSize:12,color:tm}}>{catDone}/{cat.lessen.length}</div></div>
+            </div>
+            <div style={BA()}><div style={FI(Math.round(catDone/cat.lessen.length*100),PR)}/></div>
+            {NIVEAUS.map(n=>{const groep=cat.lessen.filter(ls=>ls.niv===n.id);return groep.length?(<div key={n.id} style={{marginTop:14}}>
+              <div style={{...BD(n.color,n.bg),marginBottom:8,fontSize:10}}>{bs?n.bs:n.nl}</div>
+              {groep.map(ls=>(<div key={ls.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 12px',borderRadius:10,marginBottom:6,background:ilmData[ls.id]?okbg:(donker?'#1a2a1a':'#f8f8f8'),border:`1px solid ${ilmData[ls.id]?okbo:bo}`}}>
+                <span style={{fontSize:13,flex:1,color:ilmData[ls.id]?PR:t1,fontWeight:ilmData[ls.id]?600:400}}>{bs?ls.bs:ls.nl}{ilmData[ls.id]&&<span style={{fontSize:10,color:PR,marginLeft:6}}>+20pts</span>}</span>
+                <div style={TO(ilmData[ls.id])} onClick={()=>toggleI(l.id,ls.id)}><div style={TD(ilmData[ls.id])}/></div>
+              </div>))}
+            </div>):null;})}
+          </div>
+        </div>);
+      }
+      return(<div style={{padding:'14px 16px 20px'}}>
+        <div style={C({background:okbg,border:`1px solid ${okbo}`})}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}><span style={{fontWeight:700,fontSize:14,color:PR}}>📚 {bs?'Ukupni napredak':'Totale voortgang'}</span><span style={{fontSize:16,fontWeight:700,color:PR}}>{Math.round(totalDone/TOTAL_ILM*100)}%</span></div>
+          <div style={BA()}><div style={FI(Math.round(totalDone/TOTAL_ILM*100),PR)}/></div>
+          <div style={{fontSize:12,color:t2,marginTop:4}}>{totalDone}/{TOTAL_ILM} {bs?'lekcija':'lessen'}</div>
+        </div>
+        {ILMIHAL.map(cat=>{
+          const catDone=cat.lessen.filter(ls=>ilmData[ls.id]).length;
+          const catPct=Math.round(catDone/cat.lessen.length*100);
+          return(<div key={cat.id} style={{...C(),cursor:'pointer'}} onClick={()=>setIlmCat(cat.id)}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <span style={{fontSize:26,flexShrink:0}}>{cat.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontWeight:700,fontSize:14,color:t1}}>{bs?cat.bs:cat.nl}</span>
+                  <span style={{fontSize:12,fontWeight:600,color:catPct===100?PR:'#1565c0',marginLeft:8}}>{catDone}/{cat.lessen.length}</span>
+                </div>
+                <div style={BA({marginTop:4})}><div style={FI(catPct,catPct===100?PR:'#1565c0')}/></div>
+                <div style={{fontSize:11,color:tm}}>{cat.lessen.length} {bs?'lekcija':'lessen'} → {bs?'detalji':'details'}</div>
+              </div>
+              {catPct===100&&<span style={{fontSize:18}}>🏆</span>}
+            </div>
+          </div>);
+        })}
+      </div>);
+    };
+
+    return(
+      <div style={{background:bg,minHeight:'100vh'}}>
+        <div style={{...HD,paddingBottom:14}}>
+          <button style={BB} onClick={()=>{setScherm('ef');setIlmCat(null);}}>← {bs?'Nazad':'Terug'}</button>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{fontSize:19,fontWeight:700,color:'#fff'}}>{l.naam} {opslaan&&<span style={{fontSize:12,opacity:.5}}>💾</span>}</div>
+            <span style={{background:'rgba(200,147,42,.25)',color:'#f0c060',borderRadius:20,padding:'4px 12px',fontSize:12,fontWeight:700}}>⭐ {l.punten}</span>
+          </div>
+          <div style={{fontSize:11,color:'rgba(255,255,255,.5)',marginTop:2}}>{ap}% · {bs?ni.bs:ni.nl}</div>
+          {warn&&<div style={{fontSize:11,color:'#ffd700',marginTop:4}}>⚠️ 3+ {bs?'puta odsutan':'keer afwezig'}</div>}
+        </div>
+        <div style={{display:'flex',overflowX:'auto',background:cbg,borderBottom:`1px solid ${bo}`}}>
+          {[{id:'profiel',i:'👤',nl:'Profiel',bs:'Profil'},{id:'ilmihal',i:'📚',nl:'Ilmihal',bs:'Ilmihal'},{id:'vaard',i:'✅',nl:'Vaardigh.',bs:'Vještine'},{id:'suras',i:'📖',nl:"Sura's",bs:'Sure'},{id:'hw',i:'📝',nl:'Huiswerk',bs:'Domaći'}].map(tb=>(
+            <div key={tb.id} onClick={()=>{setDTab(tb.id);setIlmCat(null);}} style={{flex:'0 0 auto',padding:'10px 14px',cursor:'pointer',borderBottom:`2.5px solid ${dTab===tb.id?PR:'transparent'}`,color:dTab===tb.id?PR:tm,fontWeight:dTab===tb.id?700:400,fontSize:12,whiteSpace:'nowrap'}}>
+              {tb.i} {bs?tb.bs:tb.nl}
+            </div>
+          ))}
+        </div>
+
+        {dTab==='profiel'&&<div style={{padding:'14px 0'}}>
+          <div style={C({margin:'0 16px'})}>
+            <span style={L()}>{bs?'Nivo':'Niveau'}</span>
+            <div style={{display:'flex',gap:8}}>{NIVEAUS.map(n=>(<div key={n.id} style={{flex:1,padding:'10px 4px',borderRadius:10,border:`2px solid ${l.niveau===n.id?n.color:bo}`,cursor:'pointer',textAlign:'center',background:l.niveau===n.id?n.bg:cbg}} onClick={()=>updateNiv(l.id,n.id)}><div style={{fontSize:11,fontWeight:700,color:n.color}}>{bs?n.bs:n.nl}</div></div>))}</div>
+          </div>
+          <div style={C({margin:'0 16px'})}>
+            <span style={L()}>{bs?'Bilješke':'Notities'}</span>
+            <textarea style={{...IN(),minHeight:70,resize:'vertical',marginBottom:8}} placeholder={bs?'Dodaj bilješku...':'Notitie...'} value={notitie} onChange={e=>setNot(e.target.value)}/>
+            <button style={BS({background:PR,color:'#fff'})} onClick={()=>slaNotitie(l.id)}>{bs?'Sačuvaj':'Opslaan'}</button>
+            <div style={{marginTop:12}}>
+              {!l.notities.length&&<p style={{fontSize:13,color:tm,textAlign:'center',padding:'8px 0'}}>{bs?'Nema bilješki':'Geen notities'}</p>}
+              {l.notities.slice(0,6).map((n,i)=>(<div key={i} style={{background:donker?'#0d2a15':'#f8faf8',borderRadius:8,padding:'10px 12px',marginBottom:6,borderLeft:'3px solid '+ACC}}><div style={{fontSize:10,color:tm,marginBottom:2}}>{n.datum}</div><div style={{fontSize:13,color:t1}}>{n.tekst}</div></div>))}
+            </div>
+          </div>
+          <div style={C({margin:'0 16px'})}>
+            <span style={L()}>{bs?'Log prisustva':'Aanwezigheid log'}</span>
+            {!l.aanwezigheid.length&&<p style={{fontSize:13,color:tm,textAlign:'center'}}>–</p>}
+            {l.aanwezigheid.slice(-10).reverse().map((a,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`0.5px solid ${bo}`}}><span style={{fontSize:13,color:t2}}>{a.datum}</span><span style={{fontSize:12,fontWeight:600,color:a.aanwezig?PR:'#c62828'}}>{a.aanwezig?'✓':'✗'}</span></div>))}
+          </div>
+          <div style={{padding:'0 16px 20px'}}><button style={{background:'transparent',color:'#c62828',border:'1.5px solid #c62828',borderRadius:10,padding:'12px 16px',fontSize:14,fontWeight:600,cursor:'pointer',width:'100%'}} onClick={()=>{if(window.confirm(`${l.naam} ${bs?'izbrisati':'verwijderen'}?`))verwijder(l.id);}}>{bs?'Izbriši':'Verwijder'}</button></div>
+        </div>}
+
+        {dTab==='ilmihal'&&<IlmihalTab/>}
+
+        {dTab==='vaard'&&<div style={{padding:'14px 16px'}}>
+          <div style={C()}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}><span style={L()}>{bs?'Vještine':'Vaardigheden'}</span><span style={{fontSize:13,fontWeight:700,color:ACC}}>{telObj(l.vaardigheden)}/{VAARD.length}</span></div>
+            <div style={BA()}><div style={FI(Math.round(telObj(l.vaardigheden)/VAARD.length*100),ACC)}/></div>
+            <div style={{marginTop:12}}>{VAARD.map(v=>(<div key={v.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 0',borderBottom:`0.5px solid ${bo}`}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}><span style={{fontSize:18}}>{v.icon}</span><span style={{fontSize:14,color:t1}}>{bs?v.bs:v.nl}</span></div>
+              <div style={TO(l.vaardigheden[v.id])} onClick={()=>toggleV(l.id,v.id)}><div style={TD(l.vaardigheden[v.id])}/></div>
+            </div>))}</div>
+          </div>
+        </div>}
+
+        {dTab==='suras'&&<div style={{padding:'14px 16px'}}>
+          <div style={C()}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}><span style={L()}>{bs?'Sure':'Sura\'s'}</span><span style={{fontSize:13,fontWeight:700,color:'#880e4f'}}>{telObj(l.suras)}/{SURAS.length}</span></div>
+            <div style={BA()}><div style={FI(Math.round(telObj(l.suras)/SURAS.length*100),'#880e4f')}/></div>
+            {NIVEAUS.map(n=>{const groep=SURAS.filter(s=>s.niv===n.id);return(<div key={n.id} style={{marginTop:14}}>
+              <div style={{...BD(n.color,n.bg),marginBottom:10,fontSize:10}}>{bs?n.bs:n.nl}</div>
+              {groep.map(sr=>(<div key={sr.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 0',borderBottom:`0.5px solid ${bo}`}}>
+                <span style={{fontSize:14,color:t1}}>{bs?sr.bs:sr.nl}</span>
+                <div style={TO(l.suras[sr.id])} onClick={()=>toggleS(l.id,sr.id)}><div style={TD(l.suras[sr.id])}/></div>
+              </div>))}
+            </div>);})}
+          </div>
+        </div>}
+
+        {dTab==='hw'&&<div style={{padding:'14px 16px'}}>
+          <div style={C()}>
+            <span style={L()}>+ {bs?'Dodaj domaći':'Huiswerk toevoegen'}</span>
+            <textarea style={{...IN(),minHeight:65,resize:'vertical',marginBottom:8}} placeholder={bs?'Opis zadatka...':'Opdracht...'} value={hwTxt} onChange={e=>setHwTxt(e.target.value)}/>
+            <button style={BS({background:PR,color:'#fff'})} onClick={()=>voegHW(l.id)}>{bs?'Sačuvaj':'Opslaan'}</button>
+          </div>
+          <div style={C()}>
+            <span style={L()}>{bs?'Domaći':'Huiswerk'}</span>
+            {!l.huiswerk.length&&<p style={{fontSize:13,color:tm,textAlign:'center',padding:'8px 0'}}>{bs?'Nema domaćeg':'Geen huiswerk'}</p>}
+            {[...l.huiswerk].reverse().map(h=>(<div key={h.id} style={{display:'flex',gap:10,alignItems:'flex-start',padding:'10px 0',borderBottom:`0.5px solid ${bo}`}}>
+              <div style={TO(h.afgerond)} onClick={()=>toggleHW(l.id,h.id)}><div style={TD(h.afgerond)}/></div>
+              <div style={{flex:1}}><div style={{fontSize:10,color:tm,marginBottom:2}}>{h.datum}</div><div style={{fontSize:13,color:h.afgerond?tm:t1,textDecoration:h.afgerond?'line-through':'none'}}>{h.opdracht}</div></div>
+              <button style={{background:'transparent',border:'none',color:'#c62828',fontSize:18,cursor:'pointer',padding:'0 4px'}} onClick={()=>verwijderHW(l.id,h.id)}>×</button>
+            </div>))}
+          </div>
+        </div>}
+        {bericht&&<div style={TS}>{bericht}</div>}
+      </div>
+    );
+  }
+
+  // ── OUDER ──
+  if(scherm==='ouder')return(
+    <div style={{background:bg,minHeight:'100vh'}}>
+      <div style={HD}><button style={BB} onClick={()=>{setScherm('welkom');setGev(null);setZoek('');}}>← {bs?'Nazad':'Terug'}</button><div style={{fontSize:20,fontWeight:700,color:'#fff'}}>{bs?'Roditelj':'Ouder'}</div></div>
+      <div style={{padding:'20px 16px 0'}}>
+        <div style={C()}>
+          <span style={L()}>{bs?'Ime vašeg djeteta':'Naam van uw kind'}</span>
+          <input style={IN()} placeholder={bs?'Unesite ime...':'Voer naam in...'} value={zoek} onChange={e=>setZoek(e.target.value)} onKeyDown={e=>e.key==='Enter'&&zoekL()}/>
+          <button style={BT()} onClick={zoekL}>{bs?'Traži':'Zoeken'}</button>
+        </div>
+        {gevonden&&(()=>{const l=gevonden;const ni=nivInfo(l.niveau);const ap=apct(l.aanwezigheid);
+          const vp=Math.round(telObj(l.vaardigheden)/VAARD.length*100);
+          const sp=Math.round(telObj(l.suras)/SURAS.length*100);
+          const ip=Math.round(telObj(l.ilmihal)/TOTAL_ILM*100);
+          return(<>
+            <div style={C({background:okbg,border:`1px solid ${okbo}`})}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                <div><div style={{fontWeight:700,fontSize:18,color:t1}}>{l.naam}</div><span style={BD(ni.color,ni.bg)}>{bs?ni.bs:ni.nl}</span></div>
+                <div style={{textAlign:'center'}}><div style={{fontSize:26,fontWeight:700,color:ACC}}>{l.punten}</div><div style={{fontSize:10,color:tm}}>{bs?'bodova':'punten'}</div></div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                {[[bs?'Prisustvo':'Aanwezigheid',ap,PR,'📋'],[bs?'Vještine':'Vaardigheden',vp,ACC,'✅'],[bs?'Sure':"Sura's",sp,'#880e4f','📖'],[bs?'Ilmihal':'Ilmihal',ip,'#1565c0','📚']].map(([lb,val,col,ic])=>(<div key={lb} style={{textAlign:'center'}}>
+                  <div style={{fontSize:16}}>{ic}</div>
+                  <div style={{fontSize:16,fontWeight:700,color:col}}>{val}%</div>
+                  <div style={{fontSize:9,color:tm}}>{lb}</div>
+                  <div style={BA({marginTop:3})}><div style={FI(val,col)}/></div>
+                </div>))}
+              </div>
+            </div>
+            {l.huiswerk.filter(h=>!h.afgerond).length>0&&<div style={C()}>
+              <span style={L()}>📝 {bs?'Otvoreni domaći':'Open huiswerk'}</span>
+              {l.huiswerk.filter(h=>!h.afgerond).map(h=>(<div key={h.id} style={{padding:'8px 0',borderBottom:`0.5px solid ${bo}`}}><div style={{fontSize:11,color:tm}}>{h.datum}</div><div style={{fontSize:13,color:t1}}>{h.opdracht}</div></div>))}
+            </div>}
+            {l.notities.length>0&&<div style={C()}>
+              <span style={L()}>{bs?'Bilješke efendije':'Notities efendija'}</span>
+              {l.notities.slice(0,3).map((n,i)=>(<div key={i} style={{background:donker?'#0d2a15':'#f8faf8',borderRadius:8,padding:'10px 12px',marginBottom:6,borderLeft:'3px solid '+ACC}}><div style={{fontSize:10,color:tm,marginBottom:2}}>{n.datum}</div><div style={{fontSize:13,color:t1}}>{n.tekst}</div></div>))}
+            </div>}
+          </>);
+        })()}
+      </div>
+      {bericht&&<div style={TS}>{bericht}</div>}
+    </div>
+  );
+
+  // ── KIND ──
+  if(scherm==='kind')return(
+    <div style={{background:bg,minHeight:'100vh'}}>
+      <div style={HD}><button style={BB} onClick={()=>{setScherm('welkom');setGev(null);setZoek('');setPinInp('');}}>← {bs?'Nazad':'Terug'}</button><div style={{fontSize:20,fontWeight:700,color:'#fff'}}>⭐ {bs?'Moj mekteb':'Mijn mekteb'}</div></div>
+      <div style={{padding:'20px 16px 0'}}>
+        {!gevonden?(
+          <div style={C()}>
+            <span style={L()}>{bs?'Kako se zoveš?':'Wat is jouw naam?'}</span>
+            <input style={IN()} placeholder={bs?'Tvoje ime...':'Jouw naam...'} value={zoek} onChange={e=>setZoek(e.target.value)} onKeyDown={e=>e.key==='Enter'&&zoekL()}/>
+            <button style={BT()} onClick={zoekL}>{bs?'Idi na moju stranicu!':'Ga naar mijn pagina!'}</button>
+            <div style={{display:'flex',alignItems:'center',gap:8,margin:'14px 0 10px'}}><div style={{flex:1,height:1,background:bo}}/><span style={{fontSize:12,color:tm}}>{bs?'ili':'of'} PIN</span><div style={{flex:1,height:1,background:bo}}/></div>
+            <input style={{...IN(),letterSpacing:8,textAlign:'center',fontSize:20}} type="number" placeholder="1234" value={pinInp} onChange={e=>{setPinInp(e.target.value.slice(0,4));setPinErr(false);}} onKeyDown={e=>e.key==='Enter'&&zoekPIN()}/>
+            {pinErr&&<p style={{color:'#c62828',fontSize:13,textAlign:'center',margin:'0 0 8px'}}>{bs?'Pogrešan PIN':'Onjuiste PIN'}</p>}
+            <button style={BO()} onClick={zoekPIN}>Login PIN</button>
+          </div>
+        ):(()=>{
+          const l=gevonden;
+          const cnt=telObj(l.vaardigheden);const scnt=telObj(l.suras);const icnt=telObj(l.ilmihal||{});
+          const total=cnt+scnt+icnt;const maxT=VAARD.length+SURAS.length+TOTAL_ILM;
+          const emoji=total===0?'🌱':total<=8?'🌿':total<=20?'⭐':total<=35?'🌟':'🏆';
+          const msgs=bs?['Dobrodošao u mekteb!','Odlično, nastavi tako!','Mašallah, super si!','Barakallahu feekum! 🌟']:['Welkom bij het mekteb!','Goed bezig, ga door!','Mashallah, super goed!','Barakallahu feekum! 🌟'];
+          const msg=msgs[Math.min(total===0?0:total<=8?1:total<=20?2:3,3)];
+          return(<>
+            <div style={C({background:'linear-gradient(135deg,#1a5c2e,#0d3a1e)',color:'#fff',textAlign:'center',padding:'24px 16px'})}>
+              <div style={{fontSize:52,marginBottom:6}}>{emoji}</div>
+              <div style={{fontSize:19,fontWeight:700,marginBottom:4}}>{bs?'Es-selamu alejkum':'Assalamu Alaikum'}, {l.naam}!</div>
+              <div style={{fontSize:13,color:'rgba(255,255,255,.65)',marginBottom:16}}>{msg}</div>
+              <div style={{fontSize:34,fontWeight:700,color:'#f0c060'}}>{l.punten}</div>
+              <div style={{fontSize:11,color:'rgba(255,255,255,.45)'}}>{bs?'bodova zarađeno':'punten verdiend'}</div>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:2}}>
+              {[{l:bs?'Prisustvo':'Aanwez.',v:apct(l.aanwezigheid),c:PR,i:'📋'},{l:bs?'Vještine':'Vaardigh.',v:Math.round(cnt/VAARD.length*100),c:ACC,i:'✅'},{l:bs?'Sure':"Sura's",v:Math.round(scnt/SURAS.length*100),c:'#880e4f',i:'📖'},{l:bs?'Ilmihal':'Ilmihal',v:Math.round(icnt/TOTAL_ILM*100),c:'#1565c0',i:'📚'}].map(st=>(<div key={st.l} style={C({padding:'12px 8px',margin:0,textAlign:'center'})}>
+                <div style={{fontSize:18}}>{st.i}</div>
+                <div style={{fontSize:18,fontWeight:700,color:st.c,marginTop:3}}>{st.v}%</div>
+                <div style={{fontSize:9,color:tm,marginTop:1}}>{st.l}</div>
+                <div style={BA({marginTop:4})}><div style={FI(st.v,st.c)}/></div>
+              </div>))}
+            </div>
+            <div style={C()}>
+              <div style={{fontWeight:700,fontSize:14,color:t1,marginBottom:10}}>📚 {bs?'Moj ilmihal':'Mijn ilmihal'}</div>
+              {ILMIHAL.map(cat=>{
+                const ilmData=l.ilmihal||{};const catDone=cat.lessen.filter(ls=>ilmData[ls.id]).length;const catPct=Math.round(catDone/cat.lessen.length*100);
+                return(<div key={cat.id} style={{marginBottom:10}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}><span style={{fontSize:13,color:t1}}>{cat.icon} {bs?cat.bs:cat.nl}</span><span style={{fontSize:12,fontWeight:600,color:catPct===100?PR:'#1565c0'}}>{catDone}/{cat.lessen.length}{catPct===100&&' 🏆'}</span></div>
+                  <div style={BA({height:6})}><div style={FI(catPct,catPct===100?PR:'#1565c0')}/></div>
+                </div>);
+              })}
+            </div>
+            <div style={{...C({background:okbg,border:`1px solid ${okbo}`,textAlign:'center',padding:14}),marginBottom:24}}>
+              <p style={{margin:0,fontSize:13,color:PR}}>☽ Barakallahu feekum! — IKC DIN</p>
+            </div>
+          </>);
+        })()}
+      </div>
+      {bericht&&<div style={TS}>{bericht}</div>}
+    </div>
+  );
+
+  return null;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
