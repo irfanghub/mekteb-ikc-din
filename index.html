@@ -1096,19 +1096,44 @@ function kidHome(){
               `Selam ${k.name}, nedostajao/la si nam na posljednjem mektebu, nadamo se da ćeš doći sljedeće nedjelje!`)}
         </div>
       </div>` : ''}
-      <div class="hero" onclick="setNav('path')">
-        <div class="hero-label">${T('nextLesson')}</div>
-        <div class="hero-title">${currentStation(k.level,'suras').label} — ${currentStation(k.level,'suras').sub}</div>
-        <button class="hero-cta">${T('continue')} →</button>
-      </div>
-      ${(()=>{const ilm=ilmStats(k.level,k.id);return`<div class="card" style="margin-bottom:14px;cursor:pointer;padding:14px" onclick="state.nav='path';state.pathTab='ilmihal';render()">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
-          <div style="font-weight:800;font-size:13px">📚 ${T('ilmihal')}</div>
-          <div style="font-weight:900;color:var(--green);font-size:13px">${ilm.gedaan}/${ilm.totaal}</div>
+      ${(()=>{
+        // Huidige sura: gebruik kid-specifieke stationData, niet het template
+        const kidSuras = kidStations(k,'suras',k.level);
+        const curSura = kidSuras.find(s=>s.status==='current') || kidSuras.find(s=>s.status!=='done') || kidSuras[0] || {label:'—',sub:''};
+        // Volgende ilmihal-les: eerste niet-afgevinkte les voor dit kind
+        const kDoneIlm = state.ilmDone[k.id] || {};
+        let nextIlm = null;
+        for(const cat of (ILMIHAL[k.level]||[])){
+          for(const les of cat.lessen){
+            if(!kDoneIlm[les.id]){ nextIlm={naam:les.naam,naam_bs:les.naam_bs,cat:state.lang==='nl'?cat.name:cat.name_bs}; break; }
+          }
+          if(nextIlm) break;
+        }
+        const ilm=ilmStats(k.level,k.id);
+        return`
+        <div class="hero" onclick="setNav('path');state.pathTab='suras';render()">
+          <div class="hero-label">📖 ${T('nextLesson')} — Sura</div>
+          <div class="hero-title">${curSura.label}${curSura.sub?' — '+curSura.sub:''}</div>
+          <button class="hero-cta">${T('continue')} →</button>
         </div>
-        <div class="bar"><div class="bar-fill" style="width:${ilm.pct}%"></div></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:5px">${ilm.pct}% ${T('completed')} — N${k.level}</div>
-      </div>`;})()}
+        ${nextIlm?`<div class="hero gold" style="margin-top:-4px" onclick="setNav('path');state.pathTab='ilmihal';render()">
+          <div class="hero-label">📚 ${T('nextLesson')} — Ilmihal</div>
+          <div class="hero-title">${state.lang==='nl'?nextIlm.naam:nextIlm.naam_bs}</div>
+          <div style="font-size:11px;opacity:.85;font-weight:700;margin-top:2px">${nextIlm.cat}</div>
+          <button class="hero-cta">${T('continue')} →</button>
+        </div>`:`<div class="card" style="margin-bottom:14px;cursor:pointer;padding:14px;text-align:center" onclick="setNav('path');state.pathTab='ilmihal';render()">
+          <div style="font-size:24px">🏆</div>
+          <div style="font-weight:800;font-size:13px;margin-top:4px">${L('Ilmihal volledig afgerond!','Ilmihal kompletno završen!')}</div>
+        </div>`}
+        <div class="card" style="margin-bottom:14px;cursor:pointer;padding:14px" onclick="setNav('path');state.pathTab='ilmihal';render()">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+            <div style="font-weight:800;font-size:13px">📚 ${T('ilmihal')}</div>
+            <div style="font-weight:900;color:var(--green);font-size:13px">${ilm.gedaan}/${ilm.totaal}</div>
+          </div>
+          <div class="bar"><div class="bar-fill" style="width:${ilm.pct}%"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:5px">${ilm.pct}% ${T('completed')} — N${k.level}</div>
+        </div>`;
+      })()}
       <div class="stats">
         <div class="stat"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">${L('Streak','Sedmice')}</div></div>
         <div class="stat"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${L('Hafiz (suras)','Hafiz (sure)')}</div></div>
@@ -1433,7 +1458,11 @@ function ouderHome(){
     <!-- KIND(EREN) VOORTGANG -->
     <div class="section-head"><div class="h3">👦 ${T('parentDash')}</div></div>
     ${kids.map(k=>{
-      const cur = currentStation(k.level,'suras');
+      const kidSuras = kidStations(k,'suras',k.level);
+      const cur = kidSuras.find(s=>s.status==='current') || kidSuras.find(s=>s.status!=='done') || kidSuras[0] || {label:'—'};
+      const kDoneIlm = state.ilmDone[k.id] || {};
+      let nextIlm = null;
+      for(const cat of (ILMIHAL[k.level]||[])){ for(const les of cat.lessen){ if(!kDoneIlm[les.id]){ nextIlm=les; break; } } if(nextIlm) break; }
       const ilm = ilmStats(k.level, k.id);
       const kHw = HOMEWORK.filter(h=>h.kidId===k.id && !h.done);
       return `<div class="card" style="margin-bottom:12px">
@@ -1447,8 +1476,11 @@ function ouderHome(){
         </div>
         <!-- sura voortgang -->
         <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px">
-          <span>📖 ${L('Volgende sura','Sljedeća sura')}: <span style="color:var(--ink);font-weight:800">${cur.label}</span></span>
+          <span>📖 ${L('Huidige sura','Trenutna sura')}: <span style="color:var(--ink);font-weight:800">${cur.label}</span></span>
         </div>
+        ${nextIlm?`<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px">
+          📚 ${L('Volgende ilmihal','Sljedeći ilmihal')}: <span style="color:var(--ink);font-weight:800">${state.lang==='nl'?nextIlm.naam:nextIlm.naam_bs}</span>
+        </div>`:''}
         <!-- ilmihal voortgang -->
         <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--muted);margin:6px 0 3px">
           <span>🌙 Ilmihal</span><span style="font-weight:900;color:var(--blue)">${ilm.gedaan}/${ilm.totaal} • ${ilm.pct}%</span>
@@ -2271,14 +2303,12 @@ function efToggleSura(kidId, levelId, idx, cat){
   if(was==='locked')      { s.status='current'; s.tag='NU'; }
   else if(was==='current'){ s.status='done';    s.tag=null; }
   else                    { s.status='locked';  s.tag=null; }
-  // Herbereken hafiz pts: per niveau max 100 pts op basis van suras
+  // Herbereken hafiz pts: gewoon de raw pts van afgevinkte suras optellen (wat je ziet = wat je krijgt)
   if(cat==='suras'){
     let total=0;
     [1,2,3].forEach(lv=>{
       const stations = kidStations(k,'suras',lv);
-      const maxPts = stations.reduce((s,x)=>s+(x.pts||0),0);
-      const donePts = stations.filter(x=>x.status==='done').reduce((s,x)=>s+(x.pts||0),0);
-      if(maxPts>0) total += Math.round(donePts/maxPts*100);
+      total += stations.filter(x=>x.status==='done').reduce((s,x)=>s+(x.pts||0),0);
     });
     k.pts = total;
     [...KIDS].sort((a,b)=>b.pts-a.pts).forEach((kid,i)=>{ kid.rank=i+1; });
