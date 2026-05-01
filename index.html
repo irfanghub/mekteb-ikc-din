@@ -903,29 +903,31 @@ function splashView(){
   </svg>`;
 
   return `<div class="splash" style="justify-content:flex-start;padding-top:28px">
-    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:20px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div style="width:54px;height:54px;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);flex-shrink:0">${logoSvg}</div>
-        <div style="text-align:left">
-          <div style="font-size:17px;font-weight:900;letter-spacing:-.3px">Mekteb IKC DIN Eindhoven</div>
-          <div style="font-size:11px;color:var(--muted);font-weight:700">Učimo zajedno • Samen leren</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <div style="display:flex;gap:4px;background:${state.darkMode?'#163324':'#f1f5f9'};border-radius:10px;padding:2px">
-          ${['nl','bs'].map(l=>`<button onclick="setLang('${l}')" style="padding:5px 10px;border-radius:8px;font-size:11px;font-weight:800;color:${state.lang===l?'var(--green)':'var(--muted)'};background:${state.lang===l?(state.darkMode?'#0c2416':'#fff'):'transparent'};box-shadow:${state.lang===l?'var(--shadow-sm)':'none'}">${l==='nl'?'🇳🇱 NL':'🇧🇦 BiH'}</button>`).join('')}
-        </div>
-        <button onclick="toggleDark()" style="width:36px;height:36px;border-radius:10px;background:${state.darkMode?'#0c2416':'#f1f5f9'};border:1.5px solid ${state.darkMode?'#163324':'#e2e8f0'};font-size:16px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)" title="Dark mode">${state.darkMode?'☀️':'🌙'}</button>
+    <!-- App header — logo + naam, volle breedte -->
+    <div style="display:flex;align-items:center;gap:14px;width:100%;margin-bottom:22px">
+      <div style="width:56px;height:56px;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);flex-shrink:0">${logoSvg}</div>
+      <div style="text-align:left;flex:1">
+        <div style="font-size:20px;font-weight:900;letter-spacing:-.4px;line-height:1.1">Mekteb IKC DIN Eindhoven</div>
+        <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">Učimo zajedno • Samen leren</div>
       </div>
     </div>
-    <div style="width:100%;text-align:left;margin-bottom:12px">
+    <!-- Rol selectie label -->
+    <div style="width:100%;text-align:left;margin-bottom:10px">
       <div style="font-size:13px;color:var(--muted);font-weight:700">${T('selectRole')}</div>
     </div>
+    <!-- 4 rol-cards -->
     <div class="role-grid" style="width:100%">
       ${r('kind','⭐',T('kind'),T('kindSub'),'kind')}
       ${r('ouder','👪',T('ouder'),T('oudSub'),'ouder')}
       ${r('efendija','👨‍🏫',T('efendija'),T('efSub'),'efendija')}
       ${r('bestuur','📊',T('bestuur'),T('bestSub'),'bestuur')}
+    </div>
+    <!-- Taal + dag/nacht onder de cards -->
+    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;width:100%;justify-content:center">
+      <div style="display:flex;gap:4px;background:${state.darkMode?'#163324':'#f1f5f9'};border-radius:10px;padding:2px">
+        ${['nl','bs'].map(l=>`<button onclick="setLang('${l}')" style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:800;color:${state.lang===l?'var(--green)':'var(--muted)'};background:${state.lang===l?(state.darkMode?'#0c2416':'#fff'):'transparent'};box-shadow:${state.lang===l?'var(--shadow-sm)':'none'}">${l==='nl'?'🇳🇱 NL':'🇧🇦 BiH'}</button>`).join('')}
+      </div>
+      <button onclick="toggleDark()" style="width:38px;height:38px;border-radius:10px;background:${state.darkMode?'#0c2416':'#f1f5f9'};border:1.5px solid ${state.darkMode?'#163324':'#e2e8f0'};font-size:17px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)" title="Dark mode">${state.darkMode?'☀️':'🌙'}</button>
     </div>
 
     <!-- IZBiN footer — subtiel, geïntegreerd -->
@@ -939,7 +941,7 @@ function splashView(){
       </svg>
       <div style="font-size:11px;font-weight:700;color:var(--muted);line-height:1.5;text-align:left">
         <div style="text-transform:uppercase;letter-spacing:.4px;font-weight:800">Islamska zajednica Bošnjaka u Nizozemskoj</div>
-        <div>Islamski kulturni centar Din · Eindhoven</div>
+        <div style="text-transform:uppercase;letter-spacing:.3px;font-weight:700">Islamski Kulturni Centar Din · Eindhoven</div>
       </div>
     </div>
   </div>`;
@@ -999,9 +1001,14 @@ function loginView(){
 
 function pinView(){
   const p = state.selectedPerson;
+  // Efendija/bestuur hebben geen naam-picker — terug = naar splash
+  const isDirectLogin = state.role==='efendija' || state.role==='bestuur';
+  const backFn = isDirectLogin
+    ? `logout()`
+    : `state.selectedPerson=null;state.pin='';render()`;
   return `<div class="screen">
     <div class="head-back" style="margin-top:14px">
-      <button class="back-btn" onclick="state.selectedPerson=null;state.pin='';render()">←</button>
+      <button class="back-btn" onclick="${backFn}">←</button>
       <div><div class="ttl">Hey ${p.name}! 👋</div><div class="stl">${T('enterPin')}</div></div>
       ${langToggleSmall()}
     </div>
@@ -1012,7 +1019,7 @@ function pinView(){
       </div>
       <div class="keypad">
         ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="tapKey('${n}')">${n}</button>`).join('')}
-        <button class="key fn" onclick="state.selectedPerson=null;state.pin='';render()">${T('back')}</button>
+        <button class="key fn" onclick="${backFn}">${T('back')}</button>
         <button class="key" onclick="tapKey('0')">0</button>
         <button class="key fn" onclick="tapKey('back')">⌫</button>
       </div>
@@ -1142,14 +1149,14 @@ function kidHome(){
           <div style="font-size:11px;color:var(--muted);margin-top:5px">${ilm.pct}% ${T('completed')} — N${computedLevel(k)}</div>
         </div>`;
       })()}
-      <div class="stats">
+      ${allMyHw.length ? `
+        <div class="section-head" style="margin-top:14px"><div class="h3">📝 ${T('homework')}</div><div style="font-size:12px;color:var(--muted);font-weight:700">${myHw.length} ${L('open','otvoreno')}</div></div>
+        ${allMyHw.map(h=>hwCard(h)).join('')}` : ''}
+      <div class="stats" style="margin-top:14px">
         <div class="stat"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">${L('Streak','Sedmice')}</div></div>
         <div class="stat"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${L('Hafiz (suras)','Hafiz (sure)')}</div></div>
         <div class="stat"><div class="icon" style="background:var(--blue-soft);color:var(--blue)">🌙</div><div class="num">${ilmScore}</div><div class="lbl">Ilmihal pt</div></div>
       </div>
-      ${allMyHw.length ? `
-        <div class="section-head" style="margin-top:14px"><div class="h3">📝 ${T('homework')}</div><div style="font-size:12px;color:var(--muted);font-weight:700">${myHw.length} ${L('open','otvoreno')}</div></div>
-        ${allMyHw.map(h=>hwCard(h)).join('')}` : ''}
       <div class="section-head" style="margin-top:14px"><div class="h3">${T('myBadges')}</div></div>
       <div class="badge-row">
         ${BADGES.map(b=>`<div class="badge ${b.got?'':'locked'}"><div class="b-icon">${b.icon}</div><div class="b-name">${state.lang==='nl'?b.name:b.name_bs}</div></div>`).join('')}
@@ -1793,15 +1800,24 @@ function efDetailBewerken(k){
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:700">${L('Niveau','Nivo')}: N${k.level}</div>
     </div>
-    <!-- Ouder(s) -->
-    ${parents.length ? parents.map(p=>`
+    <!-- Ouder(s) bestaand -->
+    ${parents.map(p=>`
     <div class="card">
-      <div style="font-weight:900;font-size:14px;margin-bottom:10px">👪 ${L('Naam ouder','Ime roditelja')} (${p.name.split('(')[0].trim()})</div>
+      <div style="font-weight:900;font-size:14px;margin-bottom:10px">👪 ${L('Ouder','Roditelj')}: ${p.name.split('(')[0].trim()}</div>
       <div style="display:flex;gap:8px">
         <input id="edit-parent-name-${p.id}" type="text" value="${p.name}" style="flex:1;font-size:14px;font-weight:800" placeholder="${p.name}">
         <button onclick="saveParentName('${p.id}')" style="background:var(--green);color:#fff;padding:9px 14px;border-radius:11px;font-weight:800;font-size:13px">${L('Opslaan','Sačuvaj')}</button>
       </div>
-    </div>`).join('') : `<div class="card" style="color:var(--muted);text-align:center">${L('Geen ouder gekoppeld','Nema roditelja')}</div>`}
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:700">PIN: ${p.pin} · ${p.kidIds.length} ${L('kind(eren)','djece')}</div>
+    </div>`).join('')}
+    <!-- Nieuwe ouder koppelen -->
+    <div class="card" style="border:1.5px dashed var(--green-mid)">
+      <div style="font-weight:900;font-size:14px;margin-bottom:10px">➕ ${L('Ouder koppelen','Poveži roditelja')}</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:8px">${L('Voer naam en PIN in — als de ouder al bestaat wordt automatisch gekoppeld.','Unesite ime i PIN — ako roditelj već postoji, bit će automatski povezan.')}</div>
+      <input id="new-ouder-naam-${k.id}" type="text" placeholder="${L('Naam ouder','Ime roditelja')}" style="margin-bottom:8px;font-size:14px">
+      <input id="new-ouder-pin-${k.id}" type="text" placeholder="${L('PIN (4 cijfers)','PIN (4 cifre)')}" maxlength="6" style="margin-bottom:10px;font-size:14px">
+      <button onclick="efAddParent('${k.id}')" style="background:var(--green);color:#fff;padding:10px;border-radius:11px;font-weight:800;font-size:13px;width:100%">${L('Koppelen & opslaan','Poveži i sačuvaj')}</button>
+    </div>
   </div>`;
 }
 
@@ -1859,11 +1875,10 @@ function topbarEf(){
   const e = state.me;
   return `<div class="topbar">
     <div class="row">
-      <button class="back-btn" onclick="logout()" title="${T('back')}" style="margin-right:4px">←</button>
       <div class="avatar ${colorOf(e.name)}">${initial(e.name)}</div>
       <div><div style="font-weight:900">${e.name}</div><div class="muted" style="font-size:11px">${T('efendija')} • N${e.levels.join(',')}</div></div>
     </div>
-    <button onclick="logout()" style="background:var(--red-soft);color:var(--red);padding:7px 13px;border-radius:10px;font-size:12px;font-weight:800">⏻</button>
+    <button onclick="logout()" style="background:var(--red-soft);color:var(--red);padding:7px 13px;border-radius:10px;font-size:12px;font-weight:800">⏻ ${T('logout')}</button>
   </div>`;
 }
 function efHome(){
@@ -2370,6 +2385,29 @@ function efAddHw(kidId){
   state.newHw={title:'',desc:'',dueDays:7}; state.showAddHw=false; render();
 }
 function setHwField(f,v){state.newHw[f]=v;}
+
+// Efendija koppelt ouder aan kind (nieuw of bestaand op basis van naam+pin)
+function efAddParent(kidId){
+  const naamEl = document.getElementById('new-ouder-naam-'+kidId);
+  const pinEl  = document.getElementById('new-ouder-pin-'+kidId);
+  if(!naamEl || !pinEl) return;
+  const naam = naamEl.value.trim();
+  const pin  = pinEl.value.trim();
+  if(!naam || !pin){ alert(L('Naam en PIN zijn verplicht','Ime i PIN su obavezni')); return; }
+  if(pin.length<4){ alert(L('PIN moet minimaal 4 cijfers zijn','PIN mora imati najmanje 4 cifre')); return; }
+  // Kijk of ouder al bestaat (zelfde naam + pin)
+  let ouder = PARENTS.find(p=>p.name===naam && p.pin===pin);
+  if(ouder){
+    if(!ouder.kidIds.includes(kidId)) ouder.kidIds.push(kidId);
+  } else {
+    ouder = {id:++_parentIdCounter, name:naam, pin, kidIds:[kidId]};
+    PARENTS.push(ouder);
+  }
+  // Sla ook op in Supabase via saveKidToDB
+  render();
+  saveKidToDB(kidId);
+  alert(L(`Ouder "${naam}" gekoppeld aan dit kind!`,`Roditelj "${naam}" je povezan s djetetom!`));
+}
 
 // ═══════════════════════════════════════════════════════════════
 // SUPABASE DATA — laden en opslaan
