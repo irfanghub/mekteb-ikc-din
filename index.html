@@ -439,7 +439,7 @@ const I18N = {
     nextLesson:'Volgende les', continue:'Verder leren',
     streakDays:'streak weken', hafizPts:'hafiz punten', surasDone:'suras af',
     myBadges:'Mijn badges', allBadges:'alle badges', topThisWeek:'Top 3 deze week', leaderboard:'klassement',
-    tabHome:'Start', tabPath:'Leerpad', tabLeader:'Top', tabMe:'Ik', tabHw:'Huiswerk', tabMsg:'Berichten',
+    tabHome:'Start', tabPath:'Leerpad', tabLeader:'Ranking', tabMe:'Ik', tabHw:'Huiswerk', tabMsg:'Berichten',
     myPath:'Mijn leerpad', currentLevel:'Huidig niveau', completed:'voltooid',
     journey:"Reis door de Qur'an", journeyIlm:"Mijn ilmihal", journeyQuran:"Koran lezen",
     suras:'Suras', ilmihal:'Ilmihal', quranRead:'Koran lezen',
@@ -474,7 +474,7 @@ const I18N = {
     nextLesson:'Sljedeći čas', continue:'Nastavi',
     streakDays:'sedmica zaredom', hafizPts:'hafiz bodova', surasDone:'sura završeno',
     myBadges:'Moje značke', allBadges:'sve značke', topThisWeek:'Top 3 ove sedmice', leaderboard:'rang lista',
-    tabHome:'Početna', tabPath:'Staza', tabLeader:'Top', tabMe:'Ja', tabHw:'Zadaća', tabMsg:'Poruke',
+    tabHome:'Početna', tabPath:'Staza', tabLeader:'Ranking', tabMe:'Ja', tabHw:'Zadaća', tabMsg:'Poruke',
     myPath:'Moj put', currentLevel:'Trenutni nivo', completed:'završeno',
     journey:"Putovanje kroz Kur'an", journeyIlm:"Moj ilmihal", journeyQuran:"Učenje Kur'ana",
     suras:'Sure', ilmihal:'Ilmihal', quranRead:"Učenje Kur'ana",
@@ -522,7 +522,7 @@ const EFENDIJAS = [
   {id:201, name:'Efendija', pin:'1111', levels:[1,2,3], displayName:'ef. Ali Gljiva'},
 ];
 const BESTUUR = [
-  {id:300, name:'IKC DIN Bestuur', pin:'1234', role:'Bestuur'},
+  {id:300, name:'IKC DIN Bestuur', pin:'5555', role:'Bestuur'},
 ];
 
 // Stations per niveau & per categorie
@@ -840,7 +840,8 @@ let state = {
   newHw: {title:'', desc:'', dueDays:7}, // nieuw huiswerk formulier
   showAddHw: false,   // toon add-huiswerk formulier
   showRegForm: false, // ouder zelf-registratie (beginfase)
-  regData: {ouderNaam:'', ouderPin:'', kindNaam:'', kindLevel:1},
+  regData: {ouderNaam:'', ouderPin:'', kindNaam:''},
+  leaderTab: 'myLevel', // 'myLevel' | 'hafizTop' | 'streakTop'
 };
 
 // Per-kind stations: PATH = label/icon/pts template, kid.stationData = echte status per kind
@@ -887,13 +888,18 @@ function splashView(){
   const r = (id,icon,name,sub,cls) => `<button class="role-card ${cls}" onclick="pickRole('${id}')">
     <div class="icon">${icon}</div><div class="role-name">${name}</div><div class="role-sub">${sub}</div>
   </button>`;
-  // SVG logo: halve maan + ster, afgeleid van IZBiN-identiteit
-  const bgFill = state.darkMode ? '#071a0e' : '#fafaf7';
+  // SVG logo: halve maan + roterende 5-pijlster, conform IKC DIN identiteit
+  const gc = state.darkMode ? '#163324' : '#1a5c2e';
+  const mc = state.darkMode ? '#26a04a' : 'rgba(255,255,255,0.92)';
   const logoSvg = `<svg viewBox="0 0 54 54" width="54" height="54" xmlns="http://www.w3.org/2000/svg">
-    <rect width="54" height="54" rx="14" fill="${state.darkMode?'#163324':'#1a5c2e'}"/>
-    <circle cx="23" cy="27" r="14" fill="${state.darkMode?'#26a04a':'rgba(255,255,255,0.88)'}"/>
-    <circle cx="29" cy="27" r="10.5" fill="${state.darkMode?'#163324':'#1a5c2e'}"/>
-    <text x="41" y="17" font-size="13" fill="#c8932a" text-anchor="middle" font-family="serif">★</text>
+    <rect width="54" height="54" rx="14" fill="${gc}"/>
+    <!-- halve maan -->
+    <circle cx="21" cy="28" r="13.5" fill="${mc}"/>
+    <circle cx="27" cy="28" r="10.5" fill="${gc}"/>
+    <!-- 5-puntige roterende ster (goud) -->
+    <g transform="translate(40,17)">
+      <polygon points="0,-7.5 1.8,-2.5 7,-2.5 2.9,0.9 4.5,6 0,3 -4.5,6 -2.9,0.9 -7,-2.5 -1.8,-2.5" fill="#c8932a"/>
+    </g>
   </svg>`;
 
   return `<div class="splash" style="justify-content:flex-start;padding-top:28px">
@@ -923,14 +929,16 @@ function splashView(){
     </div>
 
     <!-- IZBiN footer — subtiel, geïntegreerd -->
-    <div style="margin-top:auto;padding-top:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:8px;opacity:0.55">
-      <svg viewBox="0 0 22 22" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="9" cy="11" r="8" fill="${state.darkMode?'#26a04a':'#1a5c2e'}"/>
-        <circle cx="13" cy="11" r="6" fill="${state.darkMode?'#071a0e':'#fafaf7'}"/>
-        <text x="18" y="6" font-size="7" fill="#c8932a" text-anchor="middle" font-family="serif">★</text>
+    <div style="margin-top:auto;padding-top:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;opacity:0.65">
+      <svg viewBox="0 0 26 26" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="10" cy="13" r="9.5" fill="${state.darkMode?'#26a04a':'#1a5c2e'}"/>
+        <circle cx="15" cy="13" r="7.5" fill="${state.darkMode?'#071a0e':'#fafaf7'}"/>
+        <g transform="translate(22,5)">
+          <polygon points="0,-5 1.2,-1.7 4.8,-1.7 1.9,0.6 3,3.8 0,2 -3,3.8 -1.9,0.6 -4.8,-1.7 -1.2,-1.7" fill="#c8932a"/>
+        </g>
       </svg>
-      <div style="font-size:9px;font-weight:700;color:var(--muted);line-height:1.4;text-align:left">
-        <div style="text-transform:uppercase;letter-spacing:.3px">Islamska zajednica Bošnjaka</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);line-height:1.5;text-align:left">
+        <div style="text-transform:uppercase;letter-spacing:.4px;font-weight:800">Islamska zajednica Bošnjaka u Nizozemskoj</div>
         <div>Islamski kulturni centar Din · Eindhoven</div>
       </div>
     </div>
@@ -1131,7 +1139,7 @@ function kidHome(){
             <div style="font-weight:900;color:var(--green);font-size:13px">${ilm.gedaan}/${ilm.totaal}</div>
           </div>
           <div class="bar"><div class="bar-fill" style="width:${ilm.pct}%"></div></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:5px">${ilm.pct}% ${T('completed')} — N${k.level}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:5px">${ilm.pct}% ${T('completed')} — N${computedLevel(k)}</div>
         </div>`;
       })()}
       <div class="stats">
@@ -1152,7 +1160,7 @@ function kidHome(){
           <div class="list-row ${kk.id===k.id?'me':''}" onclick="setNav('leader')">
             <div class="rank r${i+1}">${i+1}</div>
             <div class="avatar sm ${colorOf(kk.name)}">${initial(kk.name)}</div>
-            <div class="name" style="flex:1">${kk.name}<div style="font-size:11px;color:var(--muted);font-weight:700">${T('currentLevel')} ${kk.level}</div></div>
+            <div class="name" style="flex:1">${kk.name}<div style="font-size:11px;color:var(--muted);font-weight:700">${T('currentLevel')} ${computedLevel(kk)}</div></div>
             <div class="pts">${kk.pts}</div>
           </div>`).join('')}
       </div>
@@ -1191,7 +1199,7 @@ function kidPath(){
         <div class="subtab ${cat==='quran'?'on':''}" onclick="state.pathTab='quran';render()">ا ${T('quranRead')}</div>
       </div>
       <div class="level-tabs">
-        ${levels.map(L=>`<button class="level-pill ${state.pathLevel===L.n?'on':''} ${L.status==='done'?'done':''}" onclick="state.pathLevel=${L.n};render()" ${L.status==='locked'?'disabled style="opacity:.5;cursor:not-allowed"':''}>${niveauCompleted(k.id,L.n)?'🏆 ':''}N${L.n} ${L.status==='done'?'✓':L.status==='locked'?'🔒':''}</button>`).join('')}
+        ${levels.map(L=>`<button class="level-pill ${state.pathLevel===L.n?'on':''} ${L.status==='done'?'done':''}" onclick="state.pathLevel=${L.n};render()">${niveauCompleted(k.id,L.n)?'🏆 ':''}N${L.n} ${L.status==='done'?'✓':''}</button>`).join('')}
       </div>
       ${levelCelebrationBanner(k.id, lvl)}
       ${cat==='ilmihal' ? (()=>{
@@ -1257,35 +1265,56 @@ function kidPath(){
 
 function kidLeader(){
   const k = state.me;
+  const tab = state.leaderTab || 'myLevel';
+
+  // Rangschik op basis van actieve tab
+  let ranked;
+  if(tab==='streakTop'){
+    ranked = [...KIDS].sort((a,b)=>b.streak-a.streak).map((kk,i)=>({...kk, _rank:i+1}));
+  } else if(tab==='hafizTop'){
+    ranked = [...KIDS].sort((a,b)=>b.pts-a.pts).map((kk,i)=>({...kk, _rank:i+1}));
+  } else {
+    // myLevel: kids van hetzelfde niveau, gesorteerd op pts
+    const sameLevel = [...KIDS].filter(kk=>kk.level===k.level).sort((a,b)=>b.pts-a.pts).map((kk,i)=>({...kk, _rank:i+1}));
+    const others = [...KIDS].filter(kk=>kk.level!==k.level).sort((a,b)=>b.pts-a.pts).map((kk,i)=>({...kk, _rank:sameLevel.length+i+1}));
+    ranked = [...sameLevel, ...others];
+  }
+
+  // Podium: top 3 van de gesorteerde lijst (alleen als er ≥3 kids zijn)
+  const podiumKids = ranked.slice(0, Math.min(3, ranked.length));
+  const podiumOrder = podiumKids.length>=3 ? [podiumKids[1], podiumKids[0], podiumKids[2]] : podiumKids;
+  const podiumPos   = podiumKids.length>=3 ? [2,1,3] : [1,2,3];
+  const sortVal = tab==='streakTop' ? (kk=>kk.streak+'w 🔥') : (kk=>kk.pts+' pt');
+
   return `<div class="topbar">
       <button class="back-btn" onclick="setNav('home')">←</button>
-      <div style="text-align:center;flex:1"><div style="font-weight:900">${T('leaderboard').replace(/^k/,'K')}</div><div class="muted" style="font-size:12px">${T('podiumSub')}</div></div>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">${T('tabLeader')}</div><div class="muted" style="font-size:12px">${T('podiumSub')}</div></div>
       <div style="width:42px"></div>
     </div>
     <div class="screen">
       <div class="subtabs">
-        <div class="subtab on">${T('myLevel')}</div>
-        <div class="subtab">${T('hafizTop')}</div>
-        <div class="subtab">${T('streakTop')}</div>
+        <div class="subtab ${tab==='myLevel'?'on':''}" onclick="state.leaderTab='myLevel';render()">${T('myLevel')}</div>
+        <div class="subtab ${tab==='hafizTop'?'on':''}" onclick="state.leaderTab='hafizTop';render()">⭐ ${T('hafizTop')}</div>
+        <div class="subtab ${tab==='streakTop'?'on':''}" onclick="state.leaderTab='streakTop';render()">🔥 ${T('streakTop')}</div>
       </div>
-      <div class="podium">
-        ${[1,0,2].map(idx=>{
-          const kk=KIDS[idx]; const rank=idx+1;
-          return `<div class="pod ${rank===1?'pod-1':''}">
-            ${rank===1?'<div class="crown">👑</div>':''}
+      ${podiumKids.length>=2 ? `<div class="podium">
+        ${podiumOrder.map((kk,i)=>{
+          const pos=podiumPos[i];
+          return `<div class="pod ${pos===1?'pod-1':''}">
+            ${pos===1?'<div class="crown">👑</div>':''}
             <div class="pod-avatar ${colorOf(kk.name)}">${initial(kk.name)}</div>
             <div class="pod-name">${kk.name}</div>
-            <div class="pod-pts">${kk.pts} pt</div>
+            <div class="pod-pts">${sortVal(kk)}</div>
           </div>`;
         }).join('')}
-      </div>
+      </div>` : ''}
       <div class="list">
-        ${KIDS.map(kk=>`
+        ${ranked.map(kk=>`
           <div class="list-row ${kk.id===k.id?'me':''}">
-            <div class="rank ${kk.rank<=3?'r'+kk.rank:''}">${kk.rank}</div>
+            <div class="rank ${kk._rank<=3?'r'+kk._rank:''}">${kk._rank}</div>
             <div class="avatar sm ${colorOf(kk.name)}">${initial(kk.name)}</div>
-            <div class="name">${kk.name}<div style="font-size:11px;font-weight:700;color:var(--muted)">N${kk.level} • 🔥${kk.streak}w</div></div>
-            <div class="pts">${kk.pts}<span>pt</span></div>
+            <div class="name">${kk.name}<div style="font-size:11px;font-weight:700;color:var(--muted)">N${computedLevel(kk)} • 🔥${kk.streak}w</div></div>
+            <div class="pts">${tab==='streakTop'?kk.streak+'<span style="font-size:10px">w</span>':kk.pts+'<span style="font-size:10px">pt</span>'}</div>
           </div>`).join('')}
       </div>
     </div>
@@ -1303,7 +1332,7 @@ function kidProfile(){
       <div style="text-align:center;padding:14px 0 16px">
         <div class="avatar xl ${colorOf(k.name)}" style="margin:0 auto 10px">${initial(k.name)}</div>
         <div style="font-size:22px;font-weight:900">${k.name}</div>
-        <div class="muted" style="font-size:13px">${T('currentLevel')} ${k.level} • ${T('memberSince')} ${k.sinceYear}</div>
+        <div class="muted" style="font-size:13px">${T('currentLevel')} ${computedLevel(k)} • ${T('memberSince')} ${k.sinceYear}</div>
       </div>
       <div class="stats">
         <div class="stat"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">streak</div></div>
@@ -1470,7 +1499,7 @@ function ouderHome(){
           <div class="avatar ${colorOf(k.name)}" style="width:48px;height:48px;font-size:19px">${initial(k.name)}</div>
           <div style="flex:1">
             <div style="font-weight:900;font-size:16px">${k.name}</div>
-            <div class="muted" style="font-size:12px">${T('currentLevel')} ${k.level} • 🔥${k.streak}w • ${k.pts} pt</div>
+            <div class="muted" style="font-size:12px">${T('currentLevel')} ${computedLevel(k)} • 🔥${k.streak}w • ${k.pts} pt</div>
           </div>
           <div style="font-size:18px;font-weight:900;color:var(--green)">#${k.rank}</div>
         </div>
@@ -1613,7 +1642,7 @@ function efStudentDetail(){
       <button class="back-btn" onclick="closeKid()">←</button>
       <div style="text-align:center;flex:1">
         <div style="font-weight:900">${k.name}</div>
-        <div class="muted" style="font-size:12px">N${k.level} • #${k.rank} • 🔥${k.streak}w</div>
+        <div class="muted" style="font-size:12px">N${computedLevel(k)} • #${k.rank} • 🔥${k.streak}w</div>
       </div>
       <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
     </div>
@@ -1660,6 +1689,14 @@ function niveauCompleted(kidId, lvl){
   const ilm = ilmStats(lvl, kidId);
   const allIlmDone = ilm.totaal>0 && ilm.gedaan===ilm.totaal;
   return allSurasDone && allIlmDone;
+}
+
+// Auto-berekend niveau op basis van voltooiing — voor weergave (badges, namen)
+// N1 totdat N1 volledig af is, dan N2, dan N3
+function computedLevel(k){
+  if(niveauCompleted(k.id, 1) && niveauCompleted(k.id, 2)) return 3;
+  if(niveauCompleted(k.id, 1)) return 2;
+  return 1;
 }
 
 function levelCelebrationBanner(kidId, lvl){
@@ -1822,10 +1859,11 @@ function topbarEf(){
   const e = state.me;
   return `<div class="topbar">
     <div class="row">
+      <button class="back-btn" onclick="logout()" title="${T('back')}" style="margin-right:4px">←</button>
       <div class="avatar ${colorOf(e.name)}">${initial(e.name)}</div>
       <div><div style="font-weight:900">${e.name}</div><div class="muted" style="font-size:11px">${T('efendija')} • N${e.levels.join(',')}</div></div>
     </div>
-    <button onclick="logout()" style="background:var(--red-soft);color:var(--red);padding:7px 13px;border-radius:10px;font-size:12px;font-weight:800">⏻ ${T('logout')}</button>
+    <button onclick="logout()" style="background:var(--red-soft);color:var(--red);padding:7px 13px;border-radius:10px;font-size:12px;font-weight:800">⏻</button>
   </div>`;
 }
 function efHome(){
@@ -1847,7 +1885,7 @@ function efHome(){
         ${myKids.slice(0,5).map(k=>`
           <div class="list-row" style="cursor:pointer" onclick="openKid('${k.id}')">
             <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-            <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${k.level} • 🔥${k.streak}w</div></div>
+            <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)} • 🔥${k.streak}w</div></div>
             <div style="font-size:12px;color:var(--green);font-weight:800">${(()=>{const ilm=ilmStats(k.level,k.id);return ilm.pct+'%';})()}</div>
             <div style="font-size:13px;color:var(--muted);margin-left:6px">›</div>
           </div>`).join('')}
@@ -1875,7 +1913,7 @@ function efStudents(){
           ${myKids.map(k=>`
             <div class="list-row" style="cursor:pointer" onclick="openKid('${k.id}')">
               <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-              <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${k.level} • 🔥${k.streak}w</div></div>
+              <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)} • 🔥${k.streak}w</div></div>
               <div style="font-size:12px;color:var(--muted);margin-right:8px">›</div>
               <button onclick="event.stopPropagation();removeKid('${k.id}')" style="background:var(--red-soft);color:var(--red);width:34px;height:34px;border-radius:10px;font-size:16px;display:flex;align-items:center;justify-content:center">🗑</button>
             </div>`).join('')}
@@ -1886,7 +1924,7 @@ function efStudents(){
           ${myKids.map((k,i)=>`
             <div class="aw-row">
               <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-              <div style="flex:1"><div style="font-weight:800;font-size:14px">${k.name}</div><div style="font-size:11px;color:var(--muted);font-weight:700">N${k.level}</div></div>
+              <div style="flex:1"><div style="font-weight:800;font-size:14px">${k.name}</div><div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)}</div></div>
               <div class="aw-toggle">
                 <button class="${i%3!==0?'aw':''}" onclick="this.classList.add('aw');this.nextElementSibling.classList.remove('az')">${T('pres')}</button>
                 <button class="${i%3===0?'az':''}" onclick="this.classList.add('az');this.previousElementSibling.classList.remove('aw')">${T('abs')}</button>
@@ -1966,7 +2004,8 @@ function topbarBestuur(){
         <div style="font-size:11px;color:rgba(255,255,255,.7);font-weight:700">IKC DIN Eindhoven · ${dateStr}</div>
       </div>
       <div style="display:flex;gap:6px">
-        <button onclick="window.print()" style="background:rgba(255,255,255,.18);color:#fff;padding:7px 11px;border-radius:10px;font-size:12px;font-weight:800;border:0">🖨️ PDF</button>
+        <button onclick="logout()" style="background:rgba(255,255,255,.18);color:#fff;padding:7px 11px;border-radius:10px;font-size:12px;font-weight:800;border:0">← ${T('back')}</button>
+        <button onclick="window.print()" style="background:rgba(255,255,255,.18);color:#fff;padding:7px 11px;border-radius:10px;font-size:12px;font-weight:800;border:0">🖨️</button>
         <button onclick="logout()" style="background:rgba(255,255,255,.18);color:#fff;width:34px;height:34px;border-radius:10px;font-size:15px;display:flex;align-items:center;justify-content:center;border:0;cursor:pointer">⏻</button>
       </div>
     </div>
@@ -2056,7 +2095,7 @@ function bestuurHome(){
           <div class="avatar sm ${colorOf(x.k.name)}">${initial(x.k.name)}</div>
           <div style="flex:1">
             <div style="font-weight:800;font-size:13px">${x.k.name}</div>
-            <div style="font-size:11px;color:var(--muted);font-weight:700">${L('Niveau','Nivo')} ${x.k.level}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700">${L('Niveau','Nivo')} ${computedLevel(x.k)}</div>
           </div>
           <div style="text-align:right">
             <div style="font-weight:900;font-size:13px;color:var(--red)">${x.abs}×</div>
@@ -2079,7 +2118,7 @@ function bestuurHome(){
             <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
             <div style="flex:1;min-width:0">
               <div style="font-weight:800;font-size:13px">${k.name}</div>
-              <div style="font-size:11px;color:var(--muted);font-weight:700">${L('Niv','Niv')} ${k.level} · ${attPct}% ${L('aanwezig','prisutan')}</div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700">${L('Niv','Niv')} ${computedLevel(k)} · ${attPct}% ${L('aanwezig','prisutan')}</div>
             </div>
             <div style="font-weight:900;font-size:13px;color:var(--gold)">⭐ ${k.pts}</div>
           </div>`;
@@ -2102,7 +2141,7 @@ function bestuurStudents(){
       <div class="list">
         ${KIDS.map(k=>`<div class="list-row">
           <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-          <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${k.level} • 🔥${k.streak}w</div></div>
+          <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)} • 🔥${k.streak}w</div></div>
           <div class="pts" style="margin-right:8px">${k.pts}<span>pt</span></div>
           <button onclick="removeKid('${k.id}')" style="background:var(--red-soft);color:var(--red);width:32px;height:32px;border-radius:10px;font-size:14px;display:flex;align-items:center;justify-content:center;flex:0 0 auto">🗑</button>
         </div>`).join('')}
@@ -2235,11 +2274,6 @@ function ouderRegFormHtml(){
     <input type="text" placeholder="${L('Naam ouder','Ime roditelja')}" value="${r.ouderNaam}" oninput="state.regData.ouderNaam=this.value" style="margin-bottom:4px;font-size:14px">
     ${lbl('Naam kind','Ime djeteta')}
     <input type="text" placeholder="${L('Voornaam kind','Ime djeteta')}" value="${r.kindNaam}" oninput="state.regData.kindNaam=this.value" style="margin-bottom:4px;font-size:14px">
-    <select onchange="state.regData.kindLevel=parseInt(this.value)" style="width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);font-size:14px;margin-bottom:4px;background:${state.darkMode?'#0c2416':'#fff'};color:${state.darkMode?'#e6ffee':'var(--ink)'}">
-      <option value="1" ${r.kindLevel===1?'selected':''}>Niveau 1 (beginners)</option>
-      <option value="2" ${r.kindLevel===2?'selected':''}>Niveau 2</option>
-      <option value="3" ${r.kindLevel===3?'selected':''}>Niveau 3</option>
-    </select>
     ${lbl('Gedeelde PIN (ouder + kind)','Zajednički PIN (roditelj + dijete)')}
     <input type="text" placeholder="${L('4 cijfers — voor ouder én kind','4 cifre — za roditelja i dijete')}" value="${r.ouderPin}" oninput="state.regData.ouderPin=this.value" maxlength="4" style="margin-bottom:12px;font-size:14px">
     <div style="display:flex;gap:8px">
@@ -2255,12 +2289,12 @@ function ouderReg(){
   const newKidId = crypto.randomUUID ? crypto.randomUUID().slice(0,18) : ('k'+Date.now());
   const newParentId=++_parentIdCounter;
   const pin=r.ouderPin.trim();
-  const newKid = {id:newKidId, name:r.kindNaam.trim(), level:r.kindLevel, pin, pts:0, streak:0, rank:KIDS.length+1, sinceYear:new Date().getFullYear(), stationData:{}, ilmDoneData:{}};
+  const newKid = {id:newKidId, name:r.kindNaam.trim(), level:1, pin, pts:0, streak:0, rank:KIDS.length+1, sinceYear:new Date().getFullYear(), stationData:{}, ilmDoneData:{}};
   KIDS.push(newKid);
   ATTENDANCE[newKidId]=WEEKS.map(w=>({date:w,present:false}));
   state.ilmDone[newKidId]={};
   PARENTS.push({id:newParentId, name:r.ouderNaam.trim(), pin, kidIds:[newKidId]});
-  state.regData={ouderNaam:'',ouderPin:'',kindNaam:'',kindLevel:1};
+  state.regData={ouderNaam:'',ouderPin:'',kindNaam:''};
   state.showRegForm=false;
   render();
   saveKidToDB(newKidId);
@@ -2273,7 +2307,7 @@ function ouderReg(){
 function go(v){ state.view=v; render(); }
 function setLang(l){ state.lang=l; render(); }
 function pickRole(r){ state.role=r; state.view='login'; state.searchQuery=''; render(); }
-function pickPerson(id){ state.selectedPerson = pool().find(p=>p.id===id); state.pin=''; render(); }
+function pickPerson(id){ state.selectedPerson = pool().find(p=>String(p.id)===String(id)); state.pin=''; render(); }
 function setNav(k){ state.nav=k; state.threadOpen=null; render(); }
 function logout(){ state.me=null; state.selectedPerson=null; state.pin=''; state.role=null; state.view='splash'; state.nav='home'; state.threadOpen=null; render(); }
 function toggleIlmCat(id){ state.openIlmCat = state.openIlmCat===id ? null : id; render(); }
