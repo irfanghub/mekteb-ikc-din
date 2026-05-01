@@ -779,16 +779,7 @@ const BADGES = [
   {name:'Hafiz goud', name_bs:'Hafiz zlato', icon:'🥇', got:false},
 ];
 
-const HOMEWORK = [
-  // Amina — N1: El-Felek is haar huidige sura (status:'current')
-  {id:1, kidId:1, title:'El-Felek oefenen', title_bs:'Vježbati El-Felek', desc:'Memoriseer alle 5 ajeten — lees na met transcriptie.', desc_bs:'Memoriraj svih 5 ajeta — čitaj s transkripcijom.', dueDays:3, done:false, fromTeacher:201},
-  {id:2, kidId:1, title:'Abdest herhalen — šarti', title_bs:'Ponoviti abdest — šarti', desc:'Ken de 6 šarti van abdest uit je hoofd.', desc_bs:'Nauči napamet 6 abdestskih šarta.', dueDays:0, done:true, fromTeacher:201},
-  // Hamza — N2: El-Kevser is zijn huidige sura
-  {id:3, kidId:2, title:'El-Kevser memoriseren', title_bs:'Memorirati El-Kevser', desc:'Alle 3 ajeten met vertaling kennen.', desc_bs:'Sva 3 ajeta sa prijevodom.', dueDays:5, done:false, fromTeacher:201},
-  {id:4, kidId:2, title:'Šta kvari namaz — herhalen', title_bs:'Ponoviti šta kvari namaz', desc:'Maak de oefenvragen in je ilmihal.', desc_bs:'Uradi vježbanja u ilmihalu.', dueDays:7, done:false, fromTeacher:201},
-  // Adnan — N3: El-Humezeh
-  {id:5, kidId:6, title:'El-Humezeh leren', title_bs:'Naučiti El-Humezeh', desc:'9 ajeta met betekenis — voorbereiding voor volgende les.', desc_bs:'9 ajeta sa značenjem — priprema za sljedeći čas.', dueDays:4, done:false, fromTeacher:201},
-];
+let HOMEWORK = []; // wordt geladen vanuit Supabase in loadData()
 
 // Laatste 10 zondagen — voor aanwezigheidsrijen
 const WEEKS = (()=>{
@@ -890,16 +881,17 @@ function splashView(){
   </button>`;
   // SVG logo: halve maan + roterende 5-pijlster, conform IKC DIN identiteit
   const gc = state.darkMode ? '#163324' : '#1a5c2e';
-  const mc = state.darkMode ? '#26a04a' : 'rgba(255,255,255,0.92)';
+  const mc = state.darkMode ? '#5ecb80' : 'rgba(255,255,255,0.95)';
+  // Pinwheel: 5 pijlen op 72° interval, elk een kleine roterende chevron
+  const arrowPath = 'M0,-6 L2,-2 L1,-2 L1,6 L-1,6 L-1,-2 L-2,-2 Z';
+  const arrows5 = [0,72,144,216,288].map(a=>`<path d="${arrowPath}" fill="#c8932a" transform="rotate(${a+36}) translate(0,-2)"/>`).join('');
   const logoSvg = `<svg viewBox="0 0 54 54" width="54" height="54" xmlns="http://www.w3.org/2000/svg">
     <rect width="54" height="54" rx="14" fill="${gc}"/>
-    <!-- halve maan -->
-    <circle cx="21" cy="28" r="13.5" fill="${mc}"/>
-    <circle cx="27" cy="28" r="10.5" fill="${gc}"/>
-    <!-- 5-puntige roterende ster (goud) -->
-    <g transform="translate(40,17)">
-      <polygon points="0,-7.5 1.8,-2.5 7,-2.5 2.9,0.9 4.5,6 0,3 -4.5,6 -2.9,0.9 -7,-2.5 -1.8,-2.5" fill="#c8932a"/>
-    </g>
+    <!-- Sikkel: dikke C-vorm (grote cirkel - kleine cirkel offset rechts) -->
+    <circle cx="20" cy="28" r="13" fill="${mc}"/>
+    <circle cx="25.5" cy="28" r="10" fill="${gc}"/>
+    <!-- 5-pijl pinwiel rechtsboven -->
+    <g transform="translate(40,15)">${arrows5}</g>
   </svg>`;
 
   return `<div class="splash" style="justify-content:flex-start;padding-top:28px">
@@ -930,18 +922,20 @@ function splashView(){
       <button onclick="toggleDark()" style="width:38px;height:38px;border-radius:10px;background:${state.darkMode?'#0c2416':'#f1f5f9'};border:1.5px solid ${state.darkMode?'#163324':'#e2e8f0'};font-size:17px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)" title="Dark mode">${state.darkMode?'☀️':'🌙'}</button>
     </div>
 
-    <!-- IZBiN footer — subtiel, geïntegreerd -->
-    <div style="margin-top:auto;padding-top:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;opacity:0.65">
-      <svg viewBox="0 0 26 26" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="10" cy="13" r="9.5" fill="${state.darkMode?'#26a04a':'#1a5c2e'}"/>
-        <circle cx="15" cy="13" r="7.5" fill="${state.darkMode?'#071a0e':'#fafaf7'}"/>
-        <g transform="translate(22,5)">
-          <polygon points="0,-5 1.2,-1.7 4.8,-1.7 1.9,0.6 3,3.8 0,2 -3,3.8 -1.9,0.6 -4.8,-1.7 -1.2,-1.7" fill="#c8932a"/>
+    <!-- IKC DIN footer — crescent + pinwheel + officiële tekst -->
+    <div style="margin-top:auto;padding-top:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;opacity:${state.darkMode?'0.8':'0.7'}">
+      <svg viewBox="0 0 32 32" width="30" height="30" xmlns="http://www.w3.org/2000/svg">
+        <!-- sikkel -->
+        <circle cx="12" cy="17" r="10" fill="${state.darkMode?'#5ecb80':'#1a5c2e'}"/>
+        <circle cx="16.5" cy="17" r="7.5" fill="${state.darkMode?'#071a0e':'#f7faf7'}"/>
+        <!-- 5-pijl pinwiel -->
+        <g transform="translate(26,7)">
+          ${[0,72,144,216,288].map(a=>`<path d="M0,-4.5 L1.4,-1.5 L1,-1.5 L1,4.5 L-1,4.5 L-1,-1.5 L-1.4,-1.5 Z" fill="#c8932a" transform="rotate(${a+36}) translate(0,-1.5)"/>`).join('')}
         </g>
       </svg>
-      <div style="font-size:11px;font-weight:700;color:var(--muted);line-height:1.5;text-align:left">
-        <div style="text-transform:uppercase;letter-spacing:.4px;font-weight:800">Islamska zajednica Bošnjaka u Nizozemskoj</div>
-        <div style="text-transform:uppercase;letter-spacing:.3px;font-weight:700">Islamski Kulturni Centar Din · Eindhoven</div>
+      <div style="font-size:10.5px;line-height:1.55;text-align:left">
+        <div style="font-weight:900;color:${state.darkMode?'#5ecb80':'#1a5c2e'};letter-spacing:.5px;text-transform:uppercase">ISLAMSKA ZAJEDNICA BOŠNJAKA U NIZOZEMSKOJ</div>
+        <div style="font-weight:700;font-style:italic;color:#c8932a;letter-spacing:.2px">Islamski kulturni centar Din Eindhoven</div>
       </div>
     </div>
   </div>`;
@@ -1112,15 +1106,23 @@ function kidHome(){
         </div>
       </div>` : ''}
       ${(()=>{
-        // Huidige sura: gebruik kid-specifieke stationData, niet het template
-        const kidSuras = kidStations(k,'suras',k.level);
-        const curSura = kidSuras.find(s=>s.status==='current') || kidSuras.find(s=>s.status!=='done') || kidSuras[0] || {label:'—',sub:''};
-        // Volgende ilmihal-les: eerste niet-afgevinkte les voor dit kind
+        // Huidige sura: scan alle niveaus N1→N2→N3 voor eerste 'current' sura
+        let curSura = null;
+        for(const lv of [1,2,3]){
+          const lvSuras = kidStations(k,'suras',lv);
+          const found = lvSuras.find(s=>s.status==='current') || lvSuras.find(s=>s.status!=='done' && s.status!=='locked');
+          if(found){ curSura=found; break; }
+        }
+        if(!curSura){ const fallback=kidStations(k,'suras',k.level); curSura=fallback[0]||{label:'—',sub:''}; }
+        // Volgende ilmihal-les: scan alle niveaus N1→N2→N3 voor eerste open les
         const kDoneIlm = state.ilmDone[k.id] || {};
         let nextIlm = null;
-        for(const cat of (ILMIHAL[k.level]||[])){
-          for(const les of cat.lessen){
-            if(!kDoneIlm[les.id]){ nextIlm={naam:les.naam,naam_bs:les.naam_bs,cat:state.lang==='nl'?cat.name:cat.name_bs}; break; }
+        for(const lv of [1,2,3]){
+          for(const cat of (ILMIHAL[lv]||[])){
+            for(const les of cat.lessen){
+              if(!kDoneIlm[les.id]){ nextIlm={naam:les.naam,naam_bs:les.naam_bs,cat:state.lang==='nl'?cat.name:cat.name_bs}; break; }
+            }
+            if(nextIlm) break;
           }
           if(nextIlm) break;
         }
@@ -1727,7 +1729,7 @@ function efDetailVoortgang(k){
     <div class="subtab ${ptab==='quran'?'on':''}" onclick="state.efPathTab='quran';render()">ا ${T('quranRead')}</div>
   </div>
   <div style="display:flex;gap:6px;margin-bottom:12px">
-    ${levels.map(lv=>`<button onclick="state.efPathLevel=${lv.n};render()" style="flex:1;padding:8px;border-radius:10px;font-weight:800;font-size:12px;border:1.5px solid ${state.efPathLevel===lv.n||(!state.efPathLevel&&lv.n===k.level)?'var(--green)':'var(--line)'};background:${state.efPathLevel===lv.n||(!state.efPathLevel&&lv.n===k.level)?'var(--green-soft)':'#fff'};color:${lv.status==='locked'?'var(--muted)':'var(--ink)'}">${niveauCompleted(k.id,lv.n)?'🏆 ':''}N${lv.n}${lv.status==='done'?' ✓':lv.status==='locked'?' 🔒':''}</button>`).join('')}
+    ${levels.map(lv=>{const active=state.efPathLevel===lv.n||(!state.efPathLevel&&lv.n===k.level);const inactiveBg=state.darkMode?'#163324':'#fff';const inactiveColor=lv.status==='locked'?'var(--muted)':(state.darkMode?'#b6e8c6':'var(--ink)');return`<button onclick="state.efPathLevel=${lv.n};render()" style="flex:1;padding:8px;border-radius:10px;font-weight:800;font-size:12px;border:1.5px solid ${active?'var(--green)':'var(--line)'};background:${active?'var(--green-soft)':inactiveBg};color:${active?'var(--green)':inactiveColor}">${niveauCompleted(k.id,lv.n)?'🏆 ':''}N${lv.n}${lv.status==='done'?' ✓':lv.status==='locked'?' 🔒':''}</button>`;}).join('')}
   </div>
   ${ptab==='ilmihal' ? efDetailIlmihal(k, lvl) : efDetailPath(k, lvl, ptab)}`;
 }
@@ -2344,7 +2346,7 @@ function efToggleSura(kidId, levelId, idx, cat){
   if(!k.stationData[cat]) k.stationData[cat] = {};
   if(!k.stationData[cat][levelId]){
     // Kopieer template als startpunt voor dit kind
-    k.stationData[cat][levelId] = (PATH[cat][levelId]||[]).map(s=>({status:s.status, tag:s.tag||null}));
+    k.stationData[cat][levelId] = (PATH[cat][levelId]||[]).map(()=>({status:'locked', tag:null}));
   }
   const s = k.stationData[cat][levelId][idx];
   if(!s) return;
@@ -2375,14 +2377,14 @@ function toggleAttendance(kidId, weekIdx){
   saveKidToDB(kidId);
 }
 // Huiswerk afvinken — alleen efendija
-function efToggleHw(id){ const h=HOMEWORK.find(x=>x.id===id); if(h){h.done=!h.done; render();} }
+function efToggleHw(id){ const h=HOMEWORK.find(x=>x.id===id); if(h){h.done=!h.done; render(); saveKidToDB(h.kidId);} }
 // Huiswerk toevoegen door efendija
 let _hwIdCtr=10;
 function efAddHw(kidId){
   const n=state.newHw;
   if(!n.title.trim())return;
   HOMEWORK.push({id:++_hwIdCtr, kidId, title:n.title, title_bs:n.title, desc:n.desc, desc_bs:n.desc, dueDays:parseInt(n.dueDays)||7, done:false, fromTeacher:state.me?.id||201});
-  state.newHw={title:'',desc:'',dueDays:7}; state.showAddHw=false; render();
+  state.newHw={title:'',desc:'',dueDays:7}; state.showAddHw=false; render(); saveKidToDB(kidId);
 }
 function setHwField(f,v){state.newHw[f]=v;}
 
@@ -2417,8 +2419,8 @@ async function loadData(){
   try {
     const {data, error} = await DB.from('leerlingen_v5').select('*').order('rang');
     if(error) throw error;
-    KIDS.length=0; PARENTS.length=0; state.ilmDone={};
-    let pIdCtr=1000;
+    KIDS.length=0; PARENTS.length=0; HOMEWORK.length=0; state.ilmDone={};
+    let pIdCtr=1000; _hwIdCtr=10;
     data.forEach(row=>{
       const kid = {
         id: row.id, name: row.naam, level: row.niveau, pin: row.pin,
@@ -2429,6 +2431,9 @@ async function loadData(){
       };
       KIDS.push(kid);
       state.ilmDone[row.id] = row.ilmihal||{};
+      // Huiswerk laden per kind
+      const hw = Array.isArray(row.huiswerk) ? row.huiswerk : [];
+      hw.forEach(h=>{ HOMEWORK.push({...h, kidId:row.id}); if(h.id>_hwIdCtr) _hwIdCtr=h.id; });
       // Aanwezigheid normaliseren naar {date, present}
       const att = Array.isArray(row.aanwezigheid) ? row.aanwezigheid.map(a=>({
         date: a.date||a.datum||'', present: a.present!==undefined ? a.present : (a.aanwezig||false)
@@ -2465,6 +2470,7 @@ async function saveKidToDB(kidId){
       ouder_naam: p ? p.name : '',
       ouder_pin:  p ? p.pin  : '',
       since_year: k.sinceYear||2026,
+      huiswerk: HOMEWORK.filter(h=>h.kidId===k.id),
     });
   } catch(e){ console.error('DB fout bij opslaan:', e); }
 }
