@@ -831,7 +831,7 @@ let state = {
   newHw: {title:'', desc:'', dueDays:7}, // nieuw huiswerk formulier
   showAddHw: false,   // toon add-huiswerk formulier
   showRegForm: false, // ouder zelf-registratie (beginfase)
-  regData: {ouderNaam:'', ouderPin:'', kindNaam:''},
+  regData: {ouderNaam:'', ouderPin:'', kinderen:['']},
   leaderTab: 'myLevel', // 'myLevel' | 'hafizTop' | 'streakTop'
 };
 
@@ -852,9 +852,20 @@ const colorOf = s => 'c' + (s.charCodeAt(0) % 6);
 const initial = n => n.replace(/^ef\. /,'').replace(/[^a-zA-Z]/g,'')[0]?.toUpperCase() || '?';
 
 const render = () => {
+  // Bewaar search-focus zodat typen niet onderbroken wordt
+  const activeEl = document.activeElement;
+  const wasSearch = activeEl && activeEl.closest && activeEl.closest('.search-box');
+  const savedPos = wasSearch ? activeEl.selectionStart : null;
+
   $('#app').innerHTML = router();
   $('#app').classList.toggle('dark', !!state.darkMode);
   document.body.classList.toggle('dark', !!state.darkMode);
+
+  // Herstel focus op zoekveld na herrender
+  if(wasSearch){
+    const newInput = document.querySelector('.search-box input');
+    if(newInput){ newInput.focus(); if(savedPos!==null) newInput.setSelectionRange(savedPos, savedPos); }
+  }
 };
 function toggleDark(){ state.darkMode=!state.darkMode; render(); }
 
@@ -1406,7 +1417,7 @@ function addKid(){
   render();
   saveKidToDB(newId); // async
 }
-function removeKid(id){
+async function removeKid(id){
   const k = KIDS.find(x=>x.id===id);
   if(!k) return;
   if(!confirm(L(`${k.name} verwijderen?`,`Obrisati ${k.name}?`))) return;
@@ -1421,7 +1432,8 @@ function removeKid(id){
   }
   [...KIDS].sort((a,b)=>b.pts-a.pts).forEach((kid,i)=>{ kid.rank=i+1; });
   render();
-  DB.from('leerlingen_v5').delete().eq('id', id); // async
+  const {error} = await DB.from('leerlingen_v5').delete().eq('id', id);
+  if(error) console.error('Delete fout:', error);
 }
 function setNewKidField(field,val){ state.newKid[field]=val; }
 
@@ -2284,15 +2296,25 @@ function bestuurProfile(){
 function ouderRegFormHtml(){
   const r=state.regData;
   const lbl=(nl,bs)=>`<div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:9px 0 5px">${L(nl,bs)}</div>`;
+  const kinderenHtml = r.kinderen.map((naam, i) => `
+    <div style="display:flex;gap:6px;margin-bottom:6px;align-items:center">
+      <input type="text" placeholder="${L('Voornaam kind','Ime djeteta')} ${i+1}" value="${naam}"
+        oninput="state.regData.kinderen[${i}]=this.value"
+        style="flex:1;font-size:14px">
+      ${r.kinderen.length>1 ? `<button onclick="state.regData.kinderen.splice(${i},1);render()" style="width:32px;height:42px;border-radius:10px;background:var(--red-soft);color:var(--red);font-size:16px;flex:0 0 auto">×</button>` : ''}
+    </div>`).join('');
   return`<div style="background:${state.darkMode?'#0c2416':'#fff'};border-radius:14px;padding:14px;margin-top:10px;border:1.5px solid var(--green-mid);box-shadow:var(--shadow)">
-    <div style="font-weight:900;font-size:13px;margin-bottom:4px">👪 ${L('Kind aanmelden','Prijava djeteta')}</div>
-    <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Kies één PIN voor jou én je kind — gebruik dit om in te loggen.','Odaberite jedan PIN za vas i vaše dijete — koristite ga za prijavu.')}</div>
+    <div style="font-weight:900;font-size:13px;margin-bottom:4px">👪 ${L('Kind(eren) aanmelden','Prijava djece')}</div>
+    <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Één PIN voor jou én al je kinderen — gebruik dit om in te loggen.','Jedan PIN za vas i svu vašu djecu — koristite ga za prijavu.')}</div>
     ${lbl('Jouw naam (ouder)','Vaše ime (roditelj)')}
     <input type="text" placeholder="${L('Naam ouder','Ime roditelja')}" value="${r.ouderNaam}" oninput="state.regData.ouderNaam=this.value" style="margin-bottom:4px;font-size:14px">
-    ${lbl('Naam kind','Ime djeteta')}
-    <input type="text" placeholder="${L('Voornaam kind','Ime djeteta')}" value="${r.kindNaam}" oninput="state.regData.kindNaam=this.value" style="margin-bottom:4px;font-size:14px">
-    ${lbl('Gedeelde PIN (ouder + kind)','Zajednički PIN (roditelj + dijete)')}
-    <input type="text" placeholder="${L('4 cijfers — voor ouder én kind','4 cifre — za roditelja i dijete')}" value="${r.ouderPin}" oninput="state.regData.ouderPin=this.value" maxlength="4" style="margin-bottom:12px;font-size:14px">
+    ${lbl('Naam kind(eren)','Ime djece')}
+    ${kinderenHtml}
+    <button onclick="state.regData.kinderen.push('');render()" style="width:100%;padding:8px;border-radius:10px;border:1.5px dashed var(--green-mid);color:var(--green);font-weight:800;font-size:12px;margin-bottom:4px">
+      ➕ ${L('Nog een kind toevoegen','Dodaj još jedno dijete')}
+    </button>
+    ${lbl('Gedeelde PIN (ouder + kinderen)','Zajednički PIN (roditelj + djeca)')}
+    <input type="text" placeholder="${L('4 cijfers','4 cifre')}" value="${r.ouderPin}" oninput="state.regData.ouderPin=this.value" maxlength="4" style="margin-bottom:12px;font-size:14px">
     <div style="display:flex;gap:8px">
       <button onclick="state.showRegForm=false;render()" style="flex:1;padding:11px;border-radius:12px;border:1.5px solid var(--line);font-weight:800;font-size:13px">${L('Annuleren','Odustani')}</button>
       <button onclick="ouderReg()" style="flex:1;background:var(--green);color:#fff;padding:11px;border-radius:12px;font-weight:800;font-size:13px">${L('Aanmelden','Prijaviti se')}</button>
@@ -2301,21 +2323,32 @@ function ouderRegFormHtml(){
 }
 function ouderReg(){
   const r=state.regData;
-  if(!r.ouderNaam.trim()||!r.ouderPin.trim()||!r.kindNaam.trim()){ alert(L('Vul naam ouder, naam kind en PIN in.','Unesite ime roditelja, ime djeteta i PIN.')); return; }
+  const kinderenGevuld = r.kinderen.map(n=>n.trim()).filter(n=>n.length>0);
+  if(!r.ouderNaam.trim()||!r.ouderPin.trim()||kinderenGevuld.length===0){
+    alert(L('Vul naam ouder, minimaal één kind en PIN in.','Unesite ime roditelja, barem jedno dijete i PIN.')); return;
+  }
   if(r.ouderPin.trim().length<4){ alert(L('PIN moet 4 cijfers zijn.','PIN mora biti 4 cifre.')); return; }
-  const newKidId = crypto.randomUUID ? crypto.randomUUID().slice(0,18) : ('k'+Date.now());
-  const newParentId=++_parentIdCounter;
   const pin=r.ouderPin.trim();
-  const newKid = {id:newKidId, name:r.kindNaam.trim(), level:1, pin, pts:0, streak:0, rank:KIDS.length+1, sinceYear:new Date().getFullYear(), stationData:{}, ilmDoneData:{}};
-  KIDS.push(newKid);
-  ATTENDANCE[newKidId]=WEEKS.map(w=>({date:w,present:false}));
-  state.ilmDone[newKidId]={};
-  PARENTS.push({id:newParentId, name:r.ouderNaam.trim(), pin, kidIds:[newKidId]});
-  state.regData={ouderNaam:'',ouderPin:'',kindNaam:''};
+  const ouderNaam=r.ouderNaam.trim();
+  const newKidIds=[];
+  kinderenGevuld.forEach(kindNaam=>{
+    const newKidId = crypto.randomUUID ? crypto.randomUUID().slice(0,18) : ('k'+Date.now()+Math.random().toString(36).slice(2,6));
+    const newKid = {id:newKidId, name:kindNaam, level:1, pin, pts:0, streak:0, rank:KIDS.length+1, sinceYear:new Date().getFullYear(), stationData:{}, ilmDoneData:{}};
+    KIDS.push(newKid);
+    ATTENDANCE[newKidId]=WEEKS.map(w=>({date:w,present:false}));
+    state.ilmDone[newKidId]={};
+    newKidIds.push(newKidId);
+  });
+  // Koppel aan bestaande ouder (zelfde naam+PIN) of maak nieuwe ouder aan
+  const bestaandeOuder = PARENTS.find(p=>p.name===ouderNaam && p.pin===pin);
+  if(bestaandeOuder){ bestaandeOuder.kidIds.push(...newKidIds); }
+  else { PARENTS.push({id:++_parentIdCounter, name:ouderNaam, pin, kidIds:newKidIds}); }
+  state.regData={ouderNaam:'',ouderPin:'',kinderen:['']};
   state.showRegForm=false;
   render();
-  saveKidToDB(newKidId);
-  alert(L(`${r.kindNaam} is aangemeld! Log nu in als ouder met PIN ${pin}.`,`${r.kindNaam} je prijavljen/a! Prijavite se kao roditelj s PIN-om ${pin}.`));
+  newKidIds.forEach(id=>saveKidToDB(id));
+  const namen=kinderenGevuld.join(', ');
+  alert(L(`${namen} ${kinderenGevuld.length===1?'is':'zijn'} aangemeld! Log in als ouder met PIN ${pin}.`,`${namen} ${kinderenGevuld.length===1?'je prijavljen/a':'su prijavljeni'}! Prijavite se kao roditelj s PIN-om ${pin}.`));
 }
 
 // ═══════════════════════════════════════════════════════════════
