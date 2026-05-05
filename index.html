@@ -247,6 +247,15 @@ input,select,textarea{font-family:inherit;font-weight:600}
 .bar{height:8px;background:#f1f5f9;border-radius:4px;overflow:hidden;margin-top:6px}
 .bar-fill{height:100%;background:linear-gradient(90deg,var(--green-mid),var(--green));border-radius:4px;transition:.4s}
 
+/* BADGE MODAL */
+.badge-modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center;border-radius:32px;animation:fadeIn .18s ease}
+.badge-modal-sheet{background:var(--card);border-radius:28px 28px 22px 22px;padding:24px 20px 30px;width:100%;max-width:390px;animation:slideUp .22s ease;position:relative}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.badge-modal-icon{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--gold-bright),var(--gold));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:36px;box-shadow:0 8px 24px rgba(200,147,42,.35)}
+.badge-modal-icon.locked{background:linear-gradient(135deg,#cbd5e1,#94a3b8);box-shadow:none}
+.app.dark .badge-modal-sheet{background:#0c2416}
+.app.dark .badge-modal-overlay{border-radius:32px}
+
 /* avatars */
 .avatar.c0{background:linear-gradient(135deg,#34d399,#10b981)}
 .avatar.c1{background:linear-gradient(135deg,#fbbf24,#f59e0b)}
@@ -771,15 +780,54 @@ function ilmPts(kidId){
 }
 
 const BADGES = [
-  {name:'Eerste sura', name_bs:'Prva sura', icon:'🌟', got:true},
-  {name:'7-weken', name_bs:'7-sedmica', icon:'🔥', got:true},
-  {name:'Hafiz brons', name_bs:'Hafiz bronza', icon:'🥉', got:true},
-  {name:'30-weken', name_bs:'30-sedmica', icon:'💎', got:false},
-  {name:'Hafiz zilver', name_bs:'Hafiz srebro', icon:'🥈', got:false},
-  {name:'Hafiz goud', name_bs:'Hafiz zlato', icon:'🥇', got:false},
+  {name:'Eerste sura', name_bs:'Prva sura', icon:'🌟', got:true,
+   desc:'Je hebt je allereerste sura geleerd en opgezegd! Een geweldige start van je leerpad. Mašallah!',
+   desc_bs:'Naučio/la si svoju prvu suru i recitovao/la je efendiji! Odličan početak tvog puta. Mašallah!',
+   how:'Word behaald als je je eerste sura "done" krijgt van de efendija.',
+   how_bs:'Osvaja se kad efendija označi tvoju prvu suru kao završenu.'},
+  {name:'7-weken', name_bs:'7-sedmica', icon:'🔥', got:true,
+   desc:'Je bent 7 weken op rij naar de mekteb gekomen! Trouw zijn aan je belofte verdient een beloning.',
+   desc_bs:'Prisustvovao/la si mektebu 7 sedmica zaredom! Doći svake sedmice zaslužuje nagradu.',
+   how:'Word behaald als je 7 aanwezigheidsvinkjes hebt van de efendija.',
+   how_bs:'Osvaja se kad efendija zabilježi 7 prisustava.'},
+  {name:'Hafiz brons', name_bs:'Hafiz bronza', icon:'🥉', got:true,
+   desc:'Je hebt al 3 suras geleerd en opgezegd. Je bent op weg om een echte hafiz te worden!',
+   desc_bs:'Naučio/la si 3 sure napamet. Na putu si da postaneš pravi hafiz!',
+   how:'Word behaald als je 3 of meer suras als "done" hebt.',
+   how_bs:'Osvaja se kad imaš 3 ili više sura označenih kao završenih.'},
+  {name:'30-weken', name_bs:'30-sedmica', icon:'💎', got:false,
+   desc:'Een heel jaar trouw naar de mekteb — dat is bijzonder! Dit is de zeldzaamste aanwezigheidsbadge.',
+   desc_bs:'Cijelu godinu dolaziti u mekteb — to je posebno! Ovo je najrjeđa značka prisustva.',
+   how:'Kom 30 keer naar de mekteb. Laat de efendija je aanwezigheid bijhouden.',
+   how_bs:'Dođi u mekteb 30 puta. Neka efendija bilježi tvoje prisustvo.'},
+  {name:'Hafiz zilver', name_bs:'Hafiz srebro', icon:'🥈', got:false,
+   desc:'Je hebt alle suras van Niveau 1 geleerd. Een enorme prestatie — je bent een echte halfiz in wording!',
+   desc_bs:'Naučio/la si sve sure Nivoa 1. Sjajan uspjeh — pravi hafiz/hafiza u nastajanju!',
+   how:'Zorg dat alle suras van N1 op "done" staan. Studeer thuis en oefen met efendija.',
+   how_bs:'Postavi sve sure N1 na "završeno". Uči kod kuće i vježbaj s efendijom.'},
+  {name:'Hafiz goud', name_bs:'Hafiz zlato', icon:'🥇', got:false,
+   desc:'De hoogste badge in de mekteb! Je hebt alle suras van alle niveaus geleerd. Subhanallah!',
+   desc_bs:'Najviša značka u mektebu! Naučio/la si sve sure svih nivoa. Subhanallah!',
+   how:'Zorg dat alle suras van N1, N2 én N3 op "done" staan. Dit vergt veel studie en geduld!',
+   how_bs:'Postavi sve sure N1, N2 i N3 na "završeno". Ovo zahtijeva puno truda i strpljenja!'},
 ];
 
 let HOMEWORK = []; // wordt geladen vanuit Supabase in loadData()
+
+// Ouder-aanmeldingen per kind per datum: {kidId: {date: 'yes'|'no'|null}}
+let PARENT_NOTIFICATIONS = {};
+
+function nextSundayDate(){
+  const now = new Date();
+  const daysUntilSun = now.getDay() === 0 ? 7 : 7 - now.getDay();
+  const d = new Date(now);
+  d.setDate(now.getDate() + daysUntilSun);
+  return d.toISOString().slice(0,10);
+}
+function nextSundayLabel(){
+  const d = new Date(nextSundayDate());
+  return d.toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{weekday:'long',day:'numeric',month:'long'});
+}
 
 // Laatste 10 zondagen — voor aanwezigheidsrijen
 const MEKTEB_START = '2026-04-19'; // eerste mekteb-zondag — aanwezigheid vóór deze datum telt niet mee
@@ -846,6 +894,7 @@ let state = {
   showRegForm: false, // ouder zelf-registratie (beginfase)
   regData: {ouderNaam:'', ouderPin:'', kinderen:['']},
   leaderTab: 'myLevel', // 'myLevel' | 'hafizTop' | 'streakTop'
+  showBadgeModal: null, // index in BADGES array, of null
 };
 
 // Per-kind stations: PATH = label/icon/pts template, kid.stationData = echte status per kind
@@ -1185,7 +1234,7 @@ function kidHome(){
       </div>
       <div class="section-head" style="margin-top:14px"><div class="h3">${T('myBadges')}</div></div>
       <div class="badge-row">
-        ${BADGES.map(b=>`<div class="badge ${b.got?'':'locked'}"><div class="b-icon">${b.icon}</div><div class="b-name">${state.lang==='nl'?b.name:b.name_bs}</div></div>`).join('')}
+        ${BADGES.map((b,i)=>`<div class="badge ${b.got?'':'locked'}" style="cursor:pointer" onclick="openBadgeModal(${i})"><div class="b-icon">${b.icon}</div><div class="b-name">${state.lang==='nl'?b.name:b.name_bs}</div></div>`).join('')}
       </div>
       <div class="section-head" style="margin-top:14px"><div class="h3">${T('topThisWeek')}</div><a onclick="setNav('leader')">${T('leaderboard')} →</a></div>
       <div class="list">
@@ -1198,7 +1247,8 @@ function kidHome(){
           </div>`).join('')}
       </div>
     </div>
-    ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}`;
+    ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}
+    ${badgeModalHtml()}`;
 }
 
 function currentStation(level, cat){
@@ -1374,14 +1424,15 @@ function kidProfile(){
       </div>
       <div class="section-head" style="margin-top:16px"><div class="h3">${T('allBadgesTtl')}</div></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
-        ${BADGES.map(b=>`<div class="badge ${b.got?'':'locked'}" style="flex:0">
+        ${BADGES.map((b,i)=>`<div class="badge ${b.got?'':'locked'}" style="flex:0;cursor:pointer" onclick="openBadgeModal(${i})">
           <div class="b-icon">${b.icon}</div>
           <div class="b-name">${state.lang==='nl'?b.name:b.name_bs}</div>
           <div style="font-size:10px;color:var(--muted);margin-top:4px;font-weight:700">${b.got?T('badgesEarned'):T('badgesNotYet')}</div>
         </div>`).join('')}
       </div>
     </div>
-    ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}`;
+    ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}
+    ${badgeModalHtml()}`;
 }
 
 function kidHomework(){
@@ -1554,6 +1605,41 @@ function ouderHome(){
         </div>` : `<div style="font-size:12px;color:var(--green);font-weight:800">✓ ${L('Geen openstaand huiswerk','Nema otvorene zadaće')}</div>`}
       </div>`;
     }).join('')}
+
+    <!-- AANWEZIGHEID AANSTAANDE ZONDAG -->
+    ${(()=>{
+      const nextSun = nextSundayDate();
+      const nextSunLbl = new Date(nextSun).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{weekday:'long',day:'numeric',month:'long'});
+      return kids.map(k=>{
+        const notif = PARENT_NOTIFICATIONS[k.id]?.[nextSun] ?? null;
+        return `<div class="card" style="margin-bottom:12px;border-left:4px solid ${notif==='yes'?'var(--green)':notif==='no'?'var(--red)':'var(--gold)'}">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="font-size:20px">📅</div>
+            <div style="flex:1">
+              <div style="font-weight:900;font-size:13px">${k.name} — ${L('aanstaande les','sljedeći čas')}</div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:capitalize">${nextSunLbl}</div>
+            </div>
+            ${notif ? `<div style="font-size:11px;font-weight:900;padding:4px 10px;border-radius:8px;background:${notif==='yes'?'var(--green-soft)':'var(--red-soft)'};color:${notif==='yes'?'var(--green)':'var(--red)'}">
+              ${notif==='yes'?(state.lang==='nl'?'✅ Aanwezig':'✅ Prisutan/na'):(state.lang==='nl'?'❌ Afwezig':'❌ Odsutan/na')}
+            </div>` : ''}
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">
+            ${L('Geef aan of','Navedite da li') + ' ' + k.name + ' ' + (L('er aanstaande zondag bij is:','dolazi sljedeće nedjelje:'))}
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="parentConfirmAttendance('${k.id}','yes')" style="flex:1;padding:11px;border-radius:12px;font-weight:900;font-size:13px;background:${notif==='yes'?'var(--green)':'var(--green-soft)'};color:${notif==='yes'?'#fff':'var(--green)'};border:2px solid ${notif==='yes'?'var(--green)':'var(--green-mid)'}">
+              ✅ ${L('Ja, ik kom','Da, dolazi')}
+            </button>
+            <button onclick="parentConfirmAttendance('${k.id}','no')" style="flex:1;padding:11px;border-radius:12px;font-weight:900;font-size:13px;background:${notif==='no'?'var(--red)':'var(--red-soft)'};color:${notif==='no'?'#fff':'var(--red)'};border:2px solid ${notif==='no'?'var(--red)':'#fca5a5'}">
+              ❌ ${L('Nee, afwezig','Ne, odsutan/na')}
+            </button>
+          </div>
+          ${notif ? `<div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:8px;text-align:center">
+            ${L('Efendija ziet jouw aanmelding. Hij registreert de definitieve aanwezigheid op de dag zelf.','Efendija vidi vašu najavu. On sam bilježi konačno prisustvo na dan časa.')}
+          </div>` : ''}
+        </div>`;
+      }).join('');
+    })()}
 
     <!-- HUISWERK -->
     <div class="section-head" style="margin-top:6px"><div class="h3">📝 ${T('homework')}</div></div>
@@ -1982,9 +2068,17 @@ function efStudents(){
           <div class="aw-list">
             ${myKids.map(k=>{
               const isPresent = ATTENDANCE[k.id]?.[wi]?.present || false;
+              // Parent notification for this week date
+              const weekDate = WEEKS[wi];
+              const parentNotif = PARENT_NOTIFICATIONS[k.id]?.[weekDate] ?? null;
+              const parentChip = parentNotif==='yes'
+                ? `<span style="font-size:10px;font-weight:800;color:var(--green);background:var(--green-soft);border-radius:6px;padding:2px 6px;margin-left:4px">📱✅</span>`
+                : parentNotif==='no'
+                ? `<span style="font-size:10px;font-weight:800;color:var(--red);background:var(--red-soft);border-radius:6px;padding:2px 6px;margin-left:4px">📱❌</span>`
+                : '';
               return `<div class="aw-row">
                 <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-                <div style="flex:1"><div style="font-weight:800;font-size:14px">${k.name}</div><div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)}</div></div>
+                <div style="flex:1"><div style="font-weight:800;font-size:14px">${k.name}${parentChip}</div><div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)}${parentNotif ? ' · '+L('ouder gemeld','roditelj najavio') : ''}</div></div>
                 <div class="aw-toggle">
                   <button class="${isPresent?'aw':''}" onclick="efSetAttendance('${k.id}',${wi},true)">${T('pres')}</button>
                   <button class="${!isPresent?'az':''}" onclick="efSetAttendance('${k.id}',${wi},false)">${T('abs')}</button>
@@ -2047,7 +2141,6 @@ function efProfile(){
 function bestuurApp(){
   if(state.nav==='home')      return bestuurHome();
   if(state.nav==='students')  return bestuurStudents();
-  if(state.nav==='attendance')return bestuurAttendance();
   if(state.nav==='progress')  return bestuurProgress();
   return bestuurHome();
 }
@@ -2055,7 +2148,6 @@ function topbarBestuur(){
   const tabs=[
     ['home','🏛️',T('overview')],
     ['students','👥',T('students')],
-    ['attendance','📋',T('attendance')],
     ['progress','📈',T('progress')]
   ];
   const dateStr = new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -2166,6 +2258,69 @@ function bestuurHome(){
         </div>`).join('')}
       </div>`
       :`<div class="card" style="margin-bottom:14px;text-align:center;color:var(--green);font-weight:800;font-size:13px">✅ ${L('Geen leerlingen met 3+ afwezigheden','Nema učenika sa 3+ izostanaka')}</div>`}
+
+      <!-- AANWEZIGHEID OVERZICHT (was losse tab) -->
+      <div class="section-head"><div class="h3">📅 ${L('Aanwezigheid','Prisustvo')}</div></div>
+      ${(()=>{
+        const lastIdx2 = WEEKS.length - 1;
+        const lastWeekPresent2 = KIDS.filter(k=>ATTENDANCE[k.id]?.[lastIdx2]?.present).length;
+        const presentPct2 = Math.round(lastWeekPresent2/Math.max(1,total)*100);
+        const weekStats2 = WEEKS.map((w,i)=>{
+          const present=KIDS.filter(k=>ATTENDANCE[k.id]?.[i]?.present).length;
+          const pct=Math.round(present/Math.max(1,total)*100);
+          const d=new Date(w);
+          const lbl=d.toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit'});
+          return{lbl,present,pct};
+        }).reverse().slice(0,5);
+        const kidStats2=[...KIDS].map(k=>{
+          const att=ATTENDANCE[k.id]||[];
+          const pct=att.length?Math.round(att.filter(w=>w.present).length/att.length*100):0;
+          const abs=att.filter(w=>!w.present).length;
+          return{k,pct,abs};
+        }).sort((a,b)=>b.pct-a.pct);
+        return `
+        <div style="background:linear-gradient(135deg,#0d2e1f,#163a27);border-radius:16px;padding:13px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px">
+          <div>
+            <div style="font-size:22px;font-weight:900;color:#fff;line-height:1">${lastWeekPresent2}/${total}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.65);font-weight:700">${L('aanstaande les','sljedeći čas')}</div>
+          </div>
+          <div style="flex:1;height:7px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden">
+            <div style="height:100%;width:${presentPct2}%;background:var(--green-mid);border-radius:99px;transition:.4s"></div>
+          </div>
+          <div style="font-weight:900;font-size:16px;color:${presentPct2>=70?'#4ade80':'#fbbf24'}">${presentPct2}%</div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:6px">
+          ${weekStats2.map(({lbl,present,pct},i)=>{
+            const col=pct>=70?'#22c55e':pct>=40?'#f59e0b':'#ef4444';
+            return`<div style="display:flex;align-items:center;gap:10px;padding:9px 14px${i<weekStats2.length-1?';border-bottom:1px solid var(--line)':''}">
+              <div style="font-size:11px;font-weight:800;color:var(--muted);min-width:52px">${lbl}</div>
+              <div style="background:${col};color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:6px;min-width:30px;text-align:center">${present}/${total}</div>
+              <div style="flex:1;height:6px;background:var(--line);border-radius:99px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${col};border-radius:99px;transition:.3s"></div>
+              </div>
+              <div style="font-size:11px;font-weight:900;color:${col};min-width:30px;text-align:right">${pct}%</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
+          ${kidStats2.map(({k,pct,abs},i)=>{
+            const col=pct>=80?'var(--green-mid)':pct>=50?'#f59e0b':'#ef4444';
+            return`<div style="display:flex;align-items:center;gap:10px;padding:9px 14px${i<kidStats2.length-1?';border-bottom:1px solid var(--line)':''}">
+              <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:800;font-size:12px;margin-bottom:3px">${k.name}</div>
+                <div style="height:5px;background:var(--line);border-radius:99px;overflow:hidden">
+                  <div style="height:100%;width:${pct}%;background:${col};border-radius:99px"></div>
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0;min-width:42px">
+                <div style="font-weight:900;font-size:12px;color:${col}">${pct}%</div>
+                ${abs>=3?`<div style="font-size:9px;color:#ef4444;font-weight:800">${abs}x ⚠️</div>`:''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      })()}
 
       <!-- TOP LEERLINGEN -->
       <div class="section-head"><div class="h3">🏆 ${L('Top leerlingen','Top učenici')}</div></div>
@@ -2382,6 +2537,53 @@ function ouderReg(){
   newKidIds.forEach(id=>saveKidToDB(id));
   const namen=kinderenGevuld.join(', ');
   alert(L(`${namen} ${kinderenGevuld.length===1?'is':'zijn'} aangemeld! Log in als ouder met PIN ${pin}.`,`${namen} ${kinderenGevuld.length===1?'je prijavljen/a':'su prijavljeni'}! Prijavite se kao roditelj s PIN-om ${pin}.`));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BADGE MODAL
+// ═══════════════════════════════════════════════════════════════
+function openBadgeModal(idx){ state.showBadgeModal=idx; render(); }
+function closeBadgeModal(){ state.showBadgeModal=null; render(); }
+function badgeModalHtml(){
+  if(state.showBadgeModal===null) return '';
+  const b = BADGES[state.showBadgeModal];
+  if(!b) return '';
+  const name = state.lang==='nl' ? b.name : b.name_bs;
+  const desc = state.lang==='nl' ? b.desc : b.desc_bs;
+  const how  = state.lang==='nl' ? b.how  : b.how_bs;
+  return `<div class="badge-modal-overlay" onclick="closeBadgeModal()">
+    <div class="badge-modal-sheet" onclick="event.stopPropagation()">
+      <div class="badge-modal-icon ${b.got?'':'locked'}">${b.icon}</div>
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-weight:900;font-size:19px;letter-spacing:-.3px">${name}</div>
+        <div style="margin-top:4px">
+          ${b.got
+            ? `<span style="background:var(--green-soft);color:var(--green);font-size:11px;font-weight:800;padding:3px 10px;border-radius:8px">✅ ${T('badgesEarned')}</span>`
+            : `<span style="background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:800;padding:3px 10px;border-radius:8px">🔒 ${T('badgesNotYet')}</span>`}
+        </div>
+      </div>
+      <div style="background:var(--bg);border-radius:16px;padding:14px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.5">${desc}</div>
+      </div>
+      ${!b.got ? `<div style="background:var(--gold-soft);border-radius:16px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:900;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💡 ${L('Hoe behaal je dit?','Kako to osvojiti?')}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.5">${how}</div>
+      </div>` : ''}
+      <button onclick="closeBadgeModal()" style="width:100%;padding:14px;background:var(--green);color:#fff;border-radius:16px;font-weight:900;font-size:15px">
+        ${L('Sluiten','Zatvori')}
+      </button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OUDER — AANWEZIGHEID AANMELDEN
+// ═══════════════════════════════════════════════════════════════
+function parentConfirmAttendance(kidId, attending){
+  const d = nextSundayDate();
+  if(!PARENT_NOTIFICATIONS[kidId]) PARENT_NOTIFICATIONS[kidId] = {};
+  PARENT_NOTIFICATIONS[kidId][d] = attending; // 'yes' | 'no'
+  render();
 }
 
 // ═══════════════════════════════════════════════════════════════
