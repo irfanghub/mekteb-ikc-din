@@ -82,7 +82,7 @@ input,select,textarea{font-family:inherit;font-weight:600}
 .head-back .ttl{font-weight:900;font-size:20px}
 .head-back .stl{font-size:12px;color:var(--muted);font-weight:700}
 .search-box{background:#fff;border-radius:14px;padding:10px 14px;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:10px;margin-bottom:14px}
-.search-box input{border:0;outline:0;flex:1;font-size:14px;background:transparent}
+.search-box input{border:0;outline:0;flex:1;font-size:16px;background:transparent}
 .kid-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .kid-card{background:var(--card);border-radius:16px;padding:12px 8px;text-align:center;box-shadow:var(--shadow-sm);border:2px solid transparent}
 .kid-card .avatar{margin:0 auto 6px}
@@ -97,7 +97,7 @@ input,select,textarea{font-family:inherit;font-weight:600}
 .pin-dot.error{background:var(--red);animation:shake .35s}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:280px;margin:0 auto}
-.key{background:#fff;border-radius:16px;padding:16px 0;font-size:22px;font-weight:800;box-shadow:var(--shadow-sm)}
+.key{background:#fff;border-radius:16px;padding:16px 0;font-size:22px;font-weight:800;box-shadow:var(--shadow-sm);touch-action:manipulation}
 .key.fn{background:transparent;box-shadow:none;color:var(--muted);font-size:12px;font-weight:800}
 
 /* DASHBOARD */
@@ -1544,7 +1544,10 @@ function ouderHome(){
 
     <!-- HUISWERK -->
     <div class="section-head" style="margin-top:6px"><div class="h3">📝 ${T('homework')}</div></div>
-    ${allHw.length ? allHw.map(h=>hwCard(h,true)).join('') : `<div class="card" style="text-align:center;color:var(--muted);padding:18px;font-weight:700">${T('noHw')}</div>`}
+    ${allHw.length ? allHw.map(h=>{
+      const hKid = KIDS.find(x=>x.id===h.kidId);
+      return (kids.length>1 ? `<div style="font-size:11px;font-weight:800;color:var(--muted);padding:4px 4px 2px">👦 ${hKid?.name||''}</div>` : '') + hwCard(h,true);
+    }).join('') : `<div class="card" style="text-align:center;color:var(--muted);padding:18px;font-weight:700">${T('noHw')}</div>`}
 
   </div>`;
 }
@@ -1950,17 +1953,20 @@ function efStudents(){
       ` : `
         <div class="greeting" style="margin-bottom:10px"><p>${T('today')}</p></div>
         <div class="aw-list">
-          ${myKids.map((k,i)=>`
-            <div class="aw-row">
+          ${myKids.map(k=>{
+            const todayIdx = WEEKS.length - 1;
+            const isPresent = ATTENDANCE[k.id]?.[todayIdx]?.present || false;
+            return `<div class="aw-row">
               <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
               <div style="flex:1"><div style="font-weight:800;font-size:14px">${k.name}</div><div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)}</div></div>
               <div class="aw-toggle">
-                <button class="${i%3!==0?'aw':''}" onclick="this.classList.add('aw');this.nextElementSibling.classList.remove('az')">${T('pres')}</button>
-                <button class="${i%3===0?'az':''}" onclick="this.classList.add('az');this.previousElementSibling.classList.remove('aw')">${T('abs')}</button>
+                <button class="${isPresent?'aw':''}" onclick="efSetAttendance('${k.id}',${WEEKS.length-1},true)">${T('pres')}</button>
+                <button class="${!isPresent?'az':''}" onclick="efSetAttendance('${k.id}',${WEEKS.length-1},false)">${T('abs')}</button>
               </div>
-            </div>`).join('')}
+            </div>`;
+          }).join('')}
         </div>
-        <button style="width:100%;margin-top:14px;background:var(--green);color:#fff;padding:14px;border-radius:14px;font-weight:800">${T('saveProg')}</button>
+        <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--muted);text-align:center">✓ ${L('Wijzigingen worden direct opgeslagen','Promjene se odmah čuvaju')}</div>
       `}
     </div>
     ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
@@ -2400,7 +2406,16 @@ function efToggleSura(kidId, levelId, idx, cat){
   render();
   saveKidToDB(kidId); // async, op achtergrond
 }
-// Attendance toggle door efendija
+// Attendance direct zetten (aan/uit) door efendija — vanuit het hoofdscherm
+function efSetAttendance(kidId, weekIdx, present){
+  if(!ATTENDANCE[kidId]) ATTENDANCE[kidId]=WEEKS.map(w=>({date:w,present:false}));
+  ATTENDANCE[kidId][weekIdx].present = present;
+  const k=KIDS.find(x=>x.id===kidId);
+  if(k) k.streak=ATTENDANCE[kidId].filter(w=>w.present).length;
+  render();
+  saveKidToDB(kidId);
+}
+// Attendance toggle door efendija (vanuit detailscherm)
 function toggleAttendance(kidId, weekIdx){
   if(!ATTENDANCE[kidId]) ATTENDANCE[kidId]=WEEKS.map(w=>({date:w,present:false}));
   ATTENDANCE[kidId][weekIdx].present=!ATTENDANCE[kidId][weekIdx].present;
