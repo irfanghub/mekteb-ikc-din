@@ -1178,6 +1178,18 @@ function kidHome(){
               `Selam ${k.name}, nedostajao/la si nam na posljednjem mektebu, nadamo se da ćeš doći sljedeće nedjelje!`)}
         </div>
       </div>` : ''}
+
+      <!-- STATS + BADGES direct na greeting -->
+      <div class="stats" style="margin-bottom:12px">
+        <div class="stat"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">${L('Streak','Sedmice')}</div></div>
+        <div class="stat"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${L('Hafiz (suras)','Hafiz (sure)')}</div></div>
+        <div class="stat"><div class="icon" style="background:var(--blue-soft);color:var(--blue)">🌙</div><div class="num">${ilmScore}</div><div class="lbl">Ilmihal pt</div></div>
+      </div>
+      <div class="section-head" style="margin-top:2px;margin-bottom:6px"><div class="h3">${T('myBadges')}</div></div>
+      <div class="badge-row" style="margin-bottom:14px">
+        ${BADGES.map((b,i)=>`<div class="badge ${b.got?'':'locked'}" style="cursor:pointer" onclick="openBadgeModal(${i})"><div class="b-icon">${b.icon}</div><div class="b-name">${state.lang==='nl'?b.name:b.name_bs}</div></div>`).join('')}
+      </div>
+
       ${(()=>{
         // Huidige sura: scan alle niveaus N1→N2→N3 voor eerste 'current' sura
         let curSura = null;
@@ -1225,17 +1237,8 @@ function kidHome(){
         </div>`;
       })()}
       ${allMyHw.length ? `
-        <div class="section-head" style="margin-top:14px"><div class="h3">📝 ${T('homework')}</div><div style="font-size:12px;color:var(--muted);font-weight:700">${myHw.length} ${L('open','otvoreno')}</div></div>
+        <div class="section-head" style="margin-top:4px"><div class="h3">📝 ${T('homework')}</div><div style="font-size:12px;color:var(--muted);font-weight:700">${myHw.length} ${L('open','otvoreno')}</div></div>
         ${allMyHw.map(h=>hwCard(h)).join('')}` : ''}
-      <div class="stats" style="margin-top:14px">
-        <div class="stat"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">${L('Streak','Sedmice')}</div></div>
-        <div class="stat"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${L('Hafiz (suras)','Hafiz (sure)')}</div></div>
-        <div class="stat"><div class="icon" style="background:var(--blue-soft);color:var(--blue)">🌙</div><div class="num">${ilmScore}</div><div class="lbl">Ilmihal pt</div></div>
-      </div>
-      <div class="section-head" style="margin-top:14px"><div class="h3">${T('myBadges')}</div></div>
-      <div class="badge-row">
-        ${BADGES.map((b,i)=>`<div class="badge ${b.got?'':'locked'}" style="cursor:pointer" onclick="openBadgeModal(${i})"><div class="b-icon">${b.icon}</div><div class="b-name">${state.lang==='nl'?b.name:b.name_bs}</div></div>`).join('')}
-      </div>
       <div class="section-head" style="margin-top:14px"><div class="h3">${T('topThisWeek')}</div><a onclick="setNav('leader')">${T('leaderboard')} →</a></div>
       <div class="list">
         ${KIDS.slice(0,3).map((kk,i)=>`
@@ -2000,16 +2003,57 @@ function topbarEf(){
 function efHome(){
   const e = state.me;
   const myKids = KIDS.filter(k=>e.levels.includes(k.level));
+  const nextSun = nextSundayDate();
+  const nextSunLbl = new Date(nextSun).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{weekday:'long',day:'numeric',month:'long'});
+  // Ouder aanmeldingen voor komende les
+  const notifYes  = myKids.filter(k=>(PARENT_NOTIFICATIONS[k.id]||{})[nextSun]==='yes');
+  const notifNo   = myKids.filter(k=>(PARENT_NOTIFICATIONS[k.id]||{})[nextSun]==='no');
+  const notifNone = myKids.filter(k=>!(PARENT_NOTIFICATIONS[k.id]||{})[nextSun]);
+
   return `${topbarEf()}
     <div class="screen">
       <div class="greeting"><h1>${T('salam')}, ${e.name}!</h1><p>${state.lang==='nl'?'klaar voor de volgende les?':'spreman za sljedeći čas?'}</p></div>
-      <div class="lesson-card">
-        <div class="lc-date">${T('today')} • ${state.lang==='nl'?'Zondag':'Nedjelja'}</div>
-        <button style="margin-top:10px;background:var(--green);color:#fff;padding:10px 18px;border-radius:12px;font-weight:800;font-size:13px" onclick="setNav('students')">${T('attendance')} →</button>
+
+      <!-- KOMENDE LES + OUDER AANMELDINGEN -->
+      <div class="lesson-card" style="margin-bottom:12px">
+        <div class="lc-date" style="text-transform:capitalize">📅 ${L('Komende les','Sljedeći čas')} — ${nextSunLbl}</div>
+        <div class="lc-title">${L('Aanwezigheid komende zondag','Prisustvo sljedeće nedjelje')}</div>
+        <!-- Samenvatting ouder-aanmeldingen -->
+        <div style="display:flex;gap:8px;margin:10px 0 8px;flex-wrap:wrap">
+          <div style="background:rgba(255,255,255,.22);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;color:#fff">
+            ✅ ${notifYes.length} ${L('ja','da')}
+          </div>
+          <div style="background:rgba(255,255,255,.22);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;color:#fff">
+            ❌ ${notifNo.length} ${L('nee','ne')}
+          </div>
+          <div style="background:rgba(255,255,255,.22);border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800;color:#fff">
+            ❓ ${notifNone.length} ${L('geen bericht','bez odgovora')}
+          </div>
+        </div>
+        <!-- Per-kind ouder status -->
+        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+          ${myKids.map(k=>{
+            const notif=(PARENT_NOTIFICATIONS[k.id]||{})[nextSun]??null;
+            const chip = notif==='yes'
+              ? `<span style="font-size:10px;font-weight:900;background:rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:2px 7px">📱✅ ${L('aanwezig','prisutan/na')}</span>`
+              : notif==='no'
+              ? `<span style="font-size:10px;font-weight:900;background:rgba(255,255,255,.25);color:#fff;border-radius:6px;padding:2px 7px">📱❌ ${L('afwezig','odsutan/na')}</span>`
+              : `<span style="font-size:10px;font-weight:700;background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);border-radius:6px;padding:2px 7px">❓ ${L('geen bericht','bez poruke')}</span>`;
+            return `<div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:10px;padding:6px 10px">
+              <div class="avatar sm ${colorOf(k.name)}" style="width:26px;height:26px;font-size:11px">${initial(k.name)}</div>
+              <div style="font-size:12px;font-weight:800;color:#fff;flex:1">${k.name}</div>
+              ${chip}
+            </div>`;
+          }).join('')}
+        </div>
+        <button style="background:#fff;color:var(--green);padding:9px 18px;border-radius:12px;font-weight:900;font-size:13px;width:100%" onclick="state.nav='students';state.kidTab='attendance';state.efAttWeekIdx=${WEEKS.length-1};render()">
+          ${L('Aanwezigheid registreren','Registruj prisustvo')} →
+        </button>
       </div>
+
       <div class="metric-grid">
-        <div class="metric"><div class="m-lbl">${T('students')}</div><div class="m-num">${myKids.length}</div><div class="m-trend up">↑ 2 ${state.lang==='nl'?'deze maand':'ovaj mjesec'}</div></div>
-        <div class="metric"><div class="m-lbl">${T('avgAttend')}</div><div class="m-num">87%</div><div class="m-trend up">↑ 5%</div></div>
+        <div class="metric"><div class="m-lbl">${T('students')}</div><div class="m-num">${myKids.length}</div></div>
+        <div class="metric"><div class="m-lbl">${T('avgAttend')}</div><div class="m-num">${Math.round(myKids.reduce((s,k)=>{const a=ATTENDANCE[k.id]||[];return s+(a.length?a.filter(w=>w.present).length/a.length:0);},0)/Math.max(1,myKids.length)*100)}%</div></div>
       </div>
       <div class="section-head"><div class="h3">${T('students')}</div><a onclick="setNav('students')">${state.lang==='nl'?'alle':'svi'} →</a></div>
       <div class="list">
