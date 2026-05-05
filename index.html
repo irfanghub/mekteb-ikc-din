@@ -223,10 +223,12 @@ input,select,textarea{font-family:inherit;font-weight:600}
 .compose button{background:var(--green);color:#fff;width:38px;height:38px;border-radius:13px;font-weight:900;display:flex;align-items:center;justify-content:center}
 
 /* EFENDIJA — aanwezigheid */
-.lesson-card{background:linear-gradient(135deg,var(--blue-soft),#fff);border-radius:18px;padding:16px;box-shadow:var(--shadow-sm);margin-bottom:14px}
-.lesson-card .lc-date{font-size:11px;color:var(--blue);font-weight:800;text-transform:uppercase;letter-spacing:.5px}
-.lesson-card .lc-title{font-size:18px;font-weight:900;margin:2px 0 6px}
-.lesson-card .lc-meta{font-size:12px;color:var(--muted);font-weight:700}
+.lesson-card{background:linear-gradient(135deg,var(--green),var(--green-mid));color:#fff;border-radius:18px;padding:16px;box-shadow:0 8px 20px rgba(26,92,46,.18);margin-bottom:14px}
+.lesson-card .lc-date{font-size:11px;color:rgba(255,255,255,.85);font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.lesson-card .lc-title{font-size:18px;font-weight:900;margin:2px 0 6px;color:#fff}
+.lesson-card .lc-meta{font-size:12px;color:rgba(255,255,255,.85);font-weight:700}
+.lesson-card .lc-chip{background:rgba(255,255,255,.22);color:#fff;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:800}
+.lesson-card .lc-chip-strong{background:#fff;color:var(--green);font-weight:900}
 .aw-list .aw-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
 .aw-list .aw-row:last-child{border:0}
 .aw-list{background:#fff;border-radius:16px;box-shadow:var(--shadow-sm);overflow:hidden}
@@ -248,8 +250,9 @@ input,select,textarea{font-family:inherit;font-weight:600}
 .bar-fill{height:100%;background:linear-gradient(90deg,var(--green-mid),var(--green));border-radius:4px;transition:.4s}
 
 /* BADGE MODAL */
-.badge-modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:flex-end;justify-content:center;border-radius:32px;animation:fadeIn .18s ease}
-.badge-modal-sheet{background:var(--card);border-radius:28px 28px 22px 22px;padding:24px 20px 30px;width:100%;max-width:390px;animation:slideUp .22s ease;position:relative}
+.badge-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:center;justify-content:center;animation:fadeIn .18s ease;padding:20px}
+.badge-modal-sheet{background:var(--card);border-radius:24px;padding:24px 20px 26px;width:100%;max-width:380px;max-height:calc(100vh - 40px);overflow-y:auto;animation:popIn .22s ease;position:relative}
+@keyframes popIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 @keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 .badge-modal-icon{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--gold-bright),var(--gold));display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:36px;box-shadow:0 8px 24px rgba(200,147,42,.35)}
 .badge-modal-icon.locked{background:linear-gradient(135deg,#cbd5e1,#94a3b8);box-shadow:none}
@@ -895,6 +898,7 @@ let state = {
   regData: {ouderNaam:'', ouderPin:'', kinderen:['']},
   leaderTab: 'myLevel', // 'myLevel' | 'hafizTop' | 'streakTop'
   showBadgeModal: null, // index in BADGES array, of null
+  showScoreModal: null, // 'streak' | 'hafiz' | 'ilmihal' | null
 };
 
 // Per-kind stations: PATH = label/icon/pts template, kid.stationData = echte status per kind
@@ -1181,9 +1185,9 @@ function kidHome(){
 
       <!-- STATS + BADGES direct na greeting -->
       <div class="stats" style="margin-bottom:12px">
-        <div class="stat"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">${L('Streak','Sedmice')}</div></div>
-        <div class="stat"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${L('Hafiz (suras)','Hafiz (sure)')}</div></div>
-        <div class="stat"><div class="icon" style="background:var(--blue-soft);color:var(--blue)">🌙</div><div class="num">${ilmScore}</div><div class="lbl">Ilmihal pt</div></div>
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('streak')"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">${L('Streak','Sedmice')}</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('hafiz')"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${L('Hafiz (suras)','Hafiz (sure)')}</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('ilmihal')"><div class="icon" style="background:var(--blue-soft);color:var(--blue)">🌙</div><div class="num">${ilmScore}</div><div class="lbl">Ilmihal pt</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
       </div>
       <div class="section-head" style="margin-top:2px;margin-bottom:6px"><div class="h3">${T('myBadges')}</div></div>
       <div class="badge-row" style="margin-bottom:14px">
@@ -1251,7 +1255,8 @@ function kidHome(){
       </div>
     </div>
     ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}
-    ${badgeModalHtml()}`;
+    ${badgeModalHtml()}
+    ${scoreModalHtml()}`;
 }
 
 function currentStation(level, cat){
@@ -1421,8 +1426,8 @@ function kidProfile(){
         <div class="muted" style="font-size:13px">${T('currentLevel')} ${computedLevel(k)} • ${T('memberSince')} ${k.sinceYear}</div>
       </div>
       <div class="stats">
-        <div class="stat"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">streak</div></div>
-        <div class="stat"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${T('hafizPts').split(' ')[1]||'pt'}</div></div>
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('streak')"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">streak</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('hafiz')"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${T('hafizPts').split(' ')[1]||'pt'}</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
         <div class="stat"><div class="icon" style="background:var(--purple-soft);color:var(--purple)">🏅</div><div class="num">${BADGES.filter(b=>b.got).length}</div><div class="lbl">badges</div></div>
       </div>
       <div class="section-head" style="margin-top:16px"><div class="h3">${T('allBadgesTtl')}</div></div>
@@ -1435,7 +1440,8 @@ function kidProfile(){
       </div>
     </div>
     ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}
-    ${badgeModalHtml()}`;
+    ${badgeModalHtml()}
+    ${scoreModalHtml()}`;
 }
 
 function kidHomework(){
@@ -2614,6 +2620,82 @@ function badgeModalHtml(){
         <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.5">${how}</div>
       </div>` : ''}
       <button onclick="closeBadgeModal()" style="width:100%;padding:14px;background:var(--green);color:#fff;border-radius:16px;font-weight:900;font-size:15px">
+        ${L('Sluiten','Zatvori')}
+      </button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCORE MODAL (streak / hafiz / ilmihal uitleg)
+// ═══════════════════════════════════════════════════════════════
+const SCORE_INFO = {
+  streak: {
+    icon:'🔥',
+    color:'orange',
+    title_nl:'Streak (sedmice)', title_bs:'Streak (sedmice)',
+    value:(k)=> `${k.streak} ${k.streak===1?'week':'weken'}`,
+    value_bs:(k)=> `${k.streak} ${k.streak===1?'sedmica':'sedmica'}`,
+    desc_nl:'Je streak telt hoeveel weken achter elkaar je naar de mekteb komt. Elke keer dat je er bent, gaat hij omhoog. Mis je een keer? Dan begint de teller niet opnieuw — alle aanwezige zondagen blijven meetellen.',
+    desc_bs:'Tvoj streak broji koliko si nedjelja zaredom dolazio/la na mekteb. Svaki put kad si tu, broj raste. Ako jednom izostaneš, brojač se ne resetuje — sve nedjelje kad si bio/la i dalje se računaju.',
+    how_nl:'Kom elke zondag naar de mekteb. De efendija registreert je aanwezigheid.',
+    how_bs:'Dolazi svake nedjelje na mekteb. Efendija upisuje tvoje prisustvo.'
+  },
+  hafiz: {
+    icon:'⭐',
+    color:'gold',
+    title_nl:'Hafiz punten', title_bs:'Hafiz bodovi',
+    value:(k)=> `${k.pts} pt`,
+    value_bs:(k)=> `${k.pts} bod.`,
+    desc_nl:'Hafiz punten verdien je door suras uit het hoofd te leren. Hoe langer en moeilijker de sura, hoe meer punten. Een hafiz is iemand die de hele Qur\'an uit het hoofd kent — dit is jouw eerste stap op die weg.',
+    desc_bs:'Hafiz bodove dobijaš kad naučiš sure napamet. Što je sura duža i teža, to više bodova. Hafiz je neko ko zna cijeli Kur\'an napamet — ovo je tvoj prvi korak na tom putu.',
+    how_nl:'Leer suras uit het hoofd en zeg ze op aan de efendija. Hij vinkt ze af en je krijgt de punten.',
+    how_bs:'Nauči sure napamet i prouči ih efendiji. On ih označi kao završene i dobiješ bodove.'
+  },
+  ilmihal: {
+    icon:'🌙',
+    color:'blue',
+    title_nl:'Ilmihal punten', title_bs:'Ilmihal bodovi',
+    value:(k)=> `${ilmPts(k.id)} pt`,
+    value_bs:(k)=> `${ilmPts(k.id)} bod.`,
+    desc_nl:'Ilmihal is wat een moslim moet weten over zijn geloof — over Allah, de Profeet ﷺ, namaz, vasten en goed gedrag. Voor elke les die je af hebt, krijg je punten. Zo bouw je stap voor stap je kennis op.',
+    desc_bs:'Ilmihal je ono što musliman treba znati o svojoj vjeri — o Allahu, Poslaniku ﷺ, namazu, postu i lijepom ponašanju. Za svaku završenu lekciju dobiješ bodove. Tako korak po korak gradiš svoje znanje.',
+    how_nl:'Leer de ilmihal-lessen. De efendija vinkt elke les af die je begrepen hebt.',
+    how_bs:'Uči ilmihal lekcije. Efendija označi svaku lekciju koju si savladao/la.'
+  }
+};
+function openScoreModal(key){ state.showScoreModal=key; render(); }
+function closeScoreModal(){ state.showScoreModal=null; render(); }
+function scoreModalHtml(){
+  if(!state.showScoreModal) return '';
+  const k = state.me;
+  const info = SCORE_INFO[state.showScoreModal];
+  if(!info || !k) return '';
+  const title = state.lang==='nl' ? info.title_nl : info.title_bs;
+  const desc  = state.lang==='nl' ? info.desc_nl  : info.desc_bs;
+  const how   = state.lang==='nl' ? info.how_nl   : info.how_bs;
+  const val   = state.lang==='nl' ? info.value(k) : (info.value_bs?info.value_bs(k):info.value(k));
+  const colorMap = {
+    orange:{bg:'linear-gradient(135deg,#ffedd5,#fdba74)', shadow:'rgba(249,115,22,.35)'},
+    gold:  {bg:'linear-gradient(135deg,var(--gold-bright),var(--gold))', shadow:'rgba(200,147,42,.35)'},
+    blue:  {bg:'linear-gradient(135deg,#93c5fd,var(--blue))', shadow:'rgba(59,130,246,.35)'}
+  };
+  const c = colorMap[info.color] || colorMap.gold;
+  return `<div class="badge-modal-overlay" onclick="closeScoreModal()">
+    <div class="badge-modal-sheet" onclick="event.stopPropagation()">
+      <div class="badge-modal-icon" style="background:${c.bg};box-shadow:0 8px 24px ${c.shadow}">${info.icon}</div>
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-weight:900;font-size:19px;letter-spacing:-.3px">${title}</div>
+        <div style="margin-top:6px"><span style="background:var(--green-soft);color:var(--green);font-size:13px;font-weight:900;padding:5px 14px;border-radius:10px">${val}</span></div>
+      </div>
+      <div style="background:var(--bg);border-radius:16px;padding:14px;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.5">${desc}</div>
+      </div>
+      <div style="background:var(--gold-soft);border-radius:16px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:900;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💡 ${L('Hoe verdien je dit?','Kako to zaraditi?')}</div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.5">${how}</div>
+      </div>
+      <button onclick="closeScoreModal()" style="width:100%;padding:14px;background:var(--green);color:#fff;border-radius:16px;font-weight:900;font-size:15px">
         ${L('Sluiten','Zatvori')}
       </button>
     </div>
