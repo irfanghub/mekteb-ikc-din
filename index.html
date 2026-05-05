@@ -782,10 +782,22 @@ const BADGES = [
 let HOMEWORK = []; // wordt geladen vanuit Supabase in loadData()
 
 // Laatste 10 zondagen — voor aanwezigheidsrijen
+const MEKTEB_START = '2026-04-19'; // eerste mekteb-zondag — aanwezigheid vóór deze datum telt niet mee
 const WEEKS = (()=>{
-  const arr=[]; const now=new Date();
-  const lastSun=new Date(now); lastSun.setDate(now.getDate()-now.getDay());
-  for(let i=9;i>=0;i--){ const d=new Date(lastSun); d.setDate(lastSun.getDate()-i*7); arr.push(d.toISOString().slice(0,10)); }
+  const arr = [];
+  const start = new Date(MEKTEB_START);
+  const now = new Date();
+  // Volgende zondag (of aanstaande, nooit terug in de tijd)
+  const daysUntilSun = now.getDay() === 0 ? 7 : 7 - now.getDay();
+  const nextSun = new Date(now);
+  nextSun.setDate(now.getDate() + daysUntilSun);
+  nextSun.setHours(0,0,0,0);
+  // Alle zondagen van startdatum t/m volgende zondag
+  const cur = new Date(start);
+  while(cur <= nextSun){
+    arr.push(cur.toISOString().slice(0,10));
+    cur.setDate(cur.getDate() + 7);
+  }
   return arr;
 })();
 
@@ -824,6 +836,7 @@ let state = {
   showAddKid: false,  // toon add-leerling formulier
   newKid: {name:'', level:1, pin:'', ouder1name:'', ouder1pin:'', ouder2name:'', ouder2pin:''},
   kidTab: 'list',     // 'list' | 'attendance' (voor efendija klas-scherm)
+  efAttWeekIdx: WEEKS.length - 1, // geselecteerde week in aanwezigheid-tab (default = komende zondag)
   selectedKid: null,  // kidId — drill-down per leerling (efendija)
   efDetailTab: 'voortgang', // 'voortgang' | 'aanwezigheid' | 'huiswerk'
   efPathTab: 'suras', // suras | ilmihal | quran (in leerling-detail)
@@ -1951,22 +1964,36 @@ function efStudents(){
             </div>`).join('')}
         </div>
       ` : `
-        <div class="greeting" style="margin-bottom:10px"><p>${T('today')}</p></div>
-        <div class="aw-list">
-          ${myKids.map(k=>{
-            const todayIdx = WEEKS.length - 1;
-            const isPresent = ATTENDANCE[k.id]?.[todayIdx]?.present || false;
-            return `<div class="aw-row">
-              <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-              <div style="flex:1"><div style="font-weight:800;font-size:14px">${k.name}</div><div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)}</div></div>
-              <div class="aw-toggle">
-                <button class="${isPresent?'aw':''}" onclick="efSetAttendance('${k.id}',${WEEKS.length-1},true)">${T('pres')}</button>
-                <button class="${!isPresent?'az':''}" onclick="efSetAttendance('${k.id}',${WEEKS.length-1},false)">${T('abs')}</button>
-              </div>
-            </div>`;
-          }).join('')}
-        </div>
-        <div style="margin-top:10px;font-size:11px;font-weight:700;color:var(--muted);text-align:center">✓ ${L('Wijzigingen worden direct opgeslagen','Promjene se odmah čuvaju')}</div>
+        ${(()=>{
+          const wi = state.efAttWeekIdx ?? WEEKS.length - 1;
+          const weekDate = WEEKS[wi] || WEEKS[WEEKS.length-1];
+          const d = new Date(weekDate);
+          const isUpcoming = wi === WEEKS.length - 1;
+          const dagLabel = d.toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{weekday:'long',day:'numeric',month:'long'});
+          return `
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+            <button onclick="state.efAttWeekIdx=Math.max(0,(state.efAttWeekIdx??${WEEKS.length-1})-1);render()" style="width:38px;height:38px;border-radius:12px;border:1.5px solid var(--line);font-size:18px;font-weight:900;background:#fff" ${wi===0?'disabled':''}>‹</button>
+            <div style="flex:1;text-align:center">
+              <div style="font-weight:900;font-size:14px">${isUpcoming?`📅 ${L('Komende les','Sljedeći čas')}`:''} ${dagLabel}</div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700">${wi+1} / ${WEEKS.length} ${L('weken','sedmica')}</div>
+            </div>
+            <button onclick="state.efAttWeekIdx=Math.min(${WEEKS.length-1},(state.efAttWeekIdx??${WEEKS.length-1})+1);render()" style="width:38px;height:38px;border-radius:12px;border:1.5px solid var(--line);font-size:18px;font-weight:900;background:#fff" ${wi===WEEKS.length-1?'disabled':''}>›</button>
+          </div>
+          <div class="aw-list">
+            ${myKids.map(k=>{
+              const isPresent = ATTENDANCE[k.id]?.[wi]?.present || false;
+              return `<div class="aw-row">
+                <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
+                <div style="flex:1"><div style="font-weight:800;font-size:14px">${k.name}</div><div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)}</div></div>
+                <div class="aw-toggle">
+                  <button class="${isPresent?'aw':''}" onclick="efSetAttendance('${k.id}',${wi},true)">${T('pres')}</button>
+                  <button class="${!isPresent?'az':''}" onclick="efSetAttendance('${k.id}',${wi},false)">${T('abs')}</button>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="margin-top:8px;font-size:11px;font-weight:700;color:var(--muted);text-align:center">✓ ${L('Direct opgeslagen','Odmah se čuva')}</div>`;
+        })()}
       `}
     </div>
     ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
