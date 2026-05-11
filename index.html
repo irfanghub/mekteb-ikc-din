@@ -933,7 +933,7 @@ const render = () => {
     if(newInput){ newInput.focus(); if(savedPos!==null) newInput.setSelectionRange(savedPos, savedPos); }
   }
 };
-function toggleDark(){ state.darkMode=!state.darkMode; render(); }
+function toggleDark(){ state.darkMode=!state.darkMode; try{localStorage.setItem('mekteb_dark', state.darkMode?'1':'0');}catch(_){} render(); }
 
 function router(){
   if(state.loading) return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--green)">
@@ -1460,7 +1460,10 @@ function hwCard(h, readOnly=true){
       </div>
       <div class="check ${h.done?'done':''}" ${readOnly?'style="opacity:.5;cursor:default"':('onclick="efToggleHw('+h.id+')"')}>${h.done?'✓':''}</div>
     </div>
-    <div class="hw-meta"><span style="font-size:11px;color:var(--muted);font-weight:700">— ${EFENDIJAS.find(e=>e.id===h.fromTeacher)?.name||'efendija'}</span></div>
+    <div class="hw-meta" style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:11px;color:var(--muted);font-weight:700">— ${EFENDIJAS.find(e=>e.id===h.fromTeacher)?.name||'efendija'}</span>
+      ${readOnly?'':`<button onclick="efDelHw(${h.id})" title="${L('Verwijder huiswerk','Obriši zadaću')}" style="background:transparent;color:var(--red);font-size:14px;padding:4px 8px;border-radius:8px;font-weight:900">🗑️</button>`}
+    </div>
   </div>`;
 }
 function toggleHw(id){ /* disabled — only efendija via efToggleHw */ }
@@ -1923,7 +1926,15 @@ function efDetailBewerken(k){
         <input id="edit-kid-name" type="text" value="${k.name}" style="flex:1;font-size:14px;font-weight:800" oninput="" placeholder="${k.name}">
         <button onclick="saveKidName('${k.id}')" style="background:var(--green);color:#fff;padding:9px 14px;border-radius:11px;font-weight:800;font-size:13px">${L('Opslaan','Sačuvaj')}</button>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:700">${L('Niveau','Nivo')}: N${k.level}</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+        <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">${L('Niveau','Nivo')}</div>
+        <select onchange="efSetKidLevel('${k.id}', this.value)" style="padding:8px 10px;border-radius:10px;border:1.5px solid var(--line);background:#fff;font-weight:800;font-size:13px">
+          <option value="1" ${k.level===1?'selected':''}>N1</option>
+          <option value="2" ${k.level===2?'selected':''}>N2</option>
+          <option value="3" ${k.level===3?'selected':''}>N3</option>
+        </select>
+        <div style="font-size:11px;color:var(--muted);font-weight:700">${L('huidig: N','trenutno: N')}${k.level}</div>
+      </div>
     </div>
     <!-- Ouder(s) bestaand -->
     ${parents.map(p=>`
@@ -2710,13 +2721,14 @@ function parentConfirmAttendance(kidId, attending){
   if(!PARENT_NOTIFICATIONS[kidId]) PARENT_NOTIFICATIONS[kidId] = {};
   PARENT_NOTIFICATIONS[kidId][d] = attending; // 'yes' | 'no'
   render();
+  saveKidToDB(kidId); // async: persist naar Supabase zodat efendija het ook ziet
 }
 
 // ═══════════════════════════════════════════════════════════════
 // HANDLERS
 // ═══════════════════════════════════════════════════════════════
 function go(v){ state.view=v; render(); }
-function setLang(l){ state.lang=l; render(); }
+function setLang(l){ state.lang=l; try{localStorage.setItem('mekteb_lang', l);}catch(_){} render(); }
 function pickRole(r){ state.role=r; state.view='login'; state.searchQuery=''; render(); }
 function pickPerson(id){ state.selectedPerson = pool().find(p=>String(p.id)===String(id)); state.pin=''; render(); }
 function setNav(k){ state.nav=k; state.threadOpen=null; render(); }
@@ -2781,6 +2793,24 @@ function toggleAttendance(kidId, weekIdx){
 }
 // Huiswerk afvinken — alleen efendija
 function efToggleHw(id){ const h=HOMEWORK.find(x=>x.id===id); if(h){h.done=!h.done; render(); saveKidToDB(h.kidId);} }
+function efDelHw(id){
+  const h = HOMEWORK.find(x=>x.id===id);
+  if(!h) return;
+  if(!confirm(L(`Huiswerk "${h.title}" verwijderen?`,`Obrisati zadaću "${h.title}"?`))) return;
+  const kidId = h.kidId;
+  HOMEWORK.splice(HOMEWORK.indexOf(h), 1);
+  render();
+  saveKidToDB(kidId);
+}
+function efSetKidLevel(kidId, lvl){
+  const k = KIDS.find(x=>x.id===kidId);
+  if(!k) return;
+  const newLvl = parseInt(lvl)||1;
+  if(newLvl===k.level) return;
+  k.level = newLvl;
+  render();
+  saveKidToDB(kidId);
+}
 // Huiswerk toevoegen door efendija
 let _hwIdCtr=10;
 function efAddHw(kidId){
@@ -2823,6 +2853,8 @@ async function loadData(){
     const {data, error} = await DB.from('leerlingen_v5').select('*').order('rang');
     if(error) throw error;
     KIDS.length=0; PARENTS.length=0; HOMEWORK.length=0; state.ilmDone={};
+    Object.keys(PARENT_NOTIFICATIONS).forEach(k=>delete PARENT_NOTIFICATIONS[k]);
+    Object.keys(ATTENDANCE).forEach(k=>delete ATTENDANCE[k]);
     let pIdCtr=1000; _hwIdCtr=10;
     data.forEach(row=>{
       const kid = {
@@ -2846,12 +2878,18 @@ async function loadData(){
       WEEKS.forEach(w=>{ if(!attDates.has(w)) att.push({date:w, present:false}); });
       att.sort((a,b)=>a.date.localeCompare(b.date));
       ATTENDANCE[row.id] = att;
-      // Ouder opbouwen vanuit ouder_naam/ouder_pin
-      if(row.ouder_naam){
-        const ex = PARENTS.find(p=>p.name===row.ouder_naam && p.pin===row.ouder_pin);
-        if(ex) ex.kidIds.push(row.id);
-        else PARENTS.push({id:++pIdCtr, name:row.ouder_naam, pin:row.ouder_pin||row.pin, kidIds:[row.id]});
-      }
+      // Ouder-aanmeldingen voor komende lessen ({date: 'yes'|'no'}) — uit DB
+      PARENT_NOTIFICATIONS[row.id] = (row.parent_notifications && typeof row.parent_notifications==='object') ? row.parent_notifications : {};
+      // Ouders opbouwen — leest nieuwe 'ouders' array, valt terug op legacy ouder_naam/ouder_pin
+      const ouderList = Array.isArray(row.ouders) && row.ouders.length
+        ? row.ouders
+        : (row.ouder_naam ? [{naam:row.ouder_naam, pin:row.ouder_pin}] : []);
+      ouderList.forEach(o=>{
+        if(!o || !o.naam) return;
+        const ex = PARENTS.find(p=>p.name===o.naam && p.pin===o.pin);
+        if(ex){ if(!ex.kidIds.includes(row.id)) ex.kidIds.push(row.id); }
+        else PARENTS.push({id:++pIdCtr, name:o.naam, pin:o.pin||row.pin, kidIds:[row.id]});
+      });
     });
     [...KIDS].sort((a,b)=>b.pts-a.pts).forEach((k,i)=>k.rank=i+1);
   } catch(e){ console.error('DB fout bij laden:', e); }
@@ -2861,7 +2899,9 @@ async function loadData(){
 async function saveKidToDB(kidId){
   const k = KIDS.find(x=>x.id===kidId);
   if(!k) return;
-  const p = PARENTS.find(p=>p.kidIds.includes(kidId));
+  // Verzamel ALLE ouders van dit kind (niet alleen de eerste)
+  const oudersVanKid = PARENTS.filter(p=>p.kidIds.includes(kidId));
+  const oudersArr = oudersVanKid.map(p=>({naam:p.name, pin:p.pin}));
   const att = (ATTENDANCE[kidId]||[]).map(a=>({date:a.date, present:a.present}));
   try {
     await DB.from('leerlingen_v5').upsert({
@@ -2870,10 +2910,14 @@ async function saveKidToDB(kidId){
       suras: k.stationData||{},
       ilmihal: state.ilmDone[k.id]||{},
       aanwezigheid: att,
-      ouder_naam: p ? p.name : '',
-      ouder_pin:  p ? p.pin  : '',
+      // Legacy: eerste ouder in single-kolom (backwards compat — niet weghalen!)
+      ouder_naam: oudersVanKid[0]?.name || '',
+      ouder_pin:  oudersVanKid[0]?.pin  || '',
+      // Nieuw: alle ouders als array — meerdere ouders per kind worden nu bewaard
+      ouders: oudersArr,
       since_year: k.sinceYear||2026,
       huiswerk: HOMEWORK.filter(h=>h.kidId===k.id),
+      parent_notifications: PARENT_NOTIFICATIONS[k.id]||{},
     });
   } catch(e){ console.error('DB fout bij opslaan:', e); }
 }
@@ -2900,6 +2944,13 @@ function saveParentName(parentId){
     render();
   }
 }
+
+// Persist UI prefs (taal + dark mode) — uitlezen voor init
+try {
+  const savedLang = localStorage.getItem('mekteb_lang');
+  if(savedLang==='nl' || savedLang==='bs') state.lang = savedLang;
+  if(localStorage.getItem('mekteb_dark')==='1') state.darkMode = true;
+} catch(_){}
 
 loadData(); // haalt data op uit Supabase en roept daarna render() aan
 </script>
