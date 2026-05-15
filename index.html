@@ -2233,310 +2233,539 @@ function topbarBestuur(){
   </div>`;
 }
 function bestuurHome(){
-  const total = KIDS.length;
-  const avgAtt = Math.round(KIDS.reduce((s,k)=>{
-    const a=ATTENDANCE[k.id]||[]; return s+(a.length?a.filter(w=>w.present).length/a.length:0);
-  },0)/Math.max(1,total)*100);
-  const avgPts = Math.round(KIDS.reduce((s,k)=>s+k.pts,0)/Math.max(1,total));
-  const healthLabel = avgAtt>=85?L('Goed','Dobro'):avgAtt>=70?L('Voldoende','Zadovoljava'):L('Aandacht!','Pažnja!');
-  const lastWeekPresent = KIDS.filter(k=>ATTENDANCE[k.id]?.[WEEKS.length-1]?.present).length;
-  const hwOpen = HOMEWORK.filter(h=>!h.done).length;
+  // ─── DATA: alle berekeningen voor Overzicht ────────────────────────
+  const today = new Date();
+  const totalKids = KIDS.length;
+  const lvlCount = [1,2,3].map(L => KIDS.filter(k=>k.level===L).length);
 
-  // VERDELING PER NIVEAU data
-  const NIVEAU_COLORS = {1:'#22c55e', 2:'#f97316', 3:'#8b5cf6'};
-  const NIVEAU_BG     = {1:'#dcfce7', 2:'#ffedd5', 3:'#f0eaff'};
-  const N = [1,2,3].map(lv=>{
-    const ks=KIDS.filter(k=>k.level===lv);
-    const att=ks.length?Math.round(ks.reduce((s,k)=>{const a=ATTENDANCE[k.id]||[];return s+(a.length?a.filter(w=>w.present).length/a.length:0);},0)/ks.length*100):0;
-    return{lv,count:ks.length,att};
+  // Hulp: laatste N unieke mekteb-datums waar minstens 1 kind iets geregistreerd had
+  const allDates = [...new Set(KIDS.flatMap(k => (ATTENDANCE[k.id]||[]).map(a=>a.date)))].sort();
+  const last4Dates = allDates.slice(-4);
+
+  // Aanwezigheid laatste 4 mektebs (totaal kids aanwezig / totaal kids gemeten)
+  const last4 = last4Dates.map(d => {
+    const pres = KIDS.filter(k => (ATTENDANCE[k.id]||[]).find(a=>a.date===d && a.present)).length;
+    const meten = KIDS.filter(k => (ATTENDANCE[k.id]||[]).some(a=>a.date===d)).length || totalKids;
+    return { date: d, pct: Math.round(pres/Math.max(1,meten)*100), pres, meten };
+  });
+  const avgLast4 = last4.length ? Math.round(last4.reduce((s,r)=>s+r.pct,0)/last4.length) : 0;
+
+  // Actieve leerlingen = niet 3+ op rij afwezig
+  const actief = KIDS.filter(k => {
+    const arr = (ATTENDANCE[k.id]||[]).slice(-3);
+    return !(arr.length>=3 && arr.every(a=>!a.present));
+  }).length;
+  const pctActief = totalKids ? Math.round(actief/totalKids*100) : 0;
+
+  // GEZONDHEID = 60% aanwezigheid laatste 4 mektebs + 40% % actieve leerlingen
+  const gezondheid = Math.round(avgLast4*0.6 + pctActief*0.4);
+  const gezondLabel = gezondheid>=80 ? L('Het loopt goed','Sve ide dobro')
+                    : gezondheid>=60 ? L('Gaat redelijk','Ide solidno')
+                    : gezondheid>=40 ? L('Aandacht nodig','Treba pažnja')
+                                     : L('Actie vereist','Hitno potrebna pažnja');
+  const gezondColor = gezondheid>=80 ? 'var(--green-mid)' : gezondheid>=60 ? '#f4c430' : gezondheid>=40 ? 'var(--orange)' : 'var(--red)';
+
+  // Aanwezigheid per niveau (laatste 4 mektebs)
+  const lvlAtt = [1,2,3].map(L => {
+    const kidsL = KIDS.filter(k=>k.level===L);
+    if(!kidsL.length) return { lvl:L, pct:null, count:0 };
+    let totPres=0, totMeten=0;
+    last4Dates.forEach(d => {
+      kidsL.forEach(k => {
+        const rec = (ATTENDANCE[k.id]||[]).find(a=>a.date===d);
+        if(rec){ totMeten++; if(rec.present) totPres++; }
+      });
+    });
+    return { lvl:L, pct: totMeten? Math.round(totPres/totMeten*100) : null, count:kidsL.length };
   });
 
-  // AANDACHT NODIG — 3+ afwezig
-  const aandacht = KIDS.map(k=>{
-    const abs=(ATTENDANCE[k.id]||[]).filter(w=>!w.present).length;
-    return{k,abs};
-  }).filter(x=>x.abs>=3).sort((a,b)=>b.abs-a.abs);
+  // Aandacht nodig: 3+ keer afwezig in laatste 6 mektebs
+  const last6 = allDates.slice(-6);
+  const aandachtKids = KIDS.map(k => {
+    const arr = (ATTENDANCE[k.id]||[]).filter(a=>last6.includes(a.date));
+    const afw = arr.filter(a=>!a.present).length;
+    return { k, afw, totalAtt: arr.length };
+  }).filter(r => r.afw >= 3).sort((a,b)=>b.afw-a.afw);
 
-  // TOP LEERLINGEN — top 5 op punten
-  const topKids = [...KIDS].sort((a,b)=>b.pts-a.pts).slice(0,5);
+  // Hafiz van de maand: top punten met >= 75% aanwezigheid laatste 4 mektebs
+  const hafizKandidaten = KIDS.map(k => {
+    const arr = (ATTENDANCE[k.id]||[]).filter(a=>last4Dates.includes(a.date));
+    const pct = arr.length ? arr.filter(a=>a.present).length/arr.length : 0;
+    return { k, pct, pts:k.pts||0 };
+  }).filter(r => r.pct >= 0.75).sort((a,b)=>b.pts-a.pts);
+  const hafiz = hafizKandidaten[0];
+
+  // Huiswerk open
+  const hwOpen = HOMEWORK.filter(h=>!h.done).length;
+
+  // Eerstvolgende zondag
+  const nextSun = nextSundayDate();
+  const nextSunObj = new Date(nextSun);
 
   return `${topbarBestuur()}
-    <div class="screen" id="bestuur-dashboard" style="padding-bottom:28px">
-      <!-- HERO STATS -->
-      <div style="background:linear-gradient(135deg,var(--green),var(--green-mid));border-radius:22px;padding:16px 18px;margin-bottom:16px;box-shadow:0 10px 28px rgba(0,200,83,.22)">
-        <div style="font-size:10px;font-weight:900;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px">${T('health')}</div>
-        <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-.5px">${avgAtt}% — ${healthLabel}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:3px;font-weight:700">${total} ${L('leerlingen  •  ef. Ali Gljiva','učenika  •  ef. Ali Gljiva')}</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:12px">
-          ${[
-            {lbl:L('Leerlingen','Učenici'), val:total, ico:'🎓'},
-            {lbl:L('Aanwezig','Prisutni'), val:lastWeekPresent+'/'+total, ico:'📅'},
-            {lbl:'Hafiz ⌀', val:avgPts+'pt', ico:'⭐'},
-            {lbl:L('HW open','Zadaće'), val:hwOpen, ico:'📝'},
-          ].map(m=>`<div style="background:rgba(255,255,255,.18);border-radius:13px;padding:9px 6px;text-align:center;backdrop-filter:blur(4px)">
-            <div style="font-size:15px;margin-bottom:2px">${m.ico}</div>
-            <div style="font-size:17px;font-weight:900;color:#fff;line-height:1">${m.val}</div>
-            <div style="font-size:9px;color:rgba(255,255,255,.8);font-weight:800;margin-top:2px">${m.lbl}</div>
-          </div>`).join('')}
+    <div class="screen" style="padding:14px 12px 100px">
+      <!-- Sub-header -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px">${nextSunObj.toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+        <div style="font-weight:900;font-size:19px;letter-spacing:-.3px">IKC DIN — ${L('overzicht','pregled')}</div>
+      </div>
+
+      <!-- Mekteb-gezondheid donut -->
+      <div class="card" style="margin-bottom:12px;padding:14px;display:flex;gap:14px;align-items:center">
+        ${donutSvg(gezondheid, 78, gezondColor)}
+        <div style="flex:1">
+          <div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px">${L('Mekteb-status','Status mekteba')}</div>
+          <div style="font-weight:900;font-size:16px;color:${gezondColor};margin:2px 0 4px">${gezondLabel}</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700">${last4Dates.length? `${last4[last4.length-1].pres}/${last4[last4.length-1].meten} ${L('aanwezig laatste mekteb','prisutni zadnji mekteb')}` : L('Nog geen mekteb-data','Još nema podataka')}</div>
         </div>
       </div>
 
-      <!-- VERDELING PER NIVEAU -->
-      <div class="section-head"><div class="h3">📊 ${L('Verdeling per niveau','Raspodjela po nivou')}</div></div>
-      <div class="card" style="padding:14px 16px;margin-bottom:14px">
-        ${N.map(n=>{
-          const pct = Math.round(n.count/Math.max(1,total)*100);
-          return `<div style="margin-bottom:${n.lv<3?12:0}px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-              <div style="display:flex;align-items:center;gap:8px">
-                <div style="width:10px;height:10px;border-radius:3px;background:${NIVEAU_COLORS[n.lv]}"></div>
-                <span style="font-weight:800;font-size:13px">${L('Niveau','Nivo')} ${n.lv}</span>
-                <span style="font-size:11px;background:${NIVEAU_BG[n.lv]};color:${NIVEAU_COLORS[n.lv]};border-radius:7px;padding:1px 7px;font-weight:800">${n.count} ${L('leerl.','uč.')}</span>
-              </div>
-              <span style="font-weight:900;font-size:13px;color:${n.att>=80?'var(--green)':n.att>=65?'var(--gold)':'var(--red)'}">${n.att}% ${L('aanw.','pris.')}</span>
-            </div>
-            <div style="height:8px;background:var(--line);border-radius:99px;overflow:hidden">
-              <div style="height:100%;width:${pct}%;background:${NIVEAU_COLORS[n.lv]};border-radius:99px;transition:.4s"></div>
-            </div>
-          </div>`;
-        }).join('')}
+      <!-- Leerlingen + niveaus + huiswerk-open grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="card" style="padding:12px">
+          <div style="font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${L('Leerlingen','Učenici')}</div>
+          <div style="font-size:28px;font-weight:900;line-height:1">${totalKids}</div>
+          <div style="display:flex;gap:5px;margin-top:8px;font-size:10px;font-weight:800">
+            <span style="background:var(--green-soft);color:var(--green);padding:2px 6px;border-radius:6px">N1·${lvlCount[0]}</span>
+            <span style="background:var(--orange-soft);color:var(--orange);padding:2px 6px;border-radius:6px">N2·${lvlCount[1]}</span>
+            <span style="background:var(--purple-soft);color:var(--purple);padding:2px 6px;border-radius:6px">N3·${lvlCount[2]}</span>
+          </div>
+        </div>
+        <div class="card" style="padding:12px">
+          <div style="font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📝 ${L('Huiswerk open','Otvorena zadaća')}</div>
+          <div style="font-size:28px;font-weight:900;line-height:1;color:${hwOpen>0?'var(--orange)':'var(--green-mid)'}">${hwOpen}</div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:8px">${hwOpen===0?L('Alles afgerond ✓','Sve završeno ✓'):L('opdrachten','zadataka')}</div>
+        </div>
       </div>
 
-      <!-- AANDACHT NODIG — 3+ keer afwezig -->
-      ${aandacht.length?`
-      <div class="section-head"><div class="h3">⚠️ ${L('Aandacht nodig','Potrebna pažnja')} <span style="font-size:11px;color:var(--red);font-weight:700">${L('3+ keer afwezig','3+ puta odsutan')}</span></div></div>
-      <div class="card" style="padding:0;margin-bottom:14px;overflow:hidden;border:1px solid rgba(239,68,68,.2)">
-        ${aandacht.map((x,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:11px 14px${i<aandacht.length-1?';border-bottom:1px solid var(--line)':''}">
-          <div class="avatar sm ${colorOf(x.k.name)}">${initial(x.k.name)}</div>
+      <!-- Aanwezigheid per niveau -->
+      <div class="card" style="margin-bottom:12px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-weight:900;font-size:14px">📊 ${L('Aanwezigheid per niveau','Prisutnost po nivou')}</div>
+          <div style="font-size:10px;color:var(--muted);font-weight:700">${L('laatste 4 mektebs','zadnja 4 mekteba')}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+          ${lvlAtt.map(r => `
+            <div style="text-align:center">
+              ${r.count===0 ? `<div style="width:64px;height:64px;border-radius:50%;background:var(--line);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);font-weight:800">—</div>`
+                            : donutSvg(r.pct||0, 64, r.pct>=80?'var(--green-mid)':r.pct>=60?'#f4c430':'var(--red)')}
+              <div style="font-size:12px;font-weight:800;margin-top:6px">${L('Niveau','Nivo')} ${r.lvl}</div>
+              <div style="font-size:10px;color:var(--muted);font-weight:700">${r.count} ${L('leerl.','učen.')}</div>
+            </div>`).join('')}
+        </div>
+      </div>
+
+      <!-- Aandacht nodig -->
+      ${aandachtKids.length ? `<div class="card" style="margin-bottom:12px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="background:var(--red-soft);color:var(--red);width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">⚠️</div>
+            <div style="font-weight:900;font-size:14px">${L('Aandacht nodig','Potrebna pažnja')}</div>
+          </div>
+          <button onclick="setNav('students')" style="font-size:11px;color:var(--green);font-weight:800">${aandachtKids.length} ${L('leerlingen','učenika')} ›</button>
+        </div>
+        ${aandachtKids.slice(0,3).map(r => `
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)">
+            <div class="avatar ${colorOf(r.k.name)}" style="width:32px;height:32px;font-size:13px">${initial(r.k.name)}</div>
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:13px">${r.k.name}</div>
+              <div style="font-size:10px;color:var(--muted);font-weight:700">N${r.k.level}</div>
+            </div>
+            <div style="background:var(--red-soft);color:var(--red);padding:4px 8px;border-radius:8px;font-size:11px;font-weight:900">${r.afw}× ${L('afw.','odsut.')}</div>
+          </div>`).join('')}
+      </div>` : ''}
+
+      <!-- Hafiz van de maand -->
+      ${hafiz ? `<div class="card" style="margin-bottom:12px;padding:14px;background:linear-gradient(135deg, var(--gold-soft) 0%, #fff 100%);border:1.5px solid var(--gold-bright)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-weight:900;font-size:14px">🏆 ${L('Hafiz van de maand','Hafiz mjeseca')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="avatar ${colorOf(hafiz.k.name)}" style="width:48px;height:48px;font-size:18px">${initial(hafiz.k.name)}</div>
           <div style="flex:1">
-            <div style="font-weight:800;font-size:13px">${x.k.name}</div>
-            <div style="font-size:11px;color:var(--muted);font-weight:700">${L('Niveau','Nivo')} ${computedLevel(x.k)}</div>
+            <div style="font-weight:900;font-size:15px">${hafiz.k.name}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700">${L('Niveau','Nivo')} ${hafiz.k.level} · ${Math.round(hafiz.pct*100)}% ${L('aanwezig','prisutan')}</div>
           </div>
           <div style="text-align:right">
-            <div style="font-weight:900;font-size:13px;color:var(--red)">${x.abs}×</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700">${L('afwezig','odsutan')}</div>
+            <div style="font-weight:900;color:var(--gold);font-size:15px">⭐ ${hafiz.pts}</div>
+            <div style="font-size:10px;color:var(--muted);font-weight:700">${L('punten','poena')}</div>
           </div>
-        </div>`).join('')}
-      </div>`
-      :`<div class="card" style="margin-bottom:14px;text-align:center;color:var(--green);font-weight:800;font-size:13px">✅ ${L('Geen leerlingen met 3+ afwezigheden','Nema učenika sa 3+ izostanaka')}</div>`}
-
-      <!-- AANWEZIGHEID OVERZICHT (was losse tab) -->
-      <div class="section-head"><div class="h3">📅 ${L('Aanwezigheid','Prisustvo')}</div></div>
-      ${(()=>{
-        const lastIdx2 = WEEKS.length - 1;
-        const lastWeekPresent2 = KIDS.filter(k=>ATTENDANCE[k.id]?.[lastIdx2]?.present).length;
-        const presentPct2 = Math.round(lastWeekPresent2/Math.max(1,total)*100);
-        const weekStats2 = WEEKS.map((w,i)=>{
-          const present=KIDS.filter(k=>ATTENDANCE[k.id]?.[i]?.present).length;
-          const pct=Math.round(present/Math.max(1,total)*100);
-          const d=new Date(w);
-          const lbl=d.toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit'});
-          return{lbl,present,pct};
-        }).reverse().slice(0,5);
-        const kidStats2=[...KIDS].map(k=>{
-          const att=ATTENDANCE[k.id]||[];
-          const pct=att.length?Math.round(att.filter(w=>w.present).length/att.length*100):0;
-          const abs=att.filter(w=>!w.present).length;
-          return{k,pct,abs};
-        }).sort((a,b)=>b.pct-a.pct);
-        return `
-        <div style="background:linear-gradient(135deg,#0d2e1f,#163a27);border-radius:16px;padding:13px 16px;margin-bottom:12px;display:flex;align-items:center;gap:14px">
-          <div>
-            <div style="font-size:22px;font-weight:900;color:#fff;line-height:1">${lastWeekPresent2}/${total}</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.65);font-weight:700">${L('aanstaande les','sljedeći čas')}</div>
-          </div>
-          <div style="flex:1;height:7px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden">
-            <div style="height:100%;width:${presentPct2}%;background:var(--green-mid);border-radius:99px;transition:.4s"></div>
-          </div>
-          <div style="font-weight:900;font-size:16px;color:${presentPct2>=70?'#4ade80':'#fbbf24'}">${presentPct2}%</div>
         </div>
-        <div class="card" style="padding:0;overflow:hidden;margin-bottom:6px">
-          ${weekStats2.map(({lbl,present,pct},i)=>{
-            const col=pct>=70?'#22c55e':pct>=40?'#f59e0b':'#ef4444';
-            return`<div style="display:flex;align-items:center;gap:10px;padding:9px 14px${i<weekStats2.length-1?';border-bottom:1px solid var(--line)':''}">
-              <div style="font-size:11px;font-weight:800;color:var(--muted);min-width:52px">${lbl}</div>
-              <div style="background:${col};color:#fff;font-size:10px;font-weight:900;padding:2px 6px;border-radius:6px;min-width:30px;text-align:center">${present}/${total}</div>
-              <div style="flex:1;height:6px;background:var(--line);border-radius:99px;overflow:hidden">
-                <div style="height:100%;width:${pct}%;background:${col};border-radius:99px;transition:.3s"></div>
-              </div>
-              <div style="font-size:11px;font-weight:900;color:${col};min-width:30px;text-align:right">${pct}%</div>
-            </div>`;
-          }).join('')}
-        </div>
-        <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
-          ${kidStats2.map(({k,pct,abs},i)=>{
-            const col=pct>=80?'var(--green-mid)':pct>=50?'#f59e0b':'#ef4444';
-            return`<div style="display:flex;align-items:center;gap:10px;padding:9px 14px${i<kidStats2.length-1?';border-bottom:1px solid var(--line)':''}">
-              <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-              <div style="flex:1;min-width:0">
-                <div style="font-weight:800;font-size:12px;margin-bottom:3px">${k.name}</div>
-                <div style="height:5px;background:var(--line);border-radius:99px;overflow:hidden">
-                  <div style="height:100%;width:${pct}%;background:${col};border-radius:99px"></div>
-                </div>
-              </div>
-              <div style="text-align:right;flex-shrink:0;min-width:42px">
-                <div style="font-weight:900;font-size:12px;color:${col}">${pct}%</div>
-                ${abs>=3?`<div style="font-size:9px;color:#ef4444;font-weight:800">${abs}x ⚠️</div>`:''}
-              </div>
-            </div>`;
-          }).join('')}
-        </div>`;
-      })()}
+      </div>` : ''}
 
-      <!-- TOP LEERLINGEN -->
-      <div class="section-head"><div class="h3">🏆 ${L('Top leerlingen','Top učenici')}</div></div>
-      <div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">
-        ${topKids.map((k,i)=>{
-          const att=ATTENDANCE[k.id]||[];
-          const attPct=att.length?Math.round(att.filter(w=>w.present).length/att.length*100):0;
-          const rankColors=['#f4c430','#b0b8c1','#cd7f32','var(--muted)','var(--muted)'];
-          const rankBg=['#fff5dc','#f1f5f9','#fdf0e8','var(--bg)','var(--bg)'];
-          return`<div style="display:flex;align-items:center;gap:10px;padding:11px 14px${i<topKids.length-1?';border-bottom:1px solid var(--line)':''}">
-            <div style="width:26px;height:26px;border-radius:8px;background:${rankBg[i]};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:${rankColors[i]};flex-shrink:0">${i+1}</div>
-            <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:800;font-size:13px">${k.name}</div>
-              <div style="font-size:11px;color:var(--muted);font-weight:700">${L('Niv','Niv')} ${computedLevel(k)} · ${attPct}% ${L('aanwezig','prisutan')}</div>
-            </div>
-            <div style="font-weight:900;font-size:13px;color:var(--gold)">⭐ ${k.pts}</div>
-          </div>`;
-        }).join('')}
+      <!-- Eerstvolgende zondag -->
+      <div class="card" style="margin-bottom:12px;padding:14px">
+        <div style="font-weight:900;font-size:14px;margin-bottom:8px">📅 ${L('Eerstvolgende mekteb','Sljedeći mekteb')}</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="background:var(--green-soft);color:var(--green);padding:8px 12px;border-radius:10px;text-align:center;min-width:60px">
+            <div style="font-size:9px;font-weight:800;text-transform:uppercase">${nextSunObj.toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{month:'short'})}</div>
+            <div style="font-size:20px;font-weight:900;line-height:1">${nextSunObj.getDate()}</div>
+          </div>
+          <div style="flex:1">
+            <div style="font-weight:800;font-size:13px">${L('Komende zondag','Nedjelja')}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700">${totalKids} ${L('leerlingen verwacht','učenika očekivano')}</div>
+          </div>
+        </div>
       </div>
 
+      <!-- Aanwezigheid laatste 4 mektebs (bar chart) -->
+      ${last4.length ? `<div class="card" style="padding:14px">
+        <div style="font-weight:900;font-size:14px;margin-bottom:10px">📈 ${L('Aanwezigheid laatste 4 mektebs','Prisutnost zadnja 4 mekteba')}</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;height:90px;margin-bottom:8px">
+          ${last4.map(r => `
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="font-size:11px;font-weight:900;color:var(--green)">${r.pct}%</div>
+              <div style="width:100%;background:var(--line);border-radius:6px 6px 0 0;overflow:hidden;display:flex;align-items:flex-end;height:65px">
+                <div style="width:100%;background:linear-gradient(180deg,var(--green-mid),var(--green));height:${r.pct}%;border-radius:6px 6px 0 0"></div>
+              </div>
+              <div style="font-size:9px;color:var(--muted);font-weight:700">${new Date(r.date).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'2-digit',month:'short'})}</div>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
     </div>`;
 }
+
 function bestuurStudents(){
+  const sQuery = (state.bestuurSearch||'').toLowerCase();
+  const filter = state.bestuurFilter||'all';
+  const totalKids = KIDS.length;
+  const lvlCount = [1,2,3].map(L => KIDS.filter(k=>k.level===L).length);
+
+  // Aandacht: 3+ keer afwezig in laatste 6 mektebs
+  const allDates = [...new Set(KIDS.flatMap(k => (ATTENDANCE[k.id]||[]).map(a=>a.date)))].sort();
+  const last6 = allDates.slice(-6);
+  const aandachtMap = {};
+  KIDS.forEach(k => {
+    const arr = (ATTENDANCE[k.id]||[]).filter(a=>last6.includes(a.date));
+    const afw = arr.filter(a=>!a.present).length;
+    if(afw >= 3) aandachtMap[k.id] = afw;
+  });
+  const aandachtCount = Object.keys(aandachtMap).length;
+
+  // Per kind: aanwezigheid % overall
+  const kidPct = (k) => {
+    const arr = ATTENDANCE[k.id]||[];
+    if(!arr.length) return null;
+    return Math.round(arr.filter(a=>a.present).length/arr.length*100);
+  };
+
+  // Filter pipeline
+  let visible = KIDS.filter(k => {
+    if(sQuery && !k.name.toLowerCase().includes(sQuery)) return false;
+    if(filter==='aandacht' && !aandachtMap[k.id]) return false;
+    if(filter==='n1' && k.level!==1) return false;
+    if(filter==='n2' && k.level!==2) return false;
+    if(filter==='n3' && k.level!==3) return false;
+    return true;
+  });
+  // Sorteer: aandacht eerst, dan punten desc
+  visible.sort((a,b) => {
+    const aA = aandachtMap[a.id]?1:0, bA = aandachtMap[b.id]?1:0;
+    if(aA!==bA) return bA-aA;
+    return (b.pts||0) - (a.pts||0);
+  });
+
+  const aandachtList = visible.filter(k => aandachtMap[k.id]);
+  const overigeList = visible.filter(k => !aandachtMap[k.id]);
+
+  const filterChip = (key, label, count, active) => `<button onclick="state.bestuurFilter='${key}'; render()" style="background:${active?'var(--green)':'var(--card)'};color:${active?'#fff':'var(--ink)'};border:1.5px solid ${active?'var(--green)':'var(--line)'};padding:6px 10px;border-radius:10px;font-size:11px;font-weight:800;display:flex;align-items:center;gap:5px;white-space:nowrap">${label}<span style="background:${active?'rgba(255,255,255,.2)':'var(--line)'};padding:1px 5px;border-radius:5px;font-size:10px">${count}</span></button>`;
+
   return `${topbarBestuur()}
-    <div class="screen" style="padding-bottom:28px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div class="screen" style="padding:14px 12px 100px">
+      <!-- Title row -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px">
         <div>
-          <div class="h2">${T('students')}</div>
-          <div class="muted" style="font-size:12px">${KIDS.length} ${L('totaal','ukupno')}</div>
+          <div style="font-size:24px;font-weight:900;line-height:1">${totalKids} <span style="font-size:14px;color:var(--muted);font-weight:700">${L('leerlingen','učenika')}</span></div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">${L('Alle leerlingen','Svi učenici')}</div>
         </div>
-        <button onclick="state.showAddKid=!state.showAddKid;render()" style="background:var(--green);color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;font-size:13px">+ ${L('Toevoegen','Dodaj')}</button>
       </div>
-      ${state.showAddKid ? addKidFormHtml() : ''}
-      <div class="list">
-        ${KIDS.map(k=>`<div class="list-row">
-          <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-          <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)} • 🔥${k.streak}w</div></div>
-          <div class="pts" style="margin-right:8px">${k.pts}<span>pt</span></div>
-          <button onclick="removeKid('${k.id}')" style="background:var(--red-soft);color:var(--red);width:32px;height:32px;border-radius:10px;font-size:14px;display:flex;align-items:center;justify-content:center;flex:0 0 auto">🗑</button>
-        </div>`).join('')}
+
+      <!-- Search -->
+      <div style="display:flex;align-items:center;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:8px 12px;margin-bottom:10px;gap:8px">
+        <span style="font-size:14px">🔎</span>
+        <input id="bestuur-search" type="text" placeholder="${L('Zoek op naam…','Pretraži po imenu…')}" value="${state.bestuurSearch||''}" oninput="state.bestuurSearch=this.value; renderBestuurList()" style="flex:1;border:0;background:transparent;font-size:13px;font-weight:700;outline:none">
       </div>
+
+      <!-- Filter chips -->
+      <div style="display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px">
+        ${filterChip('all', L('Alles','Svi'), totalKids, filter==='all')}
+        ${aandachtCount? filterChip('aandacht', '⚠️ '+L('Aandacht','Pažnja'), aandachtCount, filter==='aandacht') : ''}
+        ${filterChip('n1', 'N1', lvlCount[0], filter==='n1')}
+        ${filterChip('n2', 'N2', lvlCount[1], filter==='n2')}
+        ${filterChip('n3', 'N3', lvlCount[2], filter==='n3')}
+      </div>
+
+      <div id="bestuur-student-list">${renderBestuurStudentRows(aandachtList, overigeList, aandachtMap, kidPct)}</div>
     </div>`;
 }
-function bestuurAttendance(){
-  const total = KIDS.length;
-  const lastIdx = WEEKS.length - 1;
-  const lastWeekPresent = KIDS.filter(k=>ATTENDANCE[k.id]?.[lastIdx]?.present).length;
-  const presentPct = Math.round(lastWeekPresent/Math.max(1,total)*100);
 
-  // Laatste 7 lessen (omgekeerd, nieuwste eerst)
-  const weekStats = WEEKS.map((w,i)=>{
-    const present=KIDS.filter(k=>ATTENDANCE[k.id]?.[i]?.present).length;
-    const pct=Math.round(present/Math.max(1,total)*100);
-    const d=new Date(w);
-    const lbl=d.toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});
-    return{lbl,present,pct};
-  }).reverse().slice(0,7);
-
-  // Per leerling gesorteerd op aanwezigheid %
-  const kidStats=[...KIDS].map(k=>{
-    const att=ATTENDANCE[k.id]||[];
-    const pct=att.length?Math.round(att.filter(w=>w.present).length/att.length*100):0;
-    const abs=att.filter(w=>!w.present).length;
-    return{k,pct,abs};
-  }).sort((a,b)=>b.pct-a.pct);
-
-  return `${topbarBestuur()}
-    <div class="screen" style="padding-top:8px;padding-bottom:28px">
-
-      <!-- VANDAAG -->
-      <div style="background:linear-gradient(135deg,#112b1c,#1a3a26);border-radius:16px;padding:14px 16px;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,.18)">
-        <div style="font-weight:900;font-size:14px;color:#fff">📅 ${L('Vandaag','Danas')} — ${WEEKS[lastIdx]}</div>
-        <div style="font-size:22px;font-weight:900;color:#fff;margin:4px 0 2px">${lastWeekPresent} / ${total} ${L('aanwezig','prisutnih')}</div>
-        <div style="height:5px;background:rgba(255,255,255,.15);border-radius:99px;overflow:hidden;margin-top:8px">
-          <div style="height:100%;width:${presentPct}%;background:var(--green-mid);border-radius:99px;transition:.4s"></div>
+function renderBestuurStudentRows(aandachtList, overigeList, aandachtMap, kidPct){
+  const row = (k, accent) => {
+    const pct = kidPct(k);
+    const afw = aandachtMap[k.id];
+    return `<div onclick="state.selectedKid='${k.id}'; state.view='efDetail'; state.efDetailTab='voortgang'; render()" style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--card);border:1.5px solid ${accent?'var(--red-soft)':'var(--line)'};border-radius:12px;margin-bottom:6px;cursor:pointer">
+      <div class="avatar ${colorOf(k.name)}" style="width:36px;height:36px;font-size:14px">${initial(k.name)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${k.name}</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700;display:flex;gap:6px;flex-wrap:wrap">
+          <span>N${k.level}</span>
+          ${k.streak?`<span>🔥 ${k.streak}${L('w','s')}</span>`:''}
+          ${pct!==null?`<span>· ${pct}%</span>`:''}
         </div>
       </div>
+      ${accent ? `<div style="background:var(--red-soft);color:var(--red);padding:4px 8px;border-radius:8px;font-size:11px;font-weight:900">${afw}× ${L('afw.','odsut.')}</div>`
+              : `<div style="font-size:11px;font-weight:900;color:var(--gold)">⭐ ${k.pts||0}</div>`}
+    </div>`;
+  };
+  let html = '';
+  if(aandachtList.length){
+    html += `<div style="font-size:11px;color:var(--red);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin:6px 2px 8px">⚠️ ${L('Aandacht nodig','Potrebna pažnja')} <span style="color:var(--muted)">· ${L('3+ keer afwezig','3+ puta odsutan')}</span></div>`;
+    html += aandachtList.map(k => row(k, true)).join('');
+  }
+  if(overigeList.length){
+    if(aandachtList.length) html += `<div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin:14px 2px 8px">${L('Overige','Ostali')} · ${overigeList.length}</div>`;
+    html += overigeList.map(k => row(k, false)).join('');
+  }
+  if(!aandachtList.length && !overigeList.length){
+    html += `<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;font-weight:700">${L('Geen leerlingen gevonden','Nema učenika')}</div>`;
+  }
+  return html;
+}
 
-      <!-- LAATSTE LESSEN -->
-      <div style="font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">${L('Laatste lessen','Zadnji časovi')}</div>
-      <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
-        ${weekStats.map(({lbl,present,pct},i)=>{
-          const col=pct>=70?'#22c55e':pct>=40?'#f59e0b':'#ef4444';
-          return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px${i<weekStats.length-1?';border-bottom:1px solid var(--line)':''}">
-            <div style="font-size:11px;font-weight:800;color:var(--muted);min-width:72px">${lbl}</div>
-            <div style="background:${col};color:#fff;font-size:11px;font-weight:900;padding:2px 7px;border-radius:6px;min-width:34px;text-align:center">${present}/${total}</div>
-            <div style="flex:1;height:7px;background:var(--line);border-radius:99px;overflow:hidden">
-              <div style="height:100%;width:${pct}%;background:${col};border-radius:99px;transition:.3s"></div>
-            </div>
-            <div style="font-size:12px;font-weight:900;color:${col};min-width:34px;text-align:right">${pct}%</div>
-          </div>`;
-        }).join('')}
+function renderBestuurList(){
+  // Lichte re-render van alleen de lijst (bij typen in zoek)
+  const el = document.getElementById('bestuur-student-list');
+  if(!el) { render(); return; }
+  const sQuery = (state.bestuurSearch||'').toLowerCase();
+  const filter = state.bestuurFilter||'all';
+  const allDates = [...new Set(KIDS.flatMap(k => (ATTENDANCE[k.id]||[]).map(a=>a.date)))].sort();
+  const last6 = allDates.slice(-6);
+  const aandachtMap = {};
+  KIDS.forEach(k => {
+    const arr = (ATTENDANCE[k.id]||[]).filter(a=>last6.includes(a.date));
+    const afw = arr.filter(a=>!a.present).length;
+    if(afw >= 3) aandachtMap[k.id] = afw;
+  });
+  const kidPct = (k) => {
+    const arr = ATTENDANCE[k.id]||[];
+    return arr.length ? Math.round(arr.filter(a=>a.present).length/arr.length*100) : null;
+  };
+  let visible = KIDS.filter(k => {
+    if(sQuery && !k.name.toLowerCase().includes(sQuery)) return false;
+    if(filter==='aandacht' && !aandachtMap[k.id]) return false;
+    if(filter==='n1' && k.level!==1) return false;
+    if(filter==='n2' && k.level!==2) return false;
+    if(filter==='n3' && k.level!==3) return false;
+    return true;
+  });
+  visible.sort((a,b) => {
+    const aA = aandachtMap[a.id]?1:0, bA = aandachtMap[b.id]?1:0;
+    if(aA!==bA) return bA-aA;
+    return (b.pts||0) - (a.pts||0);
+  });
+  const aandachtList = visible.filter(k => aandachtMap[k.id]);
+  const overigeList = visible.filter(k => !aandachtMap[k.id]);
+  el.innerHTML = renderBestuurStudentRows(aandachtList, overigeList, aandachtMap, kidPct);
+}
+
+function bestuurProgress(){
+  // ─── DATA: voor Voortgang ─────────────────────────────────────────
+  const allDates = [...new Set(KIDS.flatMap(k => (ATTENDANCE[k.id]||[]).map(a=>a.date)))].sort();
+
+  // Aanwezigheid per maand 2026 (alleen maanden met data)
+  const byMonth = {};
+  allDates.forEach(d => {
+    if(!d.startsWith('2026')) return;
+    const m = d.slice(0,7);
+    if(!byMonth[m]) byMonth[m] = { pres:0, meten:0 };
+  });
+  KIDS.forEach(k => (ATTENDANCE[k.id]||[]).forEach(a => {
+    if(!a.date.startsWith('2026')) return;
+    const m = a.date.slice(0,7);
+    if(byMonth[m]){ byMonth[m].meten++; if(a.present) byMonth[m].pres++; }
+  }));
+  const months = Object.keys(byMonth).sort();
+  const monthPoints = months.map(m => ({
+    label: new Date(m+'-01').toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{month:'short'}),
+    pct: byMonth[m].meten? Math.round(byMonth[m].pres/byMonth[m].meten*100) : 0
+  }));
+
+  // Curriculum-voortgang per niveau (geaggregeerd over leerlingen)
+  const aggregate = (cat, lvl) => {
+    const kidsL = KIDS.filter(k=>k.level===lvl);
+    if(!kidsL.length) return { count:0, pct:0, done:0, total:0 };
+    const templateLen = (PATH[cat] && PATH[cat][lvl] ? PATH[cat][lvl].length : 0);
+    if(!templateLen) return { count:kidsL.length, pct:0, done:0, total:0 };
+    let totDone = 0;
+    kidsL.forEach(k => {
+      const arr = (k.stationData && k.stationData[cat] && k.stationData[cat][lvl]) || PATH[cat][lvl];
+      totDone += arr.filter(x => x.status==='done').length;
+    });
+    const total = kidsL.length * templateLen;
+    return { count:kidsL.length, pct: Math.round(totDone/total*100), done:totDone, total };
+  };
+
+  // Wie maakt vooruitgang / wie stagneert
+  // Heuristiek: punten per kind als score. Top 3 met meeste punten, bottom 3 actief met minste.
+  // (Lijkt op groei totdat we historie hebben.)
+  const sortedByPts = [...KIDS].sort((a,b)=>(b.pts||0)-(a.pts||0));
+  const topGrowers = sortedByPts.slice(0,3);
+  const stagneert = [...KIDS].filter(k => (k.pts||0) < 50).slice(0,3);
+
+  // Aanmeldingen + uitval over de tijd (sinds_year per kid)
+  const byYear = {};
+  KIDS.forEach(k => {
+    const y = k.sinceYear || 2026;
+    byYear[y] = (byYear[y]||0) + 1;
+  });
+  const yearsSorted = Object.keys(byYear).sort();
+
+  const cats = [
+    { key:'suras',   icon:'📖', nl:'Suras',  bs:'Sure' },
+    { key:'ilmihal', icon:'🕌', nl:'Ilmihal',bs:'Ilmihal' },
+    { key:'quran',   icon:'📿', nl:'Koran',  bs:"Kur'an" },
+  ];
+
+  return `${topbarBestuur()}
+    <div class="screen" style="padding:14px 12px 100px">
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px">${L('Schooljaar 2025-2026','Školska godina 2025-2026')}</div>
+        <div style="font-weight:900;font-size:19px;letter-spacing:-.3px">${L('Lange-termijn inzichten','Dugoročni uvidi')}</div>
       </div>
 
-      <!-- PER LEERLING -->
-      <div style="font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">${L('Per leerling','Po učeniku')}</div>
-      <div class="card" style="padding:0;overflow:hidden">
-        ${kidStats.map(({k,pct,abs},i)=>{
-          const col=pct>=80?'var(--green-mid)':pct>=50?'#f59e0b':'#ef4444';
-          return`<div style="display:flex;align-items:center;gap:10px;padding:10px 14px${i<kidStats.length-1?';border-bottom:1px solid var(--line)':''}">
-            <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-            <div style="flex:1;min-width:0">
-              <div style="font-weight:800;font-size:13px;margin-bottom:4px">${k.name}</div>
-              <div style="height:6px;background:var(--line);border-radius:99px;overflow:hidden">
-                <div style="height:100%;width:${pct}%;background:${col};border-radius:99px"></div>
+      <!-- Aanwezigheid per maand -->
+      <div class="card" style="margin-bottom:12px;padding:14px">
+        <div style="font-weight:900;font-size:14px;margin-bottom:10px">📈 ${L('Aanwezigheid per maand','Prisutnost po mjesecu')} <span style="font-weight:700;color:var(--muted);font-size:11px">2026</span></div>
+        ${monthPoints.length ? lineChartSvg(monthPoints, 320, 110) : `<div style="color:var(--muted);font-size:12px;font-weight:700;padding:20px 0;text-align:center">${L('Nog geen data','Još nema podataka')}</div>`}
+      </div>
+
+      <!-- Curriculum-voortgang per niveau door tijd -->
+      <div class="card" style="margin-bottom:12px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div style="font-weight:900;font-size:14px">📚 ${L('Curriculum-voortgang','Napredak kurikuluma')}</div>
+          <div style="font-size:10px;color:var(--muted);font-weight:700">${L('huidige stand','trenutno stanje')}</div>
+        </div>
+        ${[1,2,3].map(lvl => {
+          const kidsL = KIDS.filter(k=>k.level===lvl);
+          if(!kidsL.length) return `<div style="margin-bottom:10px;padding:10px;background:var(--bg);border-radius:10px;color:var(--muted);font-size:11px;font-weight:700">${L('Niveau','Nivo')} ${lvl} · ${L('geen leerlingen','nema učenika')}</div>`;
+          return `<div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="background:${lvl===1?'var(--green-soft)':lvl===2?'var(--orange-soft)':'var(--purple-soft)'};color:${lvl===1?'var(--green)':lvl===2?'var(--orange)':'var(--purple)'};padding:2px 7px;border-radius:6px;font-size:10px;font-weight:900">N${lvl}</span>
+                <span style="font-size:12px;font-weight:800">${kidsL.length} ${L('leerlingen','učenika')}</span>
               </div>
             </div>
-            <div style="text-align:right;flex-shrink:0;min-width:50px">
-              <div style="font-weight:900;font-size:13px;color:${col}">${pct}%</div>
-              ${abs>=3?`<div style="font-size:10px;color:#ef4444;font-weight:800">${abs}x ${L('afw.','odsustvo')} ⚠️</div>`:''}
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+              ${cats.map(c => {
+                const a = aggregate(c.key, lvl);
+                const col = a.pct>=70?'var(--green-mid)':a.pct>=40?'#f4c430':'var(--red)';
+                return `<div style="background:var(--bg);border-radius:10px;padding:8px;text-align:center">
+                  <div style="font-size:11px;font-weight:800;margin-bottom:4px">${c.icon} ${state.lang==='nl'?c.nl:c.bs}</div>
+                  ${donutSvg(a.pct, 48, col)}
+                  <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:4px">${a.done}/${a.total}</div>
+                </div>`;
+              }).join('')}
             </div>
           </div>`;
         }).join('')}
       </div>
-    </div>`;
-}
-function bestuurProgress(){
-  return `${topbarBestuur()}
-    <div class="screen" style="padding-bottom:28px">
-      <div class="greeting"><h1>${T('progress')}</h1><p>${state.lang==='nl'?'Per niveau & categorie':'Po nivou i kategoriji'}</p></div>
-      ${[1,2,3].map(L=>`
-        <div class="card" style="margin-bottom:10px">
-          <div style="font-weight:900;font-size:16px;margin-bottom:8px">N${L}</div>
-          ${['suras','ilmihal','quran'].map(cat=>{
-            const all = PATH[cat][L]||[];
-            const done = all.filter(s=>s.status==='done').length;
-            const pct = Math.round(done/Math.max(1,all.length)*100);
-            return `<div style="margin-bottom:6px">
-              <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:800;margin-bottom:3px"><span>${cat==='suras'?T('suras'):cat==='ilmihal'?T('ilmihal'):T('quranRead')}</span><span style="color:var(--green)">${done}/${all.length}</span></div>
-              <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
-            </div>`;
-          }).join('')}
-        </div>`).join('')}
-    </div>`;
-}
-function bestuurProfile(){
-  return `<div class="topbar">
-      <button class="back-btn" onclick="setNav('home')">←</button>
-      <div style="text-align:center;flex:1"><div style="font-weight:900">${T('profile')}</div></div>
-      <button class="back-btn" onclick="logout()">⏻</button>
-    </div>
-    <div class="screen">
-      <div style="text-align:center;padding:14px 0 16px">
-        <div class="avatar xl ${colorOf(state.me.name)}" style="margin:0 auto 10px">${initial(state.me.name)}</div>
-        <div style="font-size:20px;font-weight:900">${state.me.name}</div>
-        <div class="muted" style="font-size:13px">${state.me.role}</div>
+
+      <!-- Wie maakt vooruitgang / wie stagneert -->
+      <div class="card" style="margin-bottom:12px;padding:14px">
+        <div style="font-weight:900;font-size:14px;margin-bottom:10px">🚀 ${L('Vooruitgang van leerlingen','Napredak učenika')}</div>
+        <div style="font-size:11px;color:var(--green);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">${L('Top groeiers','Najbolji napredak')}</div>
+        ${topGrowers.map((k,i) => `
+          <div onclick="state.selectedKid='${k.id}'; state.view='efDetail'; state.efDetailTab='voortgang'; render()" style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer">
+            <div style="background:var(--green-soft);color:var(--green);width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">${i+1}</div>
+            <div class="avatar ${colorOf(k.name)}" style="width:28px;height:28px;font-size:11px">${initial(k.name)}</div>
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:12px">${k.name}</div>
+              <div style="font-size:10px;color:var(--muted);font-weight:700">N${k.level} · 🔥 ${k.streak||0}${L('w','s')}</div>
+            </div>
+            <div style="font-weight:900;color:var(--gold);font-size:12px">⭐ ${k.pts||0}</div>
+          </div>`).join('')}
+        ${stagneert.length ? `
+        <div style="font-size:11px;color:var(--orange);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin:12px 0 6px">${L('Loopt achter','Zaostaje')}</div>
+        ${stagneert.map(k => `
+          <div onclick="state.selectedKid='${k.id}'; state.view='efDetail'; state.efDetailTab='voortgang'; render()" style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer">
+            <div class="avatar ${colorOf(k.name)}" style="width:28px;height:28px;font-size:11px">${initial(k.name)}</div>
+            <div style="flex:1">
+              <div style="font-weight:800;font-size:12px">${k.name}</div>
+              <div style="font-size:10px;color:var(--muted);font-weight:700">N${k.level}</div>
+            </div>
+            <div style="font-weight:900;color:var(--orange);font-size:12px">⭐ ${k.pts||0}</div>
+          </div>`).join('')}` : ''}
       </div>
-      <div class="list">
-        <div class="list-row" onclick="logout()">
-          <div style="font-size:18px">⏻</div>
-          <div class="name" style="color:var(--red)">${T('logout')}</div>
+
+      <!-- Aanmeldingen + uitval over tijd -->
+      <div class="card" style="padding:14px">
+        <div style="font-weight:900;font-size:14px;margin-bottom:10px">👥 ${L('Aanmeldingen door de tijd','Prijave kroz vrijeme')}</div>
+        ${yearsSorted.length ? `
+          <div style="display:flex;align-items:flex-end;gap:10px;height:90px;margin-bottom:8px">
+            ${(()=>{const max=Math.max(...Object.values(byYear));return yearsSorted.map(y=>{
+              const pct = byYear[y]/max*100;
+              return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+                <div style="font-size:13px;font-weight:900;color:var(--green)">${byYear[y]}</div>
+                <div style="width:100%;background:var(--line);border-radius:6px 6px 0 0;display:flex;align-items:flex-end;height:55px">
+                  <div style="width:100%;background:linear-gradient(180deg,var(--green-mid),var(--green));height:${pct}%;border-radius:6px 6px 0 0"></div>
+                </div>
+                <div style="font-size:10px;color:var(--muted);font-weight:800">${y}</div>
+              </div>`;
+            }).join('')})()}
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;padding-top:6px;border-top:1px solid var(--line)">
+            ${L('Totaal','Ukupno')}: <b style="color:var(--ink)">${KIDS.length}</b> ${L('leerlingen aangesloten','prijavljenih učenika')}
+          </div>` : `<div style="color:var(--muted);font-size:12px;font-weight:700;padding:10px 0">${L('Nog geen data','Još nema podataka')}</div>`}
+        <div style="margin-top:10px;padding:10px;background:var(--bg);border-radius:10px;font-size:11px;color:var(--muted);font-weight:700;line-height:1.5">
+          ℹ️ ${L('Uitval-risico = 5+ opeenvolgende mektebs niet aanwezig. Wekelijkse snapshots beginnen we nu te bewaren — over een paar maanden zie je hier ook trends door de tijd.','Rizik od ispadanja = 5+ uzastopnih mekteba odsutan. Tjedne snimke počinjemo sad spremati — za nekoliko mjeseci ovdje će se vidjeti trendovi kroz vrijeme.')}
         </div>
       </div>
     </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SVG-helpers voor Bestuur-dashboard
+// ═══════════════════════════════════════════════════════════════
+function donutSvg(pct, size, color){
+  pct = Math.max(0, Math.min(100, pct||0));
+  const r = (size-10)/2;
+  const c = 2*Math.PI*r;
+  const off = c*(1 - pct/100);
+  const cx = size/2;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex:0 0 auto">
+    <circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="var(--line)" stroke-width="7"/>
+    <circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${color||'var(--green-mid)'}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${cx} ${cx})"/>
+    <text x="${cx}" y="${cx+1}" text-anchor="middle" dominant-baseline="middle" font-size="${Math.round(size/3.6)}" font-weight="900" fill="var(--ink)" font-family="Nunito, system-ui, sans-serif">${pct}%</text>
+  </svg>`;
+}
+function lineChartSvg(points, w, h){
+  if(!points.length) return '';
+  const pad = 28;
+  const innerW = w - pad*2;
+  const innerH = h - pad - 12;
+  const max = 100, min = 0;
+  const xStep = points.length===1 ? innerW/2 : innerW / (points.length-1);
+  const ptToY = (p) => pad + innerH - (p.pct - min) / (max - min) * innerH;
+  const ptToX = (i) => pad + i * xStep;
+  const path = points.map((p,i) => `${i===0?'M':'L'} ${ptToX(i)} ${ptToY(p)}`).join(' ');
+  const area = path + ` L ${ptToX(points.length-1)} ${pad+innerH} L ${ptToX(0)} ${pad+innerH} Z`;
+  return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block">
+    <!-- gridlines -->
+    ${[0,25,50,75,100].map(g => {
+      const y = pad + innerH - (g/100)*innerH;
+      return `<line x1="${pad}" x2="${w-pad}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1" stroke-dasharray="${g===0||g===100?'0':'3 3'}"/>
+              <text x="6" y="${y+3}" font-size="9" fill="var(--muted)" font-weight="700">${g}</text>`;
+    }).join('')}
+    <!-- area -->
+    <path d="${area}" fill="var(--green-soft)" opacity=".7"/>
+    <!-- line -->
+    <path d="${path}" fill="none" stroke="var(--green-mid)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <!-- points -->
+    ${points.map((p,i) => `<circle cx="${ptToX(i)}" cy="${ptToY(p)}" r="3.5" fill="var(--green-mid)" stroke="#fff" stroke-width="1.5"/>
+      <text x="${ptToX(i)}" y="${ptToY(p)-8}" text-anchor="middle" font-size="9" font-weight="900" fill="var(--green)">${p.pct}%</text>`).join('')}
+    <!-- x labels -->
+    ${points.map((p,i) => `<text x="${ptToX(i)}" y="${h-2}" text-anchor="middle" font-size="9" font-weight="800" fill="var(--muted)">${p.label}</text>`).join('')}
+  </svg>`;
 }
 
 // ═══════════════════════════════════════════════════════════════
