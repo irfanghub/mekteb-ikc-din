@@ -1584,8 +1584,13 @@ function ouderHome(){
     <!-- KIND(EREN) VOORTGANG -->
     <div class="section-head"><div class="h3">👦 ${T('parentDash')}</div></div>
     ${kids.map(k=>{
-      const kidSuras = kidStations(k,'suras',k.level);
-      const cur = kidSuras.find(s=>s.status==='current') || kidSuras.find(s=>s.status!=='done') || kidSuras[0] || {label:'—'};
+      let cur = null;
+      for(let lv=1;lv<=3;lv++){
+        const lvSuras = kidStations(k,'suras',lv);
+        const found = lvSuras.find(s=>s.status==='current') || lvSuras.find(s=>s.status!=='done' && s.status!=='locked');
+        if(found){ cur=found; break; }
+      }
+      if(!cur){ const fb=kidStations(k,'suras',k.level); cur=fb[0]||{label:'—'}; }
       const kDoneIlm = state.ilmDone[k.id] || {};
       let nextIlm = null;
       for(const cat of (ILMIHAL[k.level]||[])){ for(const les of cat.lessen){ if(!kDoneIlm[les.id]){ nextIlm=les; break; } } if(nextIlm) break; }
@@ -1602,7 +1607,7 @@ function ouderHome(){
         </div>
         <!-- sura voortgang -->
         <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px">
-          <span>📖 ${L('Huidige sura','Trenutna sura')}: <span style="color:var(--ink);font-weight:800">${cur.label}</span></span>
+          <span>📖 ${L('Volgende les — Sura','Sljedeći čas — Sura')}: <span style="color:var(--ink);font-weight:800">${cur.label}${cur.sub?' — '+cur.sub:''}</span></span>
         </div>
         ${nextIlm?`<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px">
           📚 ${L('Volgende ilmihal','Sljedeći ilmihal')}: <span style="color:var(--ink);font-weight:800">${state.lang==='nl'?nextIlm.naam:nextIlm.naam_bs}</span>
@@ -2208,8 +2213,8 @@ function bestuurApp(){
 function topbarBestuur(){
   const tabs=[
     ['home','🏛️',T('overview')],
-    ['students','👥',T('students')],
-    ['progress','📈',T('progress')]
+    ['progress','📈',T('progress')],
+    ['students','👥',T('students')]
   ];
   const dateStr = new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});
   return `<div style="background:linear-gradient(160deg,var(--green) 0%,var(--green-mid) 100%);padding:14px 16px 0;border-radius:22px 22px 0 0;position:sticky;top:0;z-index:10">
@@ -2249,6 +2254,15 @@ function bestuurHome(){
     return { date: d, pct: Math.round(pres/Math.max(1,meten)*100), pres, meten };
   });
   const avgLast4 = last4.length ? Math.round(last4.reduce((s,r)=>s+r.pct,0)/last4.length) : 0;
+
+  // Sparkline-data: laatste 7 mektebs voor mooier verloop in hero
+  const last7Dates = allDates.slice(-7);
+  const last7 = last7Dates.map(d => {
+    const pres = KIDS.filter(k => (ATTENDANCE[k.id]||[]).find(a=>a.date===d && a.present)).length;
+    const meten = KIDS.filter(k => (ATTENDANCE[k.id]||[]).some(a=>a.date===d)).length || totalKids;
+    return Math.round(pres/Math.max(1,meten)*100);
+  });
+  const trendDelta = last7.length >= 2 ? last7[last7.length-1] - last7[0] : 0;
 
   // Actieve leerlingen = niet 3+ op rij afwezig
   const actief = KIDS.filter(k => {
@@ -2312,11 +2326,15 @@ function bestuurHome(){
 
       <!-- Mekteb-gezondheid donut -->
       <div class="card" style="margin-bottom:12px;padding:14px;display:flex;gap:14px;align-items:center">
-        ${donutSvg(gezondheid, 78, gezondColor)}
-        <div style="flex:1">
+        ${donutSvg(gezondheid, 86, gezondColor, L('gezond','zdravo'))}
+        <div style="flex:1;min-width:0">
           <div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px">${L('Mekteb-status','Status mekteba')}</div>
-          <div style="font-weight:900;font-size:16px;color:${gezondColor};margin:2px 0 4px">${gezondLabel}</div>
-          <div style="font-size:12px;color:var(--muted);font-weight:700">${last4Dates.length? `${last4[last4.length-1].pres}/${last4[last4.length-1].meten} ${L('aanwezig laatste mekteb','prisutni zadnji mekteb')}` : L('Nog geen mekteb-data','Još nema podataka')}</div>
+          <div style="font-weight:900;font-size:18px;color:${gezondColor};margin:2px 0 4px;letter-spacing:-.3px;line-height:1.15">${gezondLabel}</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700">${last4Dates.length? `${new Date(last4Dates[last4Dates.length-1]).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'numeric',month:'short'})} · ${last4[last4.length-1].pres}/${last4[last4.length-1].meten} ${L('aanwezig','prisutni')}` : L('Nog geen mekteb-data','Još nema podataka')}</div>
+          ${last7.length >= 2 ? `<div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            ${sparkSvg(last7, 78, 26, 'var(--green-mid)')}
+            <div style="font-size:12px;font-weight:900;color:${trendDelta>=0?'var(--green-mid)':'var(--red)'};white-space:nowrap">${trendDelta>=0?'+':''}${trendDelta}% ${trendDelta>=0?'↑':'↓'}</div>
+          </div>` : ''}
         </div>
       </div>
 
@@ -2337,6 +2355,21 @@ function bestuurHome(){
           <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:8px">${hwOpen===0?L('Alles afgerond ✓','Sve završeno ✓'):L('opdrachten','zadataka')}</div>
         </div>
       </div>
+
+      <!-- Aanwezigheid laatste 4 mektebs (bar chart) -->
+      ${last4.length ? `<div class="card" style="margin-bottom:12px;padding:14px">
+        <div style="font-weight:900;font-size:14px;margin-bottom:10px">📈 ${L('Aanwezigheid laatste 4 mektebs','Prisutnost zadnja 4 mekteba')}</div>
+        <div style="display:flex;align-items:flex-end;gap:8px;height:90px;margin-bottom:8px">
+          ${last4.map(r => `
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="font-size:11px;font-weight:900;color:var(--green)">${r.pct}%</div>
+              <div style="width:100%;background:var(--line);border-radius:6px 6px 0 0;overflow:hidden;display:flex;align-items:flex-end;height:65px">
+                <div style="width:100%;background:linear-gradient(180deg,var(--green-mid),var(--green));height:${r.pct}%;border-radius:6px 6px 0 0"></div>
+              </div>
+              <div style="font-size:9px;color:var(--muted);font-weight:700">${new Date(r.date).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'2-digit',month:'short'})}</div>
+            </div>`).join('')}
+        </div>
+      </div>` : ''}
 
       <!-- Aanwezigheid per niveau -->
       <div class="card" style="margin-bottom:12px;padding:14px">
@@ -2407,21 +2440,6 @@ function bestuurHome(){
           </div>
         </div>
       </div>
-
-      <!-- Aanwezigheid laatste 4 mektebs (bar chart) -->
-      ${last4.length ? `<div class="card" style="padding:14px">
-        <div style="font-weight:900;font-size:14px;margin-bottom:10px">📈 ${L('Aanwezigheid laatste 4 mektebs','Prisutnost zadnja 4 mekteba')}</div>
-        <div style="display:flex;align-items:flex-end;gap:8px;height:90px;margin-bottom:8px">
-          ${last4.map(r => `
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-              <div style="font-size:11px;font-weight:900;color:var(--green)">${r.pct}%</div>
-              <div style="width:100%;background:var(--line);border-radius:6px 6px 0 0;overflow:hidden;display:flex;align-items:flex-end;height:65px">
-                <div style="width:100%;background:linear-gradient(180deg,var(--green-mid),var(--green));height:${r.pct}%;border-radius:6px 6px 0 0"></div>
-              </div>
-              <div style="font-size:9px;color:var(--muted);font-weight:700">${new Date(r.date).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'2-digit',month:'short'})}</div>
-            </div>`).join('')}
-        </div>
-      </div>` : ''}
     </div>`;
 }
 
@@ -2641,19 +2659,32 @@ function bestuurProgress(){
 
       <!-- Curriculum-voortgang per niveau door tijd -->
       <div class="card" style="margin-bottom:12px;padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="font-weight:900;font-size:14px">📚 ${L('Curriculum-voortgang','Napredak kurikuluma')}</div>
           <div style="font-size:10px;color:var(--muted);font-weight:700">${L('huidige stand','trenutno stanje')}</div>
+        </div>
+        <div style="background:var(--blue-soft, #e0efff);border:1px solid #93c5fd33;border-radius:10px;padding:9px 11px;margin-bottom:12px;display:flex;gap:9px;align-items:flex-start">
+          <div style="font-size:14px;flex:0 0 auto;margin-top:1px">💡</div>
+          <div style="font-size:11px;color:#1e3a8a;font-weight:700;line-height:1.45">
+            ${L(
+              '<b>Hoe lezen?</b> Per niveau staat hieronder per categorie (suras, ilmihal, koran) een donut. De getallen <b>x/y</b> betekenen: <b>x</b> = onderdelen die de groep samen al heeft afgerond, <b>y</b> = totaal aantal stappen (alle leerlingen × stappen in het leerplan). De <b>%</b> is hetzelfde, omgerekend.',
+              '<b>Kako čitati?</b> Po nivou ispod stoji za svaku kategoriju (sure, ilmihal, kuran) jedan krug. Brojevi <b>x/y</b> znače: <b>x</b> = završene jedinice grupe, <b>y</b> = ukupan broj koraka (svi učenici × koraci u planu). <b>%</b> je isto, preračunato.'
+            )}
+          </div>
         </div>
         ${[1,2,3].map(lvl => {
           const kidsL = KIDS.filter(k=>k.level===lvl);
           if(!kidsL.length) return `<div style="margin-bottom:10px;padding:10px;background:var(--bg);border-radius:10px;color:var(--muted);font-size:11px;font-weight:700">${L('Niveau','Nivo')} ${lvl} · ${L('geen leerlingen','nema učenika')}</div>`;
+          // som per niveau over alle 3 categorieën — voor de regel-uitleg
+          const sums = cats.reduce((acc,c)=>{const a=aggregate(c.key,lvl); acc.done+=a.done; acc.total+=a.total; return acc;}, {done:0,total:0});
+          const sumPct = sums.total ? Math.round(sums.done/sums.total*100) : 0;
           return `<div style="margin-bottom:12px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
               <div style="display:flex;align-items:center;gap:6px">
                 <span style="background:${lvl===1?'var(--green-soft)':lvl===2?'var(--orange-soft)':'var(--purple-soft)'};color:${lvl===1?'var(--green)':lvl===2?'var(--orange)':'var(--purple)'};padding:2px 7px;border-radius:6px;font-size:10px;font-weight:900">N${lvl}</span>
                 <span style="font-size:12px;font-weight:800">${kidsL.length} ${L('leerlingen','učenika')}</span>
               </div>
+              <span style="font-size:10px;color:var(--muted);font-weight:700">${L('totaal','ukupno')}: <b style="color:var(--ink)">${sums.done}/${sums.total}</b> · ${sumPct}%</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
               ${cats.map(c => {
@@ -2662,7 +2693,7 @@ function bestuurProgress(){
                 return `<div style="background:var(--bg);border-radius:10px;padding:8px;text-align:center">
                   <div style="font-size:11px;font-weight:800;margin-bottom:4px">${c.icon} ${state.lang==='nl'?c.nl:c.bs}</div>
                   ${donutSvg(a.pct, 48, col)}
-                  <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:4px">${a.done}/${a.total}</div>
+                  <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:4px">${a.done}/${a.total} ${L('klaar','završeno')}</div>
                 </div>`;
               }).join('')}
             </div>
@@ -2726,16 +2757,32 @@ function bestuurProgress(){
 // ═══════════════════════════════════════════════════════════════
 // SVG-helpers voor Bestuur-dashboard
 // ═══════════════════════════════════════════════════════════════
-function donutSvg(pct, size, color){
+function donutSvg(pct, size, color, sublabel){
   pct = Math.max(0, Math.min(100, pct||0));
   const r = (size-10)/2;
   const c = 2*Math.PI*r;
   const off = c*(1 - pct/100);
   const cx = size/2;
+  const pctFontSize = Math.round(size/3.6);
+  const subFontSize = Math.max(8, Math.round(size/9));
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="flex:0 0 auto">
     <circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="var(--line)" stroke-width="7"/>
     <circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${color||'var(--green-mid)'}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}" transform="rotate(-90 ${cx} ${cx})"/>
-    <text x="${cx}" y="${cx+1}" text-anchor="middle" dominant-baseline="middle" font-size="${Math.round(size/3.6)}" font-weight="900" fill="var(--ink)" font-family="Nunito, system-ui, sans-serif">${pct}%</text>
+    <text x="${cx}" y="${sublabel ? cx-2 : cx+1}" text-anchor="middle" dominant-baseline="middle" font-size="${pctFontSize}" font-weight="900" fill="var(--ink)" font-family="Nunito, system-ui, sans-serif">${pct}%</text>
+    ${sublabel ? `<text x="${cx}" y="${cx + pctFontSize/2 + 2}" text-anchor="middle" dominant-baseline="middle" font-size="${subFontSize}" font-weight="700" fill="var(--muted)" font-family="Nunito, system-ui, sans-serif">${sublabel}</text>` : ''}
+  </svg>`;
+}
+function sparkSvg(values, w, h, color){
+  if(!values || values.length < 2) return '';
+  const max = Math.max(...values), min = Math.min(...values);
+  const range = max - min || 1;
+  const dx = w / (values.length - 1);
+  const pts = values.map((v, i) => `${(i*dx).toFixed(1)},${(h - ((v-min)/range)*(h-4) - 2).toFixed(1)}`).join(' ');
+  const lastX = w;
+  const lastY = h - ((values[values.length-1]-min)/range)*(h-4) - 2;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;flex:0 0 auto">
+    <polyline points="${pts}" fill="none" stroke="${color||'var(--green-mid)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="${lastX.toFixed(1)}" cy="${lastY.toFixed(1)}" r="3" fill="${color||'var(--green-mid)'}"/>
   </svg>`;
 }
 function lineChartSvg(points, w, h){
