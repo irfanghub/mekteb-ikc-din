@@ -1074,6 +1074,7 @@ function loginView(){
         <button class="kid-card" onclick="pickPerson('${p.id}')">
           <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
           <div class="name">${p.name}</div>
+          <div class="pin-tip">PIN ${p.pin}</div>
         </button>`).join('')}
     </div>
   </div>`;
@@ -1217,6 +1218,7 @@ function pinView(){
         <button class="key" onclick="tapKey('0')">0</button>
         <button class="key fn" onclick="tapKey('back')">⌫</button>
       </div>
+      ${isDirectLogin ? `<div style="margin-top:10px;text-align:center;font-size:12px;color:var(--muted);font-weight:700">PIN: ${p.pin}</div>` : ''}
     </div>
   </div>`;
 }
@@ -1665,8 +1667,8 @@ function addKidFormHtml(){
 // OUDER APP
 // ═══════════════════════════════════════════════════════════════
 function ouderApp(){
-  // Alles op één scherm; thread opent als overlay
   if(state.threadOpen) return msgThread();
+  if(state.nav==='me')   return ouderProfile();
   return ouderHome();
 }
 function topbarOuder(){
