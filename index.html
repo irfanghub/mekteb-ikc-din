@@ -1928,29 +1928,42 @@ function ouderModalView(){
 }
 
 // ── Pincode wijzigen ──
+function ouderPinNumpad(pressFn, delFn, cancelFn){
+  return `<div class="keypad">
+    ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="${pressFn}('${n}')">${n}</button>`).join('')}
+    <button class="key fn" onclick="${cancelFn}">↩</button>
+    <button class="key" onclick="${pressFn}('0')">0</button>
+    <button class="key fn" onclick="${delFn}">⌫</button>
+  </div>`;
+}
+function ouderPinDots(len, err){
+  return `<div class="pin-dots" style="justify-content:center;margin-bottom:14px">
+    ${[0,1,2,3].map(i=>`<div class="pin-dot${len>i?' filled':''}${err?' error':''}"></div>`).join('')}
+  </div>`;
+}
 function ouderPinModal(){
   const step = state.ouderModalStep;
+  // Stap 1: huidige PIN verifiëren
   if(step===1) return `
-    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Stap 1 van 2 — Voer huidige pincode in','Korak 1 od 2 — Unesite trenutni PIN')}</div>
-    <div class="pin-dots" style="justify-content:center;margin-bottom:14px">
-      ${[0,1,2,3].map(i=>`<div class="pin-dot${state.ouderModalPin.length>i?' filled':''}${state.ouderModalErr?' error':''}"></div>`).join('')}
-    </div>
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Stap 1 van 3 — Voer huidige pincode in','Korak 1 od 3 — Unesite trenutni PIN')}</div>
+    ${ouderPinDots(state.ouderModalPin.length, state.ouderModalErr)}
     ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;text-align:center;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
-    <div class="keypad">
-      ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="ouderModalPin1('${n}')">${n}</button>`).join('')}
-      <button class="key fn" onclick="ouderCloseModal()">${T('back')}</button>
-      <button class="key" onclick="ouderModalPin1('0')">0</button>
-      <button class="key fn" onclick="ouderModalPinDel()">⌫</button>
-    </div>`;
+    ${ouderPinNumpad('ouderModalPin1','ouderModalPinDel1','ouderCloseModal')}`;
+  // Stap 2: nieuwe PIN kiezen
+  if(step===2) return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">${L('Stap 2 van 3 — Kies nieuwe pincode','Korak 2 od 3 — Odaberite novi PIN')}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${L('Nieuwe pincode','Novi PIN')}</div>
+    ${ouderPinDots(state.ouderModalPin.length, false)}
+    ${ouderPinNumpad('ouderModalPin2','ouderModalPinDel2','ouderModalPinTerug2')}`;
+  // Stap 3: nieuwe PIN bevestigen
   return `
-    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:12px">${L('Stap 2 van 2 — Kies nieuwe pincode','Korak 2 od 2 — Odaberite novi PIN')}</div>
-    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Nieuwe pincode (4 cijfers)','Novi PIN (4 broja)')}</div>
-    <input style="width:100%;background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px;font-size:20px;font-family:inherit;font-weight:900;letter-spacing:8px;outline:none;margin-bottom:10px" type="password" inputmode="numeric" maxlength="4" id="new-pin1" placeholder="••••" oninput="state.ouderModalInput=this.value">
-    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Herhaal nieuwe pincode','Ponovite novi PIN')}</div>
-    <input style="width:100%;background:#fff;border:2px solid ${state.ouderModalErr?'var(--red)':'var(--line)'};border-radius:12px;padding:12px 14px;font-size:20px;font-family:inherit;font-weight:900;letter-spacing:8px;outline:none;margin-bottom:6px" type="password" inputmode="numeric" maxlength="4" id="new-pin2" placeholder="••••" oninput="state.ouderModalInput2=this.value">
-    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
-    <button onclick="ouderSavePin()" style="width:100%;padding:13px;background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer;margin-top:4px">${L('Pincode opslaan','Spremi PIN')}</button>`;
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">${L('Stap 3 van 3 — Herhaal nieuwe pincode','Korak 3 od 3 — Ponovite novi PIN')}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${L('Herhaal nieuwe pincode','Ponovite novi PIN')}</div>
+    ${ouderPinDots(state.ouderModalPin.length, state.ouderModalErr)}
+    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;text-align:center;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
+    ${ouderPinNumpad('ouderModalPin3','ouderModalPinDel3','ouderModalPinTerug3')}`;
 }
+// Stap 1: huidige PIN
 function ouderModalPin1(d){
   if(state.ouderModalPin.length>=4) return;
   state.ouderModalPin+=d; state.ouderModalErr=''; render();
@@ -1961,18 +1974,38 @@ function ouderModalPin1(d){
     },80);
   }
 }
-function ouderModalPinDel(){ state.ouderModalPin=state.ouderModalPin.slice(0,-1); render(); }
-function ouderSavePin(){
-  const p1=document.getElementById('new-pin1')?.value||state.ouderModalInput;
-  const p2=document.getElementById('new-pin2')?.value||state.ouderModalInput2;
-  if(p1.length<4||p1!==p2){ state.ouderModalErr=L('Pincodes komen niet overeen of zijn te kort','PIN-ovi se ne poklapaju ili su prekratki'); render(); return; }
-  state.me.pin=p1;
-  // Sla op voor ALLE kinderen van deze ouder
-  state.me.kidIds.forEach(id=>saveKidToDB(id));
-  state.ouderModal=null;
-  state.ouderSuccess=L('Pincode gewijzigd!','PIN je promijenjen!');
-  render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+function ouderModalPinDel1(){ state.ouderModalPin=state.ouderModalPin.slice(0,-1); render(); }
+// Stap 2: nieuwe PIN invoeren
+function ouderModalPin2(d){
+  if(state.ouderModalPin.length>=4) return;
+  state.ouderModalPin+=d; render();
+  if(state.ouderModalPin.length===4){
+    setTimeout(()=>{ state.ouderModalInput=state.ouderModalPin; state.ouderModalPin=''; state.ouderModalStep=3; render(); },80);
+  }
 }
+function ouderModalPinDel2(){ state.ouderModalPin=state.ouderModalPin.slice(0,-1); render(); }
+function ouderModalPinTerug2(){ state.ouderModalStep=1; state.ouderModalPin=''; render(); }
+// Stap 3: nieuwe PIN bevestigen
+function ouderModalPin3(d){
+  if(state.ouderModalPin.length>=4) return;
+  state.ouderModalPin+=d; state.ouderModalErr=''; render();
+  if(state.ouderModalPin.length===4){
+    setTimeout(()=>{
+      if(state.ouderModalPin===state.ouderModalInput){
+        state.me.pin=state.ouderModalPin;
+        state.me.kidIds.forEach(id=>saveKidToDB(id));
+        state.ouderModal=null;
+        state.ouderSuccess=L('Pincode gewijzigd!','PIN je promijenjen!');
+        render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+      } else {
+        state.ouderModalErr=L('Pincodes komen niet overeen','PIN-ovi se ne poklapaju');
+        render(); setTimeout(()=>{ state.ouderModalPin=''; state.ouderModalErr=''; render(); },700);
+      }
+    },80);
+  }
+}
+function ouderModalPinDel3(){ state.ouderModalPin=state.ouderModalPin.slice(0,-1); render(); }
+function ouderModalPinTerug3(){ state.ouderModalStep=2; state.ouderModalPin=''; render(); }
 
 // ── Naam kind wijzigen ──
 function ouderKindNaamModal(){
