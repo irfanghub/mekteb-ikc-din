@@ -1117,7 +1117,7 @@ function ouderLoginView(){
       <div style="display:flex;align-items:flex-start;gap:8px;background:var(--green-soft);border:1.5px solid var(--green-mid);border-radius:12px;padding:10px 12px;font-size:11px;font-weight:700;color:#166534;line-height:1.5">
         🔒 ${L('Niemand anders ziet jouw naam of pincode.','Nitko drugi ne vidi vaše ime ni PIN.')}
       </div>
-      <button id="ouder-volgende-btn" onclick="ouderNaamVolgende()" ${state.ouderTypedName.trim().length<2?'disabled':''} style="width:100%;padding:14px;background:${state.ouderTypedName.trim().length<2?'var(--line)':'linear-gradient(135deg,var(--green),var(--green-d))'};color:${state.ouderTypedName.trim().length<2?'var(--muted)':'#fff'};font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:14px;cursor:pointer">
+      <button id="ouder-volgende-btn" onclick="ouderNaamVolgende()" style="width:100%;padding:14px;background:#e2e8f0;color:#94a3b8;font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:14px;cursor:pointer;transition:.15s">
         ${L('Volgende →','Dalje →')}
       </button>
     </div>
@@ -1125,18 +1125,18 @@ function ouderLoginView(){
 }
 
 function ouderNaamInputUpdate(){
-  // Geen render() — alleen knop-state aanpassen zodat toetsenbord open blijft
-  const ok = state.ouderTypedName.trim().length >= 2;
+  // Geen render() — alleen kleur aanpassen, toetsenbord blijft open
+  const ok = state.ouderTypedName.trim().length >= 1;
   const btn = document.getElementById('ouder-volgende-btn');
   if(!btn) return;
-  btn.disabled = !ok;
-  btn.style.background = ok ? 'linear-gradient(135deg,var(--green),var(--green-d))' : 'var(--line)';
-  btn.style.color = ok ? '#fff' : 'var(--muted)';
+  btn.style.background = ok ? 'linear-gradient(135deg,#10b981,#059669)' : '#e2e8f0';
+  btn.style.color      = ok ? '#fff' : '#94a3b8';
+  btn.style.boxShadow  = ok ? '0 6px 20px rgba(16,185,129,.3)' : 'none';
 }
 
 function ouderNaamVolgende(){
   const typed = state.ouderTypedName.trim();
-  if(typed.length < 2) return;
+  if(!typed) return;
   const norm = normName(typed);
   // Zoek: exacte match eerst, dan begint-met
   let match = PARENTS.find(p => normName(p.name) === norm);
