@@ -896,6 +896,16 @@ let state = {
   showAddHw: false,   // toon add-huiswerk formulier
   showRegForm: false, // ouder zelf-registratie (beginfase)
   regData: {ouderNaam:'', ouderPin:'', kinderen:['']},
+  ouderTypedName: '',
+  ouderNameError: '',
+  ouderModal: null,
+  ouderModalStep: 1,
+  ouderModalPin: '',
+  ouderModalInput: '',
+  ouderModalInput2: '',
+  ouderModalKidId: null,
+  ouderModalErr: '',
+  ouderSuccess: '',
   leaderTab: 'myLevel', // 'myLevel' | 'hafizTop' | 'streakTop'
   showBadgeModal: null, // index in BADGES array, of null
   showScoreModal: null, // 'streak' | 'hafiz' | 'ilmihal' | null
@@ -1025,6 +1035,11 @@ function langToggleSmall(){
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// NAAM NORMALISATIE — voor robuust zoeken (case + diakrieten)
+// ═══════════════════════════════════════════════════════════════
+function normName(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+
 // LOGIN — naam + pincode
 // ═══════════════════════════════════════════════════════════════
 function pool(){
@@ -1035,17 +1050,19 @@ function pool(){
   return [];
 }
 function loginView(){
+  if(state.role==='ouder') return ouderLoginView();
   if(state.selectedPerson) return pinView();
-  // Efendija & bestuur: direct naar PIN — geen naamkeuze nodig
+  // Efendija & bestuur: direct naar PIN
   if(state.role==='efendija' || state.role==='bestuur'){
     const p = pool();
     if(p.length>=1){ state.selectedPerson=p[0]; state.pin=''; return pinView(); }
   }
+  // Kind: naam-picker grid (ongewijzigd)
   const items = pool().filter(p => !state.searchQuery || p.name.toLowerCase().includes(state.searchQuery.toLowerCase()));
   return `<div class="screen">
     <div class="head-back" style="margin-top:14px">
       <button class="back-btn" onclick="go('splash')">←</button>
-      <div><div class="ttl">${T('whoAreYou')}</div><div class="stl">${state.role==='kind'?T('kind'):state.role==='ouder'?T('ouder'):state.role==='efendija'?T('efendija'):T('bestuur')}</div></div>
+      <div><div class="ttl">${T('whoAreYou')}</div><div class="stl">${T('kind')}</div></div>
       ${langToggleSmall()}
     </div>
     <div class="search-box">
@@ -1057,26 +1074,122 @@ function loginView(){
         <button class="kid-card" onclick="pickPerson('${p.id}')">
           <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
           <div class="name">${p.name}</div>
-          <div class="pin-tip">PIN ${p.pin}</div>
         </button>`).join('')}
     </div>
-    <div style="text-align:center;margin-top:18px;font-size:11px;color:var(--muted);font-weight:700">${state.lang==='nl'?'Pincodes zichtbaar voor demo.':'PIN-ovi vidljivi za demo.'}</div>
-    ${state.role==='ouder' ? `<div style="margin-top:14px">
-      <button onclick="state.showRegForm=!state.showRegForm;render()" style="width:100%;padding:12px;border-radius:14px;background:${state.darkMode?'#0c2416':'var(--green-soft)'};color:var(--green);border:1.5px dashed var(--green-mid);font-weight:800;font-size:13px">
-        ➕ ${L('Nog geen account? Kind hier aanmelden →','Nemate nalog? Prijavite dijete ovdje →')}
+  </div>`;
+}
+
+// OUDER LOGIN — stap 1: naam typen, stap 2: pincode
+function ouderLoginView(){
+  if(state.selectedPerson) return ouderPinView();
+  const err = state.ouderNameError;
+  return `<div class="screen">
+    <div class="head-back" style="margin-top:14px">
+      <button class="back-btn" onclick="go('splash')">←</button>
+      <div>
+        <div class="ttl">${L('Ouder login','Prijava roditelja')}</div>
+        <div class="stl">IKC DIN Mekteb</div>
+      </div>
+      ${langToggleSmall()}
+    </div>
+    <div style="display:flex;align-items:center;padding:8px 16px 0;gap:0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;box-shadow:0 4px 12px rgba(16,185,129,.3)">1</div>
+        <div style="font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.4px">${L('Naam','Ime')}</div>
+      </div>
+      <div style="flex:1;height:2px;background:var(--line);margin-bottom:14px"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--line);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">2</div>
+        <div style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">PIN</div>
+      </div>
+    </div>
+    <div style="padding:20px 16px;display:flex;flex-direction:column;gap:14px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${L('Jouw naam','Vaše ime')}</div>
+        <input id="ouder-naam-inp"
+          style="width:100%;background:#fff;border:2px solid ${err?'var(--red)':'var(--line)'};border-radius:14px;padding:13px 16px;font-size:16px;font-family:inherit;font-weight:700;color:var(--ink);outline:none"
+          type="text" autocomplete="given-name" placeholder="${L('Typ je voornaam…','Upišite ime…')}"
+          value="${state.ouderTypedName}"
+          oninput="state.ouderTypedName=this.value;state.ouderNameError='';render()"
+          onkeydown="if(event.key==='Enter')ouderNaamVolgende()">
+        ${err ? `<div style="color:var(--red);font-size:12px;font-weight:800;margin-top:4px">${err}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:8px;background:var(--green-soft);border:1.5px solid var(--green-mid);border-radius:12px;padding:10px 12px;font-size:11px;font-weight:700;color:#166534;line-height:1.5">
+        🔒 ${L('Niemand anders ziet jouw naam of pincode.','Nitko drugi ne vidi vaše ime ni PIN.')}
+      </div>
+      <button onclick="ouderNaamVolgende()" ${state.ouderTypedName.trim().length<2?'disabled':''} style="width:100%;padding:14px;background:${state.ouderTypedName.trim().length<2?'var(--line)':'linear-gradient(135deg,var(--green),var(--green-d))'};color:${state.ouderTypedName.trim().length<2?'var(--muted)':'#fff'};font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:14px;cursor:pointer">
+        ${L('Volgende →','Dalje →')}
       </button>
-      ${state.showRegForm ? ouderRegFormHtml() : ''}
-    </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function ouderNaamVolgende(){
+  const typed = state.ouderTypedName.trim();
+  if(typed.length < 2) return;
+  const norm = normName(typed);
+  // Zoek: exacte match eerst, dan begint-met
+  let match = PARENTS.find(p => normName(p.name) === norm);
+  if(!match) match = PARENTS.find(p => normName(p.name).startsWith(norm));
+  if(!match){
+    state.ouderNameError = L('Naam niet gevonden. Controleer je naam of vraag de efendija om hulp.','Ime nije pronađeno. Provjerite ime ili pitajte efendiju.');
+    render(); return;
+  }
+  state.selectedPerson = match;
+  state.pin = '';
+  render();
+}
+
+function ouderPinView(){
+  const p = state.selectedPerson;
+  const kids = KIDS.filter(k => p.kidIds.includes(k.id));
+  return `<div class="screen">
+    <div class="head-back" style="margin-top:14px">
+      <button class="back-btn" onclick="state.selectedPerson=null;state.pin='';render()">←</button>
+      <div>
+        <div class="ttl">${L('Ouder login','Prijava roditelja')}</div>
+        <div class="stl">IKC DIN Mekteb</div>
+      </div>
+      ${langToggleSmall()}
+    </div>
+    <div style="display:flex;align-items:center;padding:8px 16px 0;gap:0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green-d);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">✓</div>
+        <div style="font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.4px">${L('Naam','Ime')}</div>
+      </div>
+      <div style="flex:1;height:2px;background:var(--green);margin-bottom:14px"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;box-shadow:0 4px 12px rgba(16,185,129,.3)">2</div>
+        <div style="font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.4px">PIN</div>
+      </div>
+    </div>
+    <div style="padding:16px">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--green-soft);border-radius:14px;padding:12px 14px;margin-bottom:16px">
+        <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
+        <div>
+          <div style="font-weight:800;font-size:13px;color:#166534">${p.name}</div>
+          <div style="font-size:10px;color:var(--green);font-weight:700">${L('Ouder van','Roditelj od')} ${kids.map(k=>k.name).join(' & ')}</div>
+        </div>
+      </div>
+    </div>
+    <div class="pin-area">
+      <div class="pin-dots">
+        ${[0,1,2,3].map(i=>`<div class="pin-dot ${state.pin.length>i?'filled':''}"></div>`).join('')}
+      </div>
+      <div class="keypad">
+        ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="tapKey('${n}')">${n}</button>`).join('')}
+        <button class="key fn" onclick="state.selectedPerson=null;state.pin='';render()">${T('back')}</button>
+        <button class="key" onclick="tapKey('0')">0</button>
+        <button class="key fn" onclick="tapKey('back')">⌫</button>
+      </div>
+    </div>
   </div>`;
 }
 
 function pinView(){
   const p = state.selectedPerson;
-  // Efendija/bestuur hebben geen naam-picker — terug = naar splash
   const isDirectLogin = state.role==='efendija' || state.role==='bestuur';
-  const backFn = isDirectLogin
-    ? `logout()`
-    : `state.selectedPerson=null;state.pin='';render()`;
+  const backFn = isDirectLogin ? `logout()` : `state.selectedPerson=null;state.pin='';render()`;
   return `<div class="screen">
     <div class="head-back" style="margin-top:14px">
       <button class="back-btn" onclick="${backFn}">←</button>
@@ -1094,7 +1207,6 @@ function pinView(){
         <button class="key" onclick="tapKey('0')">0</button>
         <button class="key fn" onclick="tapKey('back')">⌫</button>
       </div>
-      <div style="margin-top:12px;font-size:11px;color:var(--muted)">PIN: ${p.pin}</div>
     </div>
   </div>`;
 }
@@ -1722,18 +1834,50 @@ function hwCardBody(h){
 }
 function ouderProfile(){
   const p = state.me;
+  const kids = KIDS.filter(k => p.kidIds.includes(k.id));
+  const suc = state.ouderSuccess;
   return `<div class="topbar">
       <button class="back-btn" onclick="setNav('home')">←</button>
-      <div style="text-align:center;flex:1"><div style="font-weight:900">${T('profile')}</div></div>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">${L('Mijn account','Moj nalog')}</div></div>
       <button class="back-btn" onclick="logout()">⏻</button>
     </div>
-    <div class="screen">
-      <div style="text-align:center;padding:14px 0 16px">
-        <div class="avatar xl ${colorOf(p.name)}" style="margin:0 auto 10px">${initial(p.name)}</div>
+    ${state.ouderModal ? ouderModalView() : ''}
+    <div class="screen" style="padding-top:4px">
+      <div style="text-align:center;padding:14px 0 12px">
+        <div class="avatar xl ${colorOf(p.name)}" style="margin:0 auto 8px">${initial(p.name)}</div>
         <div style="font-size:20px;font-weight:900">${p.name.split('(')[0].trim()}</div>
-        <div class="muted" style="font-size:13px">${T('ouder')} • ${p.kidIds.length} ${state.lang==='nl'?'kind(eren)':'djece'}</div>
+        <div class="muted" style="font-size:12px">${T('ouder')} • ${kids.length} ${state.lang==='nl'?'kind(eren)':'djece'}</div>
       </div>
-      <div class="list">
+      ${suc ? `<div style="margin:0 14px 10px;display:flex;align-items:center;gap:6px;background:var(--green-soft);border:1.5px solid var(--green-mid);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;color:#166534">✅ ${suc}</div>` : ''}
+      <div style="padding:0 14px 4px;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">${L('Beveiliging','Sigurnost')}</div>
+      <div class="list" style="margin:0 14px 10px">
+        <div class="list-row" onclick="ouderOpenModal('pin')">
+          <div style="font-size:18px">🔑</div>
+          <div style="flex:1"><div class="name">${L('Pincode wijzigen','Promijeni PIN')}</div><div class="muted" style="font-size:11px">${L('Verander je persoonlijke pincode','Promijeni osobni PIN')}</div></div>
+          <div style="color:var(--muted);font-size:16px">›</div>
+        </div>
+      </div>
+      <div style="padding:0 14px 4px;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">${L('Mijn kinderen','Moja djeca')}</div>
+      <div class="list" style="margin:0 14px 10px">
+        ${kids.map(k=>`
+        <div class="list-row" onclick="ouderOpenModal('kind-naam',${k.id},'${k.name.replace(/'/g,"\\'")}')">
+          <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
+          <div style="flex:1"><div class="name">${k.name}</div><div class="muted" style="font-size:11px">N${k.level}</div></div>
+          <div style="color:var(--muted);font-size:16px">›</div>
+        </div>`).join('')}
+        <div class="list-row" onclick="ouderOpenModal('kind-add')">
+          <div style="font-size:18px">➕</div>
+          <div style="flex:1"><div class="name">${L('Kind toevoegen','Dodaj dijete')}</div><div class="muted" style="font-size:11px">${L('Koppel nog een kind aan jouw account','Poveži još jedno dijete')}</div></div>
+          <div style="color:var(--muted);font-size:16px">›</div>
+        </div>
+        ${kids.length > 1 ? kids.map(k=>`
+        <div class="list-row" onclick="ouderOpenModal('kind-del',${k.id},'${k.name.replace(/'/g,"\\'")}')">
+          <div style="font-size:18px">🗑️</div>
+          <div style="flex:1"><div class="name" style="color:var(--red)">${L('Loskoppelen','Odveži')} — ${k.name}</div><div class="muted" style="font-size:11px">${L('Verwijder koppeling met dit kind','Ukloni vezu s ovim djetetom')}</div></div>
+          <div style="color:var(--red);font-size:16px">›</div>
+        </div>`).join('') : ''}
+      </div>
+      <div class="list" style="margin:0 14px">
         <div class="list-row" onclick="logout()">
           <div style="font-size:18px">⏻</div>
           <div class="name" style="color:var(--red)">${T('logout')}</div>
@@ -1742,7 +1886,156 @@ function ouderProfile(){
     </div>
     ${navBar([['home',T('tabHome')]])}`;
 }
-function openThread(id){ state.threadOpen=id; render(); }
+
+// ── Ouder modal opener ──
+function ouderOpenModal(type, kidId=null, kidName=''){
+  state.ouderModal=type; state.ouderModalStep=1;
+  state.ouderModalPin=''; state.ouderModalInput=''; state.ouderModalInput2='';
+  state.ouderModalKidId=kidId; state.ouderModalErr='';
+  if(kidName) state.ouderModalInput=kidName;
+  render();
+}
+function ouderCloseModal(){ state.ouderModal=null; render(); }
+
+// ── Ouder modal renderer ──
+function ouderModalView(){
+  const type = state.ouderModal;
+  let title='', body='';
+  if(type==='pin')      { title=L('Pincode wijzigen','Promijeni PIN'); body=ouderPinModal(); }
+  if(type==='kind-naam'){ title=L('Naam kind wijzigen','Promijeni ime djeteta'); body=ouderKindNaamModal(); }
+  if(type==='kind-add') { title=L('Kind toevoegen','Dodaj dijete'); body=ouderKindAddModal(); }
+  if(type==='kind-del') { title=L('Kind loskoppelen','Odveži dijete'); body=ouderKindDelModal(); }
+  return `<div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-end" onclick="if(event.target===this)ouderCloseModal()">
+    <div style="background:#fff;border-radius:24px 24px 0 0;width:100%;padding:18px 18px 32px;max-height:80%;overflow-y:auto">
+      <div style="width:36px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 14px"></div>
+      <div style="font-size:17px;font-weight:900;margin-bottom:14px">${title}</div>
+      ${body}
+    </div>
+  </div>`;
+}
+
+// ── Pincode wijzigen ──
+function ouderPinModal(){
+  const step = state.ouderModalStep;
+  if(step===1) return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Stap 1 van 2 — Voer huidige pincode in','Korak 1 od 2 — Unesite trenutni PIN')}</div>
+    <div class="pin-dots" style="justify-content:center;margin-bottom:14px">
+      ${[0,1,2,3].map(i=>`<div class="pin-dot${state.ouderModalPin.length>i?' filled':''}${state.ouderModalErr?' error':''}"></div>`).join('')}
+    </div>
+    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;text-align:center;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
+    <div class="keypad">
+      ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="ouderModalPin1('${n}')">${n}</button>`).join('')}
+      <button class="key fn" onclick="ouderCloseModal()">${T('back')}</button>
+      <button class="key" onclick="ouderModalPin1('0')">0</button>
+      <button class="key fn" onclick="ouderModalPinDel()">⌫</button>
+    </div>`;
+  return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:12px">${L('Stap 2 van 2 — Kies nieuwe pincode','Korak 2 od 2 — Odaberite novi PIN')}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Nieuwe pincode (4 cijfers)','Novi PIN (4 broja)')}</div>
+    <input style="width:100%;background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px;font-size:20px;font-family:inherit;font-weight:900;letter-spacing:8px;outline:none;margin-bottom:10px" type="password" inputmode="numeric" maxlength="4" id="new-pin1" placeholder="••••" oninput="state.ouderModalInput=this.value">
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Herhaal nieuwe pincode','Ponovite novi PIN')}</div>
+    <input style="width:100%;background:#fff;border:2px solid ${state.ouderModalErr?'var(--red)':'var(--line)'};border-radius:12px;padding:12px 14px;font-size:20px;font-family:inherit;font-weight:900;letter-spacing:8px;outline:none;margin-bottom:6px" type="password" inputmode="numeric" maxlength="4" id="new-pin2" placeholder="••••" oninput="state.ouderModalInput2=this.value">
+    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
+    <button onclick="ouderSavePin()" style="width:100%;padding:13px;background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer;margin-top:4px">${L('Pincode opslaan','Spremi PIN')}</button>`;
+}
+function ouderModalPin1(d){
+  if(state.ouderModalPin.length>=4) return;
+  state.ouderModalPin+=d; state.ouderModalErr=''; render();
+  if(state.ouderModalPin.length===4){
+    setTimeout(()=>{
+      if(state.ouderModalPin===state.me.pin){ state.ouderModalStep=2; state.ouderModalPin=''; render(); }
+      else { state.ouderModalErr=L('Verkeerde pincode','Pogrešan PIN'); render(); setTimeout(()=>{ state.ouderModalPin=''; state.ouderModalErr=''; render(); },700); }
+    },80);
+  }
+}
+function ouderModalPinDel(){ state.ouderModalPin=state.ouderModalPin.slice(0,-1); render(); }
+function ouderSavePin(){
+  const p1=document.getElementById('new-pin1')?.value||state.ouderModalInput;
+  const p2=document.getElementById('new-pin2')?.value||state.ouderModalInput2;
+  if(p1.length<4||p1!==p2){ state.ouderModalErr=L('Pincodes komen niet overeen of zijn te kort','PIN-ovi se ne poklapaju ili su prekratki'); render(); return; }
+  state.me.pin=p1;
+  // Sla op voor ALLE kinderen van deze ouder
+  state.me.kidIds.forEach(id=>saveKidToDB(id));
+  state.ouderModal=null;
+  state.ouderSuccess=L('Pincode gewijzigd!','PIN je promijenjen!');
+  render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+}
+
+// ── Naam kind wijzigen ──
+function ouderKindNaamModal(){
+  const k = KIDS.find(x=>x.id===state.ouderModalKidId);
+  return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:12px">${L('Verander de naam van','Promijenite ime od')} ${k?k.name:''}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Nieuwe naam','Novo ime')}</div>
+    <input style="width:100%;background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px;font-size:16px;font-family:inherit;font-weight:700;color:var(--ink);outline:none;margin-bottom:10px" type="text" id="new-kind-naam" placeholder="${k?k.name:''}" oninput="state.ouderModalInput=this.value">
+    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
+    <button onclick="ouderSaveKindNaam()" style="width:100%;padding:13px;background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer">${L('Naam opslaan','Spremi ime')}</button>`;
+}
+function ouderSaveKindNaam(){
+  const val=(document.getElementById('new-kind-naam')?.value||state.ouderModalInput).trim();
+  if(!val){ state.ouderModalErr=L('Naam mag niet leeg zijn','Ime ne smije biti prazno'); render(); return; }
+  const k=KIDS.find(x=>x.id===state.ouderModalKidId);
+  if(k){ k.name=val; saveKidToDB(k.id); }
+  state.ouderModal=null;
+  state.ouderSuccess=L(`Naam gewijzigd naar ${val}`,`Ime promijenjeno u ${val}`);
+  render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+}
+
+// ── Kind toevoegen ──
+function ouderKindAddModal(){
+  return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:12px">${L('Voer de naam en pincode in die de efendija heeft meegegeven','Unesite ime i PIN koje je efendija dao')}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Naam kind','Ime djeteta')}</div>
+    <input style="width:100%;background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px;font-size:16px;font-family:inherit;font-weight:700;color:var(--ink);outline:none;margin-bottom:10px" type="text" id="add-kind-naam" placeholder="${L('Naam van je kind…','Ime djeteta…')}" oninput="state.ouderModalInput=this.value">
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Pincode van het kind','PIN djeteta')}</div>
+    <input style="width:100%;background:#fff;border:2px solid ${state.ouderModalErr?'var(--red)':'var(--line)'};border-radius:12px;padding:12px 14px;font-size:20px;font-family:inherit;font-weight:900;letter-spacing:8px;outline:none;margin-bottom:6px" type="password" inputmode="numeric" maxlength="4" id="add-kind-pin" placeholder="••••" oninput="state.ouderModalInput2=this.value">
+    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
+    <div style="display:flex;align-items:flex-start;gap:8px;background:var(--green-soft);border:1.5px solid var(--green-mid);border-radius:11px;padding:9px 11px;font-size:11px;font-weight:700;color:#166534;margin-bottom:12px">
+      🔒 ${L('De pincode van je kind staat op het briefje van efendija','PIN djeteta je na listiću efendije')}
+    </div>
+    <button onclick="ouderSaveKindAdd()" style="width:100%;padding:13px;background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer">${L('Kind koppelen','Poveži dijete')}</button>`;
+}
+function ouderSaveKindAdd(){
+  const naam=(document.getElementById('add-kind-naam')?.value||state.ouderModalInput).trim();
+  const pin=(document.getElementById('add-kind-pin')?.value||state.ouderModalInput2).trim();
+  const normN=normName(naam);
+  const match=KIDS.find(k=>normName(k.name)===normN && k.pin===pin);
+  if(!match){ state.ouderModalErr=L('Naam + pincode niet gevonden. Controleer het briefje van efendija.','Ime + PIN nije pronađeno. Provjerite listić efendije.'); render(); return; }
+  if(!state.me.kidIds.includes(match.id)) state.me.kidIds.push(match.id);
+  // Zorg dat deze ouder ook in de PARENTS entry staat + sla op
+  const pEntry=PARENTS.find(p=>p.id===state.me.id);
+  if(pEntry && !pEntry.kidIds.includes(match.id)) pEntry.kidIds.push(match.id);
+  saveKidToDB(match.id);
+  state.ouderModal=null;
+  state.ouderSuccess=L(`${match.name} gekoppeld aan jouw account!`,`${match.name} je spojen na vaš nalog!`);
+  render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+}
+
+// ── Kind loskoppelen ──
+function ouderKindDelModal(){
+  const k=KIDS.find(x=>x.id===state.ouderModalKidId);
+  const naam=k?k.name:state.ouderModalInput;
+  return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:12px">${L(`Weet je zeker dat je ${naam} wilt loskoppelen van jouw account?`,`Jeste li sigurni da želite odvojiti ${naam} od vašeg naloga?`)}</div>
+    <div style="display:flex;align-items:flex-start;gap:8px;background:var(--red-soft);border:1.5px solid #fca5a5;border-radius:11px;padding:9px 11px;font-size:11px;font-weight:700;color:#991b1b;margin-bottom:14px">
+      ⚠️ ${L('Het kind blijft in de mekteb-app staan. Alleen jouw koppeling wordt verwijderd.','Dijete ostaje u mekteb aplikaciji. Samo se vaša veza briše.')}
+    </div>
+    <button onclick="ouderSaveKindDel()" style="width:100%;padding:13px;background:var(--red-soft);color:var(--red);font-family:inherit;font-weight:900;font-size:15px;border:1.5px solid #fca5a5;border-radius:13px;cursor:pointer;margin-bottom:8px">${L('Ja, loskoppelen','Da, odveži')}</button>
+    <button onclick="ouderCloseModal()" style="width:100%;padding:13px;background:#fff;color:var(--muted);font-family:inherit;font-weight:900;font-size:15px;border:2px solid var(--line);border-radius:13px;cursor:pointer">${L('Annuleren','Odustani')}</button>`;
+}
+function ouderSaveKindDel(){
+  const id=state.ouderModalKidId;
+  state.me.kidIds=state.me.kidIds.filter(x=>x!==id);
+  const pEntry=PARENTS.find(p=>p.id===state.me.id);
+  if(pEntry) pEntry.kidIds=pEntry.kidIds.filter(x=>x!==id);
+  // Sla alle resterende kinderen op
+  state.me.kidIds.forEach(kid=>saveKidToDB(kid));
+  const naam=KIDS.find(k=>k.id===id)?.name||'';
+  state.ouderModal=null;
+  state.ouderSuccess=L(`${naam} losgekoppeld.`,`${naam} je odvojen.`);
+  render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+}
+
 function enterChildView(id){ /* could deeplink to a child detail page; for prototype: jump to homework filtered */ state.nav='hw'; render(); }
 
 // ═══════════════════════════════════════════════════════════════
