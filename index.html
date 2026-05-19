@@ -1110,18 +1110,28 @@ function ouderLoginView(){
           style="width:100%;background:#fff;border:2px solid ${err?'var(--red)':'var(--line)'};border-radius:14px;padding:13px 16px;font-size:16px;font-family:inherit;font-weight:700;color:var(--ink);outline:none"
           type="text" autocomplete="given-name" placeholder="${L('Typ je voornaam…','Upišite ime…')}"
           value="${state.ouderTypedName}"
-          oninput="state.ouderTypedName=this.value;state.ouderNameError='';render()"
+          oninput="state.ouderTypedName=this.value;ouderNaamInputUpdate()"
           onkeydown="if(event.key==='Enter')ouderNaamVolgende()">
         ${err ? `<div style="color:var(--red);font-size:12px;font-weight:800;margin-top:4px">${err}</div>` : ''}
       </div>
       <div style="display:flex;align-items:flex-start;gap:8px;background:var(--green-soft);border:1.5px solid var(--green-mid);border-radius:12px;padding:10px 12px;font-size:11px;font-weight:700;color:#166534;line-height:1.5">
         🔒 ${L('Niemand anders ziet jouw naam of pincode.','Nitko drugi ne vidi vaše ime ni PIN.')}
       </div>
-      <button onclick="ouderNaamVolgende()" ${state.ouderTypedName.trim().length<2?'disabled':''} style="width:100%;padding:14px;background:${state.ouderTypedName.trim().length<2?'var(--line)':'linear-gradient(135deg,var(--green),var(--green-d))'};color:${state.ouderTypedName.trim().length<2?'var(--muted)':'#fff'};font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:14px;cursor:pointer">
+      <button id="ouder-volgende-btn" onclick="ouderNaamVolgende()" ${state.ouderTypedName.trim().length<2?'disabled':''} style="width:100%;padding:14px;background:${state.ouderTypedName.trim().length<2?'var(--line)':'linear-gradient(135deg,var(--green),var(--green-d))'};color:${state.ouderTypedName.trim().length<2?'var(--muted)':'#fff'};font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:14px;cursor:pointer">
         ${L('Volgende →','Dalje →')}
       </button>
     </div>
   </div>`;
+}
+
+function ouderNaamInputUpdate(){
+  // Geen render() — alleen knop-state aanpassen zodat toetsenbord open blijft
+  const ok = state.ouderTypedName.trim().length >= 2;
+  const btn = document.getElementById('ouder-volgende-btn');
+  if(!btn) return;
+  btn.disabled = !ok;
+  btn.style.background = ok ? 'linear-gradient(135deg,var(--green),var(--green-d))' : 'var(--line)';
+  btn.style.color = ok ? '#fff' : 'var(--muted)';
 }
 
 function ouderNaamVolgende(){
