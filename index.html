@@ -944,7 +944,7 @@ const render = () => {
   const savedPos = wasSearch ? activeEl.selectionStart : null;
 
   $('#app').innerHTML = router();
-  if(state.view==='splash') setTimeout(splashInitCanvas, 0);
+  if(state.view==='splash') setTimeout(splashInitCanvas, 200);
   $('#app').classList.toggle('dark', !!state.darkMode);
   document.body.classList.toggle('dark', !!state.darkMode);
 
@@ -1095,14 +1095,17 @@ function splashView(){
 function splashInitCanvas(){
   const cv = document.getElementById('splash-cv');
   if(!cv) return;
+  // Gebruik .app dimensies — betrouwbaarder dan cv.offset
+  const app = document.getElementById('app');
+  const W = (app ? app.offsetWidth : window.innerWidth) || 390;
+  const H = (app ? app.offsetHeight : window.innerHeight) || 760;
+  cv.width = W;
+  cv.height = H;
   const ctx = cv.getContext('2d');
-  cv.width = cv.offsetWidth;
-  cv.height = cv.offsetHeight;
   let t = 0;
-  // Sterren met iets snellere drift dan preview
   const stars = Array.from({length:100}, ()=>({
-    x: Math.random()*cv.width,
-    y: Math.random()*cv.height*.7,
+    x: Math.random()*W,
+    y: Math.random()*H*.65,
     r: Math.random()*1.3+.3,
     a: Math.random(),
     da: .003+Math.random()*.005,
@@ -1110,10 +1113,9 @@ function splashInitCanvas(){
     vy: (Math.random()-.5)*.09,
   }));
   function aurora(yb,amp,freq,ph,c1,c2,op){
-    const H=cv.height;
     ctx.beginPath(); ctx.moveTo(0,H);
-    for(let x=0;x<=cv.width;x+=3) ctx.lineTo(x, yb+Math.sin(x*freq+t+ph)*amp+Math.sin(x*freq*1.7+t*.8+ph)*amp*.35);
-    ctx.lineTo(cv.width,H); ctx.closePath();
+    for(let x=0;x<=W;x+=3) ctx.lineTo(x, yb+Math.sin(x*freq+t+ph)*amp+Math.sin(x*freq*1.7+t*.8+ph)*amp*.35);
+    ctx.lineTo(W,H); ctx.closePath();
     const g=ctx.createLinearGradient(0,yb-amp,0,H);
     g.addColorStop(0,c1); g.addColorStop(.5,c2); g.addColorStop(1,'transparent');
     ctx.fillStyle=g; ctx.globalAlpha=op; ctx.fill(); ctx.globalAlpha=1;
@@ -1121,37 +1123,38 @@ function splashInitCanvas(){
   let raf;
   function draw(){
     if(!document.getElementById('splash-cv')){ cancelAnimationFrame(raf); return; }
-    const W=cv.width, H=cv.height;
     ctx.clearRect(0,0,W,H); t+=.007;
-    const bg=ctx.createRadialGradient(W/2,H*.22,0,W/2,H*.22,W*.95);
-    bg.addColorStop(0,'#030f07'); bg.addColorStop(1,'#010503');
+    // Achtergrond
+    const bg=ctx.createRadialGradient(W/2,H*.2,0,W/2,H*.2,W);
+    bg.addColorStop(0,'#031208'); bg.addColorStop(1,'#010503');
     ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
-    // Sterren
+    // Sterren — alleen in bovenste 65%
     stars.forEach(s=>{
       s.a=Math.max(.05,Math.min(.9,s.a+(s.a<=.05||s.a>=.9?-s.da:s.da)));
       s.x+=s.vx; s.y+=s.vy;
       if(s.x<-2)s.x=W+2; if(s.x>W+2)s.x=-2;
-      if(s.y<-2)s.y=H*.7+2; if(s.y>H*.7+2)s.y=-2;
+      if(s.y<-2)s.y=H*.65+2; if(s.y>H*.65+2)s.y=-2;
       ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,6.28);
       ctx.fillStyle=`rgba(200,240,215,${s.a*.7})`; ctx.fill();
     });
-    // Aurora
-    const yOff = H*.69;
-    aurora(yOff+30, 65,.013,0,   'rgba(6,120,85,.42)','rgba(3,70,48,0)',.95);
-    aurora(yOff+10, 52,.016,.9,  'rgba(16,180,125,.28)','rgba(8,120,85,0)',.85);
-    aurora(yOff+52, 82,.009,1.7, 'rgba(10,150,100,.22)','rgba(4,90,58,0)',.75);
-    aurora(yOff-10, 42,.019,2.5, 'rgba(52,210,148,.2)','rgba(14,165,108,0)',.65);
-    aurora(yOff+75, 60,.011,3.2, 'rgba(4,100,68,.15)','rgba(2,55,36,0)',.8);
-    // Goud gloed
+    // Aurora — helemaal onderaan (80-100% van hoogte)
+    const yOff = H*.82;
+    aurora(yOff,     60,.013,0,   'rgba(6,120,85,.45)','rgba(3,70,48,0)',.95);
+    aurora(yOff-15,  48,.016,.9,  'rgba(16,180,125,.3)','rgba(8,120,85,0)',.85);
+    aurora(yOff+40,  75,.009,1.7, 'rgba(10,150,100,.25)','rgba(4,90,58,0)',.75);
+    aurora(yOff-25,  38,.019,2.5, 'rgba(52,210,148,.22)','rgba(14,165,108,0)',.65);
+    aurora(yOff+65,  55,.011,3.2, 'rgba(4,100,68,.18)','rgba(2,55,36,0)',.8);
+    // Goud gloed onderaan
     const mg=ctx.createRadialGradient(W/2,H,0,W/2,H,W*.65);
     mg.addColorStop(0,`rgba(201,162,39,${.16+Math.sin(t*.55)*.05})`);
     mg.addColorStop(1,'transparent');
     ctx.fillStyle=mg; ctx.fillRect(0,0,W,H);
-    // Maan
-    ctx.save(); ctx.translate(W*.79,H*.075);
-    ctx.beginPath(); ctx.arc(0,0,16,0,Math.PI*2);
-    ctx.fillStyle=`rgba(253,230,138,${.55+Math.sin(t*.38)*.1})`; ctx.fill();
-    ctx.beginPath(); ctx.arc(7,0,12.5,0,Math.PI*2);
+    // Maan — goed zichtbaar rechtsboven, niet te dicht op de rand
+    ctx.save();
+    ctx.translate(W*.78, H*.1);
+    ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2);
+    ctx.fillStyle=`rgba(253,230,138,${.7+Math.sin(t*.38)*.12})`; ctx.fill();
+    ctx.beginPath(); ctx.arc(9,0,16,0,Math.PI*2);
     ctx.fillStyle='#010503'; ctx.fill();
     ctx.restore();
     raf=requestAnimationFrame(draw);
