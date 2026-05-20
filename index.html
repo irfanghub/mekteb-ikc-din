@@ -311,10 +311,19 @@ select{font-family:inherit;font-weight:600}
   .app{border-radius:0;box-shadow:none;max-width:100%;min-height:100vh;min-height:100dvh;height:100vh;height:100dvh;-webkit-font-smoothing:antialiased}
 }
 
-/* ── iPad: breder en scherper ── */
-@media(min-width:521px) and (max-width:1100px){
-  body{background:#eef0ec;display:flex;justify-content:center;align-items:flex-start;min-height:100vh}
-  .app{max-width:500px;min-height:100vh;border-radius:0;box-shadow:none;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+/* ── iPad: scherm volledig vullen, geen gedoe ── */
+@media(min-width:521px){
+  body{background:#eef0ec}
+  .app{
+    max-width:100%;
+    width:100%;
+    min-height:100vh;
+    min-height:100dvh;
+    border-radius:0;
+    box-shadow:none;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
 }
 
 /* ── Print ── */
