@@ -305,9 +305,11 @@ input[type=number]{width:100%;padding:10px 12px;border-radius:12px;border:1.5px 
 select{font-family:inherit;font-weight:600}
 
 @media print {
-  body{background:white}
+  /* body background op mobiel via de regel hieronder */
   .frame{padding:0}
-  .app{border-radius:0;box-shadow:none;max-width:100%;min-height:auto}
+  .app{border-radius:0;box-shadow:none;max-width:100%;min-height:100vh;min-height:100dvh;height:100vh;height:100dvh}
+  body{background:#020c06;margin:0;padding:0;display:flex;justify-content:center}
+  html{background:#020c06}
   .nav,.topbar{display:none!important}
   .screen{padding:12px!important}
   #bestuur-dashboard *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
