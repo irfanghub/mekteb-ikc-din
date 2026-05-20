@@ -304,25 +304,20 @@ input[type=text]:focus{border-color:var(--green)}
 input[type=number]{width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-size:14px;outline:0}
 select{font-family:inherit;font-weight:600}
 
-/* ── Mobiel: volledig scherm ── */
-@media(max-width:520px){
-  body{background:#020c06;margin:0;padding:0;display:block}
-  html{background:#020c06}
-  .app{border-radius:0;box-shadow:none;max-width:100%;min-height:100vh;min-height:100dvh;height:100vh;height:100dvh;-webkit-font-smoothing:antialiased}
-}
-
-/* ── iPad: scherm volledig vullen, geen gedoe ── */
-@media(min-width:521px){
-  body{background:#eef0ec}
+/* ── Alle schermen: volledig scherm, geen randen ── */
+@media(max-width:1200px){
+  html,body{background:#020c06;margin:0;padding:0}
   .app{
-    max-width:100%;
-    width:100%;
+    border-radius:0!important;
+    box-shadow:none!important;
+    border:none!important;
+    max-width:100%!important;
+    width:100%!important;
     min-height:100vh;
     min-height:100dvh;
-    border-radius:0;
-    box-shadow:none;
+    height:100vh;
+    height:100dvh;
     -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
   }
 }
 
