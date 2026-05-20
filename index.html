@@ -432,6 +432,16 @@ body.dark { background: #04100a; }
 .app.dark .hero .hero-cta { color: #071a0e; }
 /* ── muted text ── */
 .app.dark .muted { color: #4ade80; }
+
+@keyframes splashSpin{to{transform:rotate(360deg)}}
+.splash-night-card{
+  background:rgba(0,0,0,.5)!important;
+  border:1px solid rgba(201,162,39,.18)!important;
+  backdrop-filter:blur(12px);
+  position:relative;overflow:hidden;
+}
+.splash-night-card:hover{border-color:rgba(201,162,39,.38)!important;transform:translateY(-2px)}
+.splash-night-card:active{transform:scale(.94)!important}
 </style>
 </head>
 <body>
@@ -934,6 +944,7 @@ const render = () => {
   const savedPos = wasSearch ? activeEl.selectionStart : null;
 
   $('#app').innerHTML = router();
+  if(state.view==='splash') setTimeout(splashInitCanvas, 0);
   $('#app').classList.toggle('dark', !!state.darkMode);
   document.body.classList.toggle('dark', !!state.darkMode);
 
@@ -963,69 +974,209 @@ function router(){
 // SPLASH (taal + start)
 // ═══════════════════════════════════════════════════════════════
 function splashView(){
-  const r = (id,icon,name,sub,cls) => `<button class="role-card ${cls}" onclick="pickRole('${id}')">
-    <div class="icon">${icon}</div><div class="role-name">${name}</div><div class="role-sub">${sub}</div>
-  </button>`;
-  // SVG logo: halve maan + roterende 5-pijlster, conform IKC DIN identiteit
-  const gc = state.darkMode ? '#163324' : '#1a5c2e';
-  const mc = state.darkMode ? '#5ecb80' : 'rgba(255,255,255,0.95)';
-  // Pinwheel: 5 pijlen op 72° interval, elk een kleine roterende chevron
-  const arrowPath = 'M0,-6 L2,-2 L1,-2 L1,6 L-1,6 L-1,-2 L-2,-2 Z';
-  const arrows5 = [0,72,144,216,288].map(a=>`<path d="${arrowPath}" fill="#c8932a" transform="rotate(${a+36}) translate(0,-2)"/>`).join('');
-  const logoSvg = `<svg viewBox="0 0 54 54" width="54" height="54" xmlns="http://www.w3.org/2000/svg">
-    <rect width="54" height="54" rx="14" fill="${gc}"/>
-    <!-- Sikkel: dikke C-vorm (grote cirkel - kleine cirkel offset rechts) -->
-    <circle cx="20" cy="28" r="13" fill="${mc}"/>
-    <circle cx="25.5" cy="28" r="10" fill="${gc}"/>
-    <!-- 5-pijl pinwiel rechtsboven -->
-    <g transform="translate(40,15)">${arrows5}</g>
-  </svg>`;
+  return `<div style="position:absolute;inset:0;background:#020c06;display:flex;flex-direction:column;overflow:hidden">
+    <canvas id="splash-cv" style="position:absolute;inset:0;z-index:0"></canvas>
 
-  return `<div class="splash" style="justify-content:flex-start;padding-top:28px">
-    <!-- App header — logo + naam, volle breedte -->
-    <div style="display:flex;align-items:center;gap:14px;width:100%;margin-bottom:22px">
-      <div style="width:56px;height:56px;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);flex-shrink:0">${logoSvg}</div>
-      <div style="text-align:left;flex:1">
-        <div style="font-size:20px;font-weight:900;letter-spacing:-.4px;line-height:1.1">Mekteb IKC DIN Eindhoven</div>
-        <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">Učimo zajedno • Samen leren</div>
-      </div>
-    </div>
-    <!-- Rol selectie label -->
-    <div style="width:100%;text-align:left;margin-bottom:10px">
-      <div style="font-size:13px;color:var(--muted);font-weight:700">${T('selectRole')}</div>
-    </div>
-    <!-- 4 rol-cards -->
-    <div class="role-grid" style="width:100%">
-      ${r('kind','⭐',T('kind'),T('kindSub'),'kind')}
-      ${r('ouder','👪',T('ouder'),T('oudSub'),'ouder')}
-      ${r('efendija','👨‍🏫',T('efendija'),T('efSub'),'efendija')}
-      ${r('bestuur','📊',T('bestuur'),T('bestSub'),'bestuur')}
-    </div>
-    <!-- Taal + dag/nacht onder de cards -->
-    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;width:100%;justify-content:center">
-      <div style="display:flex;gap:4px;background:${state.darkMode?'#163324':'#f1f5f9'};border-radius:10px;padding:2px">
-        ${['nl','bs'].map(l=>`<button onclick="setLang('${l}')" style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:800;color:${state.lang===l?'var(--green)':'var(--muted)'};background:${state.lang===l?(state.darkMode?'#0c2416':'#fff'):'transparent'};box-shadow:${state.lang===l?'var(--shadow-sm)':'none'}">${l==='nl'?'🇳🇱 NL':'🇧🇦 BiH'}</button>`).join('')}
-      </div>
-      <button onclick="toggleDark()" style="width:38px;height:38px;border-radius:10px;background:${state.darkMode?'#0c2416':'#f1f5f9'};border:1.5px solid ${state.darkMode?'#163324':'#e2e8f0'};font-size:17px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)" title="Dark mode">${state.darkMode?'☀️':'🌙'}</button>
-    </div>
+    <div style="position:relative;z-index:10;display:flex;flex-direction:column;height:100%;padding:28px 22px 18px">
 
-    <!-- IKC DIN footer — crescent + pinwheel + officiële tekst -->
-    <div style="margin-top:auto;padding-top:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;opacity:${state.darkMode?'0.8':'0.7'}">
-      <svg viewBox="0 0 32 32" width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-        <!-- sikkel -->
-        <circle cx="12" cy="17" r="10" fill="${state.darkMode?'#5ecb80':'#1a5c2e'}"/>
-        <circle cx="16.5" cy="17" r="7.5" fill="${state.darkMode?'#071a0e':'#f7faf7'}"/>
-        <!-- 5-pijl pinwiel -->
-        <g transform="translate(26,7)">
-          ${[0,72,144,216,288].map(a=>`<path d="M0,-4.5 L1.4,-1.5 L1,-1.5 L1,4.5 L-1,4.5 L-1,-1.5 L-1.4,-1.5 Z" fill="#c8932a" transform="rotate(${a+36}) translate(0,-1.5)"/>`).join('')}
-        </g>
-      </svg>
-      <div style="font-size:10.5px;line-height:1.55;text-align:left">
-        <div style="font-weight:900;color:${state.darkMode?'#5ecb80':'#1a5c2e'};letter-spacing:.5px;text-transform:uppercase">ISLAMSKA ZAJEDNICA BOŠNJAKA U NIZOZEMSKOJ</div>
-        <div style="font-weight:700;font-style:italic;color:#c8932a;letter-spacing:.2px">Islamski kulturni centar Din Eindhoven</div>
+      <!-- SVG logo — vector, altijd scherp -->
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:12px">
+        <svg style="width:148px;height:auto;overflow:visible" viewBox="0 0 220 225" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+          <defs><mask id="splcm"><rect width="220" height="115" fill="white"/><circle cx="107" cy="53" r="35" fill="black"/></mask></defs>
+          <circle cx="90" cy="53" r="45" fill="#2ecc71" mask="url(#splcm)"/>
+          <g transform="translate(119,49)">
+            <g transform="rotate(36)"> <path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+            <g transform="rotate(108)"><path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+            <g transform="rotate(180)"><path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+            <g transform="rotate(252)"><path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+            <g transform="rotate(324)"><path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+          </g>
+          <text x="110" y="118" text-anchor="middle" font-family="Georgia,serif" font-size="16.5" font-weight="bold" fill="#4ecb70" letter-spacing=".6">ISLAMSKA ZAJEDNICA</text>
+          <text x="110" y="139" text-anchor="middle" font-family="Georgia,serif" font-size="14.5" font-weight="bold" fill="#4ecb70" letter-spacing=".4">BOŠNJAKA U NIZOZEMSKOJ</text>
+          <text x="110" y="163" text-anchor="middle" font-family="Georgia,serif" font-size="12.5" font-style="italic" fill="#c8932a">Islamski kulturni centar Din</text>
+          <text x="110" y="181" text-anchor="middle" font-family="Georgia,serif" font-size="12.5" font-style="italic" fill="#c8932a">Eindhoven</text>
+        </svg>
+      </div>
+
+      <!-- Rol label -->
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:rgba(201,162,39,.55);margin-bottom:8px">${T('selectRole')}</div>
+
+      <!-- 4 rol-cards nacht-stijl -->
+      <div class="role-grid">
+        ${['kind','ouder','efendija','bestuur'].map((id,i)=>{
+          const icons=['⭐','👪','👨‍🏫','📊'];
+          const names=[T('kind'),T('ouder'),T('efendija'),T('bestuur')];
+          const subs=[T('kindSub'),T('oudSub'),T('efSub'),T('bestSub')];
+          return `<button class="role-card splash-night-card" onclick="traceAndPickRole(this,'${id}')">
+            <svg class="splash-trace-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible" xmlns="http://www.w3.org/2000/svg">
+              <rect class="splash-trace-rect" x="1" y="1" width="99%" height="99%" rx="19" ry="19"
+                fill="none" stroke="rgba(201,162,39,.0)" stroke-width="2" stroke-dasharray="0 9999"/>
+            </svg>
+            <div class="icon">${icons[i]}</div>
+            <div class="role-name" style="color:#fde68a">${names[i]}</div>
+            <div class="role-sub" style="color:rgba(201,162,39,.5)">${subs[i]}</div>
+          </button>`;
+        }).join('')}
+      </div>
+
+      <!-- Taal toggle -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:13px">
+        <div style="display:flex;gap:3px;background:rgba(0,0,0,.4);border:1px solid rgba(201,162,39,.15);border-radius:11px;padding:3px">
+          ${['nl','bs'].map(l=>`<button onclick="setLang('${l}')" style="padding:5px 13px;border-radius:8px;font-size:12px;font-weight:800;background:${state.lang===l?'rgba(201,162,39,.2)':'transparent'};color:${state.lang===l?'#fbbf24':'rgba(201,162,39,.45)'}">${l==='nl'?'🇳🇱 NL':'🇧🇦 BiH'}</button>`).join('')}
+        </div>
+      </div>
+
+      <!-- Draaiend medaillon -->
+      <div style="flex:1;display:flex;justify-content:center;align-items:center;margin:2px -22px 0;overflow:hidden;position:relative;min-height:140px">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:50px;background:linear-gradient(90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
+        <div style="position:absolute;right:0;top:0;bottom:0;width:50px;background:linear-gradient(-90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
+        <div style="position:absolute;top:0;left:0;right:0;height:28px;background:linear-gradient(180deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
+        <svg style="animation:splashSpin 80s linear infinite;transform-origin:center" width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="eg" x1="0" y1="0" x2=".5" y2="1">
+              <stop offset="0%" stop-color="#6ee7b7"/><stop offset="55%" stop-color="#10b981"/><stop offset="100%" stop-color="#047857"/>
+            </linearGradient>
+            <filter id="eg_glow" x="-70%" y="-70%" width="240%" height="240%">
+              <feGaussianBlur stdDeviation="1.6" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <g transform="translate(160,160)">
+            <circle r="148" fill="none" stroke="rgba(201,162,39,.1)" stroke-width=".8"/>
+            <circle r="130" fill="none" stroke="rgba(201,162,39,.06)" stroke-width=".6"/>
+            <polygon points="0,-128 12,-52 52,-112 20,-32 112,-52 42,0 112,52 20,32 52,112 12,52 0,128 -12,52 -52,112 -20,32 -112,52 -42,0 -112,-52 -20,-32 -52,-112 -12,-52" fill="none" stroke="rgba(201,162,39,.3)" stroke-width="1.2"/>
+            <polygon points="0,-82 20,-38 56,-56 38,-20 82,0 38,20 56,56 20,38 0,82 -20,38 -56,56 -38,20 -82,0 -38,-20 -56,-56 -20,-38" fill="rgba(201,162,39,.04)" stroke="rgba(201,162,39,.2)" stroke-width="1"/>
+            <line x1="-148" y1="0" x2="148" y2="0" stroke="rgba(201,162,39,.08)" stroke-width=".8"/>
+            <line x1="0" y1="-148" x2="0" y2="148" stroke="rgba(201,162,39,.08)" stroke-width=".8"/>
+            <line x1="-105" y1="-105" x2="105" y2="105" stroke="rgba(201,162,39,.06)" stroke-width=".6"/>
+            <line x1="105" y1="-105" x2="-105" y2="105" stroke="rgba(201,162,39,.06)" stroke-width=".6"/>
+            <circle r="20" fill="rgba(201,162,39,.1)" stroke="rgba(201,162,39,.25)" stroke-width="1.2"/>
+            <circle r="6" fill="rgba(201,162,39,.4)"/>
+            <circle cx="0"    cy="-130" r="3"   fill="rgba(94,203,128,.4)"/><circle cx="65"  cy="-113" r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="113"  cy="-65"  r="3"   fill="rgba(94,203,128,.4)"/><circle cx="130" cy="0"    r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="113"  cy="65"   r="3"   fill="rgba(94,203,128,.4)"/><circle cx="65"  cy="113"  r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="0"    cy="130"  r="3"   fill="rgba(94,203,128,.4)"/><circle cx="-65" cy="113"  r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="-113" cy="65"   r="3"   fill="rgba(94,203,128,.4)"/><circle cx="-130" cy="0"   r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="-113" cy="-65"  r="3"   fill="rgba(94,203,128,.4)"/><circle cx="-65" cy="-113" r="2.5" fill="rgba(201,162,39,.5)"/>
+            <!-- Ka'aba -->
+            <g transform="translate(0,-76)">
+              <line x1="0" y1="12" x2="0" y2="24" stroke="rgba(201,162,39,.4)" stroke-width="1" stroke-dasharray="2,2"/>
+              <circle cx="0" cy="0" r="14" fill="rgba(0,0,0,.5)" stroke="rgba(201,162,39,.3)" stroke-width="1"/>
+              <text x="0" y="5" text-anchor="middle" font-size="16" dominant-baseline="middle">🕋</text>
+              <text x="0" y="30" text-anchor="middle" font-family="Nunito,sans-serif" font-size="7" font-weight="800" fill="rgba(253,230,138,.65)" letter-spacing=".3">Ka'aba</text>
+            </g>
+            <!-- Smaragd pin Eindhoven -->
+            <g transform="translate(0,76)">
+              <line x1="0" y1="-24" x2="0" y2="-12" stroke="rgba(201,162,39,.4)" stroke-width="1" stroke-dasharray="2,2"/>
+              <g transform="translate(-9,-12)">
+                <path d="M9,1 C4.5,1 1,5 1,9.5 C1,15.5 9,23 9,23 C9,23 17,15.5 17,9.5 C17,5 13.5,1 9,1Z" fill="none" stroke="#10b981" stroke-width="3.5" opacity="0.2" filter="url(#eg_glow)"/>
+                <path d="M9,1 C4.5,1 1,5 1,9.5 C1,15.5 9,23 9,23 C9,23 17,15.5 17,9.5 C17,5 13.5,1 9,1Z" fill="none" stroke="url(#eg)" stroke-width="1.8" filter="url(#eg_glow)"/>
+                <line x1="3.5" y1="4.5" x2="11" y2="12" stroke="url(#eg)" stroke-width="1.4" stroke-linecap="round" opacity=".85" filter="url(#eg_glow)"/>
+                <circle cx="9" cy="8.5" r="3.8" fill="none" stroke="url(#eg)" stroke-width="1.4" filter="url(#eg_glow)"/>
+                <circle cx="3" cy="3" r="1.2" fill="#6ee7b7" opacity="0.7" filter="url(#eg_glow)"/>
+                <circle cx="9" cy="24" r="1" fill="#10b981" opacity="0.85"/>
+              </g>
+              <text x="0" y="-28" text-anchor="middle" font-family="Nunito,sans-serif" font-size="7" font-weight="800" fill="rgba(253,230,138,.65)" letter-spacing=".3">Eindhoven</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Footer -->
+      <div style="display:flex;align-items:center;gap:9px;margin-top:4px">
+        <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(201,162,39,.2),transparent)"></div>
+        <div style="font-size:9px;font-weight:800;color:rgba(201,162,39,.4);letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">IZBN · Eindhoven</div>
+        <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(201,162,39,.2),transparent)"></div>
       </div>
     </div>
   </div>`;
+}
+
+function splashInitCanvas(){
+  const cv = document.getElementById('splash-cv');
+  if(!cv) return;
+  const ctx = cv.getContext('2d');
+  cv.width = cv.offsetWidth;
+  cv.height = cv.offsetHeight;
+  let t = 0;
+  // Sterren met iets snellere drift dan preview
+  const stars = Array.from({length:100}, ()=>({
+    x: Math.random()*cv.width,
+    y: Math.random()*cv.height*.7,
+    r: Math.random()*1.3+.3,
+    a: Math.random(),
+    da: .003+Math.random()*.005,
+    vx: (Math.random()-.5)*.18,
+    vy: (Math.random()-.5)*.09,
+  }));
+  function aurora(yb,amp,freq,ph,c1,c2,op){
+    const H=cv.height;
+    ctx.beginPath(); ctx.moveTo(0,H);
+    for(let x=0;x<=cv.width;x+=3) ctx.lineTo(x, yb+Math.sin(x*freq+t+ph)*amp+Math.sin(x*freq*1.7+t*.8+ph)*amp*.35);
+    ctx.lineTo(cv.width,H); ctx.closePath();
+    const g=ctx.createLinearGradient(0,yb-amp,0,H);
+    g.addColorStop(0,c1); g.addColorStop(.5,c2); g.addColorStop(1,'transparent');
+    ctx.fillStyle=g; ctx.globalAlpha=op; ctx.fill(); ctx.globalAlpha=1;
+  }
+  let raf;
+  function draw(){
+    if(!document.getElementById('splash-cv')){ cancelAnimationFrame(raf); return; }
+    const W=cv.width, H=cv.height;
+    ctx.clearRect(0,0,W,H); t+=.007;
+    const bg=ctx.createRadialGradient(W/2,H*.22,0,W/2,H*.22,W*.95);
+    bg.addColorStop(0,'#030f07'); bg.addColorStop(1,'#010503');
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    // Sterren
+    stars.forEach(s=>{
+      s.a=Math.max(.05,Math.min(.9,s.a+(s.a<=.05||s.a>=.9?-s.da:s.da)));
+      s.x+=s.vx; s.y+=s.vy;
+      if(s.x<-2)s.x=W+2; if(s.x>W+2)s.x=-2;
+      if(s.y<-2)s.y=H*.7+2; if(s.y>H*.7+2)s.y=-2;
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,6.28);
+      ctx.fillStyle=`rgba(200,240,215,${s.a*.7})`; ctx.fill();
+    });
+    // Aurora
+    const yOff = H*.69;
+    aurora(yOff+30, 65,.013,0,   'rgba(6,120,85,.42)','rgba(3,70,48,0)',.95);
+    aurora(yOff+10, 52,.016,.9,  'rgba(16,180,125,.28)','rgba(8,120,85,0)',.85);
+    aurora(yOff+52, 82,.009,1.7, 'rgba(10,150,100,.22)','rgba(4,90,58,0)',.75);
+    aurora(yOff-10, 42,.019,2.5, 'rgba(52,210,148,.2)','rgba(14,165,108,0)',.65);
+    aurora(yOff+75, 60,.011,3.2, 'rgba(4,100,68,.15)','rgba(2,55,36,0)',.8);
+    // Goud gloed
+    const mg=ctx.createRadialGradient(W/2,H,0,W/2,H,W*.65);
+    mg.addColorStop(0,`rgba(201,162,39,${.16+Math.sin(t*.55)*.05})`);
+    mg.addColorStop(1,'transparent');
+    ctx.fillStyle=mg; ctx.fillRect(0,0,W,H);
+    // Maan
+    ctx.save(); ctx.translate(W*.79,H*.075);
+    ctx.beginPath(); ctx.arc(0,0,16,0,Math.PI*2);
+    ctx.fillStyle=`rgba(253,230,138,${.55+Math.sin(t*.38)*.1})`; ctx.fill();
+    ctx.beginPath(); ctx.arc(7,0,12.5,0,Math.PI*2);
+    ctx.fillStyle='#010503'; ctx.fill();
+    ctx.restore();
+    raf=requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function traceAndPickRole(el, id){
+  if(el.dataset.tracing) return;
+  el.dataset.tracing = '1';
+  const rect = el.querySelector('.splash-trace-rect');
+  if(!rect){ pickRole(id); return; }
+  const w = el.offsetWidth - 2;
+  const h = el.offsetHeight - 2;
+  const perim = 2*(w+h);
+  rect.setAttribute('width', w);
+  rect.setAttribute('height', h);
+  rect.style.stroke = 'rgba(16,185,129,.9)';
+  rect.style.strokeDasharray = `0 ${perim}`;
+  rect.style.transition = 'none';
+  rect.getBoundingClientRect(); // reflow
+  rect.style.transition = `stroke-dasharray 1s cubic-bezier(.4,0,.2,1), stroke .4s ease`;
+  rect.style.strokeDasharray = `${perim} 0`;
+  rect.style.stroke = 'rgba(201,162,39,.9)';
+  setTimeout(()=>{ pickRole(id); }, 1050);
 }
 
 function langToggleSmall(){
