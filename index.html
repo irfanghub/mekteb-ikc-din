@@ -318,7 +318,6 @@ select{font-family:inherit;font-weight:600}
     overflow-y:auto!important;
     overflow-x:hidden!important;
     -webkit-overflow-scrolling:touch;
-    padding-top:env(safe-area-inset-top, 0px)!important;
     padding-bottom:calc(72px + env(safe-area-inset-bottom, 0px))!important;
     -webkit-font-smoothing:antialiased;
   }
@@ -332,20 +331,18 @@ select{font-family:inherit;font-weight:600}
     z-index:999!important;
     padding-bottom:env(safe-area-inset-bottom, 0px)!important;
   }
-  /* Topbar sticky bovenaan */
+  /* Topbar: sticky + safe-area zodat content onder statusbalk valt */
   .topbar{
     position:sticky!important;
     top:0!important;
     z-index:50!important;
+    padding-top:calc(env(safe-area-inset-top, 0px) + 6px)!important;
   }
-  /* Login schermen ook veilige bovenruimte */
+  /* Login schermen safe area */
   .login-ui{
-    padding-top:max(26px, env(safe-area-inset-top, 26px))!important;
+    padding-top:calc(env(safe-area-inset-top, 0px) + 26px)!important;
   }
-  /* Splash */
-  .splash-ui-top{
-    padding-top:env(safe-area-inset-top, 0px);
-  }
+
   body{height:100vh;height:100dvh;overflow:hidden;background:#020c06!important}
   html{height:100%;background:#020c06}
 }
