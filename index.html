@@ -458,6 +458,25 @@ body.dark { background: #04100a; }
 }
 .splash-night-card:hover{border-color:rgba(201,162,39,.38)!important;transform:translateY(-2px)}
 .splash-night-card:active{transform:scale(.94)!important}
+
+/* Login dark overlay per rol */
+.login-wrap{position:absolute;inset:0;overflow:hidden}
+.login-cv{position:absolute;inset:0;z-index:0}
+.login-ui{position:relative;z-index:1;width:100%;height:100%;display:flex;flex-direction:column;padding:24px 20px 18px;overflow-y:auto}
+.login-badge{border-radius:20px;padding:4px 14px;font-size:9px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;display:inline-block}
+.login-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;text-align:center;line-height:1.1}
+.login-sub{font-size:10.5px;font-weight:700;letter-spacing:.2px;text-align:center;opacity:.65;margin-top:3px}
+/* Dark keypad */
+.dk-key{border-radius:14px;padding:13px 8px 11px;display:flex;flex-direction:column;align-items:center;cursor:pointer;border:0;transition:.12s;font-family:'Nunito',sans-serif}
+.dk-key:active{transform:scale(.9)}
+.dk-num{font-size:20px;font-weight:900;line-height:1}
+.dk-let{font-size:7px;font-weight:800;letter-spacing:1.5px;margin-top:2px;opacity:.45}
+.dk-key.fn{background:transparent!important;border:0!important}
+/* Dark pin dots */
+.dk-dot{width:15px;height:15px;border-radius:50%;transition:.15s}
+.dk-dot.filled{transform:scale(1.15)}
+/* Dark card */
+.dk-card{border-radius:18px;padding:13px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -961,6 +980,7 @@ const render = () => {
 
   $('#app').innerHTML = router();
   if(state.view==='splash') setTimeout(splashInitCanvas, 200);
+  if(state.view==='login') setTimeout(loginAuroraInit, 200);
   $('#app').classList.toggle('dark', !!state.darkMode);
   document.body.classList.toggle('dark', !!state.darkMode);
 
@@ -1178,6 +1198,80 @@ function splashInitCanvas(){
   draw();
 }
 
+
+function loginAuroraInit(){
+  const cv = document.getElementById('login-cv');
+  if(!cv) return;
+  const role = state.role || 'kind';
+  const app = document.getElementById('app');
+  const W = (app ? app.offsetWidth : 390) || 390;
+  const H = (app ? app.offsetHeight : 760) || 760;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  // Kleur per rol: hue, starColor, bgTop, bgBot, moonCol
+  const cfg = {
+    kind:     {h:158, sc:'rgba(200,240,215,', bg0:'#031208', bg1:'#010503', mn:'rgba(253,230,138,'},
+    ouder:    {h:42,  sc:'rgba(255,235,200,', bg0:'#0d0800', bg1:'#060400', mn:'rgba(255,240,180,'},
+    efendija: {h:200, sc:'rgba(200,230,255,', bg0:'#020810', bg1:'#010307', mn:'rgba(220,240,255,'},
+    bestuur:  {h:270, sc:'rgba(220,210,255,', bg0:'#06030e', bg1:'#030108', mn:'rgba(240,235,255,'},
+  };
+  const c = cfg[role] || cfg.kind;
+  let t = 0;
+  const stars = Array.from({length:90}, ()=>({
+    x:Math.random()*W, y:Math.random()*H*.62,
+    r:Math.random()*1.3+.3, a:Math.random(),
+    da:.003+Math.random()*.005,
+    vx:(Math.random()-.5)*.16, vy:(Math.random()-.5)*.08
+  }));
+  function aur(yb,amp,freq,ph,op){
+    ctx.beginPath(); ctx.moveTo(0,H);
+    for(let x=0;x<=W;x+=3) ctx.lineTo(x, yb+Math.sin(x*freq+t+ph)*amp+Math.sin(x*freq*1.7+t*.8+ph)*amp*.35);
+    ctx.lineTo(W,H); ctx.closePath();
+    const g=ctx.createLinearGradient(0,yb-amp,0,H);
+    g.addColorStop(0,`hsla(${c.h},75%,42%,${op*1.1})`);
+    g.addColorStop(.5,`hsla(${c.h},65%,28%,${op*.3})`);
+    g.addColorStop(1,'transparent');
+    ctx.fillStyle=g; ctx.globalAlpha=op; ctx.fill(); ctx.globalAlpha=1;
+  }
+  let raf;
+  function draw(){
+    if(!document.getElementById('login-cv')){ cancelAnimationFrame(raf); return; }
+    ctx.clearRect(0,0,W,H); t+=.007;
+    const bg=ctx.createRadialGradient(W/2,H*.18,0,W/2,H*.18,W*.9);
+    bg.addColorStop(0,c.bg0); bg.addColorStop(1,c.bg1);
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    // Sterren
+    stars.forEach(s=>{
+      s.a=Math.max(.05,Math.min(.9,s.a+(s.a<=.05||s.a>=.9?-s.da:s.da)));
+      s.x+=s.vx; s.y+=s.vy;
+      if(s.x<-2)s.x=W+2; if(s.x>W+2)s.x=-2;
+      if(s.y<-2)s.y=H*.62; if(s.y>H*.62)s.y=-2;
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,6.28);
+      ctx.fillStyle=c.sc+s.a*.65+')'; ctx.fill();
+    });
+    // Aurora helemaal onderaan
+    const yO=H*.82;
+    aur(yO,    56,.013,0,   .9);
+    aur(yO-14, 44,.016,.9,  .78);
+    aur(yO+36, 70,.009,1.7, .7);
+    aur(yO-24, 34,.019,2.5, .6);
+    aur(yO+60, 50,.011,3.2, .75);
+    // Accent gloed onderaan
+    const mg=ctx.createRadialGradient(W/2,H,0,W/2,H,W*.6);
+    mg.addColorStop(0,`hsla(${c.h},70%,38%,${.13+Math.sin(t*.55)*.04})`);
+    mg.addColorStop(1,'transparent');
+    ctx.fillStyle=mg; ctx.fillRect(0,0,W,H);
+    // Maan rechtsboven
+    ctx.save(); ctx.translate(W*.8,H*.09);
+    ctx.beginPath(); ctx.arc(0,0,18,0,Math.PI*2);
+    ctx.fillStyle=c.mn+(.65+Math.sin(t*.38)*.1)+')'; ctx.fill();
+    ctx.beginPath(); ctx.arc(8,0,14,0,Math.PI*2);
+    ctx.fillStyle=c.bg1; ctx.fill();
+    ctx.restore();
+    raf=requestAnimationFrame(draw);
+  }
+  draw();
+}
 function traceAndPickRole(el, id){
   if(el.dataset.tracing) return;
   el.dataset.tracing = '1';
@@ -1227,25 +1321,39 @@ function loginView(){
     const p = pool();
     if(p.length>=1){ state.selectedPerson=p[0]; state.pin=''; return pinView(); }
   }
-  // Kind: naam-picker grid (ongewijzigd)
+  // Kind: naam-picker grid — nacht aurora groen
   const items = pool().filter(p => !state.searchQuery || p.name.toLowerCase().includes(state.searchQuery.toLowerCase()));
-  return `<div class="screen">
-    <div class="head-back" style="margin-top:14px">
-      <button class="back-btn" onclick="go('splash')">←</button>
-      <div><div class="ttl">${T('whoAreYou')}</div><div class="stl">${T('kind')}</div></div>
-      ${langToggleSmall()}
-    </div>
-    <div class="search-box">
-      <span style="color:var(--muted);font-size:16px">🔍</span>
-      <input type="search" placeholder="${T('searchName')}" value="${state.searchQuery}" oninput="state.searchQuery=this.value;render()">
-    </div>
-    <div class="kid-grid">
-      ${items.map(p=>`
-        <button class="kid-card" onclick="pickPerson('${p.id}')">
-          <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
-          <div class="name">${p.name}</div>
-          <div class="pin-tip">PIN ${p.pin}</div>
-        </button>`).join('')}
+  return `<div class="login-wrap" style="background:#020d07">
+    <canvas id="login-cv" class="login-cv"></canvas>
+    <div class="login-ui">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <button onclick="go('splash')" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:#6ee7b7;width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
+        <div style="text-align:center">
+          <span class="login-badge" style="background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.18)">Mekteb Leerling</span>
+        </div>
+        ${langToggleSmall()}
+      </div>
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px;margin-bottom:4px">⭐</div>
+        <div class="login-title" style="color:#fde68a">${T('whoAreYou')}</div>
+        <div class="login-sub" style="color:#6ee7b7">Kies je naam, avonturier</div>
+      </div>
+      <div style="position:relative;margin-bottom:10px">
+        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;opacity:.5">🔍</span>
+        <input type="search"
+          style="width:100%;background:rgba(16,185,129,.08);border:1.5px solid rgba(16,185,129,.18);border-radius:13px;padding:10px 14px 10px 34px;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;color:#e0fdf4;outline:none"
+          placeholder="${T('searchName')}" value="${state.searchQuery}"
+          oninput="state.searchQuery=this.value;render()">
+      </div>
+      <div class="kid-grid" style="flex:1;overflow-y:auto">
+        ${items.map(p=>`
+          <button class="kid-card" onclick="pickPerson('${p.id}')"
+            style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.14);border-radius:14px">
+            <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
+            <div class="name" style="color:#e0fdf4">${p.name}</div>
+            <div class="pin-tip" style="color:rgba(110,231,183,.6)">PIN ${p.pin}</div>
+          </button>`).join('')}
+      </div>
     </div>
   </div>`;
 }
@@ -1254,43 +1362,118 @@ function loginView(){
 function ouderLoginView(){
   if(state.selectedPerson) return ouderPinView();
   const err = state.ouderNameError;
-  return `<div class="screen">
-    <div class="head-back" style="margin-top:14px">
-      <button class="back-btn" onclick="go('splash')">←</button>
-      <div>
-        <div class="ttl">${L('Ouder login','Prijava roditelja')}</div>
-        <div class="stl">IKC DIN Mekteb</div>
+  return `<div class="login-wrap" style="background:#08080a">
+    <canvas id="login-cv" class="login-cv"></canvas>
+    <div class="login-ui">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button onclick="go('splash')" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:#fcd34d;width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
+        <span class="login-badge" style="background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.18)">Ouder / Voogd</span>
+        ${langToggleSmall()}
       </div>
-      ${langToggleSmall()}
-    </div>
-    <div style="display:flex;align-items:center;padding:8px 16px 0;gap:0">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
-        <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;box-shadow:0 4px 12px rgba(16,185,129,.3)">1</div>
-        <div style="font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.4px">${L('Naam','Ime')}</div>
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:30px;margin-bottom:5px">👪</div>
+        <div class="login-title" style="color:#fde68a">${L('Ouder login','Prijava roditelja')}</div>
+        <div class="login-sub" style="color:#fcd34d">${L('Bekijk de voortgang van je kind','Pratite napredak svog djeteta')}</div>
       </div>
-      <div style="flex:1;height:2px;background:var(--line);margin-bottom:14px"></div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
-        <div style="width:26px;height:26px;border-radius:50%;background:var(--line);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">2</div>
-        <div style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">PIN</div>
+      <!-- Stap indicator -->
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#f59e0b;color:#0d0a04;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">1</div>
+          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#f59e0b">${L('Naam','Ime')}</div>
+        </div>
+        <div style="flex:1;height:2px;background:rgba(245,158,11,.18);margin-bottom:12px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.1);color:rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">2</div>
+          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:rgba(255,255,255,.3)">PIN</div>
+        </div>
       </div>
-    </div>
-    <div style="padding:20px 16px;display:flex;flex-direction:column;gap:14px">
-      <div>
-        <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${L('Jouw naam','Vaše ime')}</div>
-        <input id="ouder-naam-inp"
-          style="width:100%;background:#fff;border:2px solid ${err?'var(--red)':'var(--line)'};border-radius:14px;padding:13px 16px;font-size:16px;font-family:inherit;font-weight:700;color:var(--ink);outline:none"
-          type="text" autocomplete="given-name" placeholder="${L('Typ je voornaam…','Upišite ime…')}"
-          value="${state.ouderTypedName}"
-          oninput="state.ouderTypedName=this.value;ouderNaamInputUpdate()"
-          onkeydown="if(event.key==='Enter')ouderNaamVolgende()">
-        ${err ? `<div style="color:var(--red);font-size:12px;font-weight:800;margin-top:4px">${err}</div>` : ''}
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:8px;background:var(--green-soft);border:1.5px solid var(--green-mid);border-radius:12px;padding:10px 12px;font-size:11px;font-weight:700;color:#166534;line-height:1.5">
+      <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:rgba(253,230,138,.6);margin-bottom:5px">${L('Jouw naam','Vaše ime')}</div>
+      <input id="ouder-naam-inp"
+        style="width:100%;background:rgba(245,158,11,.07);border:1.5px solid ${err?'rgba(239,68,68,.5)':'rgba(245,158,11,.2)'};border-radius:13px;padding:12px 14px;font-size:16px;font-family:Nunito,sans-serif;font-weight:700;color:#fde68a;outline:none;margin-bottom:8px"
+        type="text" autocomplete="given-name" placeholder="${L('Typ je voornaam…','Upišite ime…')}"
+        value="${state.ouderTypedName}"
+        oninput="state.ouderTypedName=this.value;ouderNaamInputUpdate()"
+        onkeydown="if(event.key==='Enter')ouderNaamVolgende()">
+      ${err ? `<div style="color:rgba(239,68,68,.9);font-size:12px;font-weight:800;margin-bottom:8px">${err}</div>` : ''}
+      <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.15);border-radius:11px;padding:9px 11px;font-size:11px;font-weight:700;color:rgba(253,230,138,.7);line-height:1.5;margin-bottom:12px">
         🔒 ${L('Niemand anders ziet jouw naam of pincode.','Nitko drugi ne vidi vaše ime ni PIN.')}
       </div>
-      <button id="ouder-volgende-btn" onclick="ouderNaamVolgende()" style="width:100%;padding:14px;background:#e2e8f0;color:#94a3b8;font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:14px;cursor:pointer;transition:.15s">
+      <button id="ouder-volgende-btn" onclick="ouderNaamVolgende()"
+        ${state.ouderTypedName.trim().length<1?'disabled':''}
+        style="width:100%;padding:13px;background:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.08)':'linear-gradient(135deg,#f59e0b,#d97706)'};color:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.3)':'#0d0a04'};font-family:Nunito,sans-serif;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer;transition:.15s">
         ${L('Volgende →','Dalje →')}
       </button>
+    </div>
+  </div>`;
+}
+
+function ouderNaamInputUpdate(){
+  // Geen render() — alleen kleur aanpassen, toetsenbord blijft open
+  const ok = state.ouderTypedName.trim().length >= 1;
+  const btn = document.getElementById('ouder-volgende-btn');
+  if(!btn) return;
+  btn.style.background = ok ? 'linear-gradient(135deg,#10b981,#059669)' : '#e2e8f0';
+  btn.style.color      = ok ? '#fff' : '#94a3b8';
+  btn.style.boxShadow  = ok ? '0 6px 20px rgba(16,185,129,.3)' : 'none';
+}
+
+function ouderNaamVolgende(){
+  const typed = state.ouderTypedName.trim();
+  if(!typed) return;
+  const norm = normName(typed);
+  // Zoek: exacte match eerst, dan begint-met
+  let match = PARENTS.find(p => normName(p.name) === norm);
+  if(!match) match = PARENTS.find(p => normName(p.name).startsWith(norm));
+  if(!match){
+    state.ouderNameError = L('Naam niet gevonden. Controleer je naam of vraag de efendija om hulp.','Ime nije pronađeno. Provjerite ime ili pitajte efendiju.');
+    render(); return;
+  }
+  state.selectedPerson = match;
+  state.pin = '';
+  render();
+}
+
+function ouderPinView(){
+  const p = state.selectedPerson;
+  const kids = KIDS.filter(k => p.kidIds.includes(k.id));
+  return `<div class="login-wrap" style="background:#08080a">
+    <canvas id="login-cv" class="login-cv"></canvas>
+    <div class="login-ui">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button onclick="state.selectedPerson=null;state.pin='';render()" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:#fcd34d;width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
+        <span class="login-badge" style="background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.18)">Ouder / Voogd</span>
+        ${langToggleSmall()}
+      </div>
+      <!-- Stap 2 indicator -->
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">✓</div>
+          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#f59e0b">${L('Naam','Ime')}</div>
+        </div>
+        <div style="flex:1;height:2px;background:#f59e0b;margin-bottom:12px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#f59e0b;color:#0d0a04;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;box-shadow:0 4px 12px rgba(245,158,11,.35)">2</div>
+          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#f59e0b">PIN</div>
+        </div>
+      </div>
+      <!-- Naam badge -->
+      <div class="dk-card" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.18);margin-bottom:14px">
+        <div class="avatar ${colorOf(p.name)}" style="flex-shrink:0">${initial(p.name)}</div>
+        <div>
+          <div style="font-weight:900;font-size:14px;color:#fde68a">${p.name}</div>
+          <div style="font-size:10px;font-weight:700;color:rgba(253,230,138,.6);margin-top:2px">${L('Ouder van','Roditelj od')} ${kids.map(k=>k.name).join(' & ')}</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:rgba(253,230,138,.6);margin-bottom:8px">${T('enterPin')}</div>
+      <div style="display:flex;justify-content:center;gap:13px;margin-bottom:14px">
+        ${[0,1,2,3].map(i=>`<div class="dk-dot${state.pin.length>i?' filled':''}" style="background:${state.pin.length>i?'#f59e0b':'rgba(245,158,11,.2)'};${state.pin.length>i?'box-shadow:0 0 10px rgba(245,158,11,.35)':''}"></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 4px">
+        ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="dk-key" style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.14)" onclick="tapKey('${n}')"><span class="dk-num" style="color:#fde68a">${n}</span></button>`).join('')}
+        <button class="dk-key fn" onclick="state.selectedPerson=null;state.pin='';render()"><span class="dk-num" style="color:#fcd34d;font-size:11px">←</span></button>
+        <button class="dk-key" style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.14)" onclick="tapKey('0')"><span class="dk-num" style="color:#fde68a">0</span></button>
+        <button class="dk-key fn" onclick="tapKey('back')"><span class="dk-num" style="color:#fcd34d">⌫</span></button>
+      </div>
     </div>
   </div>`;
 }
@@ -1371,24 +1554,45 @@ function pinView(){
   const p = state.selectedPerson;
   const isDirectLogin = state.role==='efendija' || state.role==='bestuur';
   const backFn = isDirectLogin ? `logout()` : `state.selectedPerson=null;state.pin='';render()`;
-  return `<div class="screen">
-    <div class="head-back" style="margin-top:14px">
-      <button class="back-btn" onclick="${backFn}">←</button>
-      <div><div class="ttl">Hey ${p.name}! 👋</div><div class="stl">${T('enterPin')}</div></div>
-      ${langToggleSmall()}
-    </div>
-    <div class="pin-area">
-      <div class="avatar lg ${colorOf(p.name)}" style="margin:6px auto 10px">${initial(p.name)}</div>
-      <div class="pin-dots">
-        ${[0,1,2,3].map(i=>`<div class="pin-dot ${state.pin.length>i?'filled':''}"></div>`).join('')}
+  // Rol-specifieke kleuren
+  const rCfg = {
+    efendija: {bg:'#03090e', acc:'rgba(56,189,248,', dot:'#38bdf8', dotS:'rgba(56,189,248,.2)', badge:'Lesgever · Efendija', icon:'👨‍🏫', title:'Welkom terug', sub:'Voer uw pincode in', cardBg:'rgba(56,189,248,.07)', cardBdr:'rgba(56,189,248,.15)', keyBg:'rgba(56,189,248,.07)', keyBdr:'rgba(56,189,248,.12)', fnC:'#7dd3fc', numC:'#e0f2fe', pinLbl:'#7dd3fc'},
+    bestuur:  {bg:'#07040e', acc:'rgba(139,92,246,',  dot:'#a78bfa', dotS:'rgba(167,139,250,.2)', badge:'Bestuur · Beheer',    icon:'📊',   title:'Bestuur toegang', sub:'Voer de bestuurscode in', cardBg:'rgba(139,92,246,.07)', cardBdr:'rgba(139,92,246,.15)', keyBg:'rgba(139,92,246,.07)', keyBdr:'rgba(139,92,246,.12)', fnC:'#c4b5fd', numC:'#f3f0ff', pinLbl:'#c4b5fd'},
+    kind:     {bg:'#020d07', acc:'rgba(16,185,129,', dot:'#10b981', dotS:'rgba(16,185,129,.2)', badge:'Mekteb Leerling', icon:'⭐', title:`Hey ${p?p.name:''}! 👋`, sub:'Voer je pincode in', cardBg:'rgba(16,185,129,.07)', cardBdr:'rgba(16,185,129,.15)', keyBg:'rgba(16,185,129,.07)', keyBdr:'rgba(16,185,129,.14)', fnC:'#6ee7b7', numC:'#e0fdf4', pinLbl:'#6ee7b7'},
+  };
+  const rc = rCfg[state.role] || rCfg.kind;
+  const letters = ['','ABC','DEF','GHI','JKL','MNO','PQRS','TUV','WXYZ'];
+  return `<div class="login-wrap" style="background:${rc.bg}">
+    <canvas id="login-cv" class="login-cv"></canvas>
+    <div class="login-ui">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button onclick="${backFn}" style="background:${rc.acc}.1);border:1px solid ${rc.acc}.2);color:${rc.fnC};width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
+        <span class="login-badge" style="background:${rc.acc}.1);color:${rc.fnC};border:1px solid ${rc.acc}.18)">${rc.badge}</span>
+        ${langToggleSmall()}
       </div>
-      <div class="keypad">
-        ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="tapKey('${n}')">${n}</button>`).join('')}
-        <button class="key fn" onclick="${backFn}">${T('back')}</button>
-        <button class="key" onclick="tapKey('0')">0</button>
-        <button class="key fn" onclick="tapKey('back')">⌫</button>
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:32px;margin-bottom:6px">${rc.icon}</div>
+        <div class="login-title" style="color:${rc.numC}">${rc.title}</div>
+        <div class="login-sub" style="color:${rc.fnC}">${rc.sub}</div>
       </div>
-      ${isDirectLogin ? `<div style="margin-top:10px;text-align:center;font-size:12px;color:var(--muted);font-weight:700">PIN: ${p.pin}</div>` : ''}
+      <div class="dk-card" style="background:${rc.cardBg};border:1px solid ${rc.cardBdr}">
+        <div class="avatar ${colorOf(p.name)}" style="flex-shrink:0">${initial(p.name)}</div>
+        <div>
+          <div style="font-weight:900;font-size:14px;color:${rc.numC}">${p.name}</div>
+          <div style="font-size:10px;font-weight:700;color:${rc.fnC};opacity:.7;margin-top:2px">IKC DIN Mekteb — Eindhoven</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:${rc.pinLbl};opacity:.65;margin-bottom:8px">${T('enterPin')}</div>
+      <div style="display:flex;justify-content:center;gap:13px;margin-bottom:14px">
+        ${[0,1,2,3].map(i=>`<div class="dk-dot${state.pin.length>i?' filled':''}" style="background:${state.pin.length>i?rc.dot:rc.dotS};${state.pin.length>i?'box-shadow:0 0 10px '+rc.acc+'.35)':''}"></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 4px">
+        ${[1,2,3,4,5,6,7,8,9].map((n,i)=>`<button class="dk-key" style="background:${rc.keyBg};border:1px solid ${rc.keyBdr}" onclick="tapKey('${n}')"><span class="dk-num" style="color:${rc.numC}">${n}</span>${letters[i]?`<span class="dk-let">${letters[i]}</span>`:''}</button>`).join('')}
+        <button class="dk-key fn" onclick="${backFn}"><span class="dk-num" style="color:${rc.fnC};font-size:11px">←</span></button>
+        <button class="dk-key" style="background:${rc.keyBg};border:1px solid ${rc.keyBdr}" onclick="tapKey('0')"><span class="dk-num" style="color:${rc.numC}">0</span></button>
+        <button class="dk-key fn" onclick="tapKey('back')"><span class="dk-num" style="color:${rc.fnC}">⌫</span></button>
+      </div>
+      ${isDirectLogin ? `<div style="margin-top:12px;text-align:center;font-size:12px;color:${rc.fnC};font-weight:700;opacity:.6">PIN: ${p.pin}</div>` : ''}
     </div>
   </div>`;
 }
