@@ -1427,15 +1427,13 @@ function ouderLoginView(){
 }
 
 function ouderNaamInputUpdate(){
-  // Geen render() — knop direct updaten, toetsenbord blijft open
+  // Geen render() — alleen kleur aanpassen, toetsenbord blijft open
   const ok = state.ouderTypedName.trim().length >= 1;
   const btn = document.getElementById('ouder-volgende-btn');
   if(!btn) return;
-  btn.disabled = !ok;  // ← cruciaal: verwijdert het disabled attribuut
-  btn.style.background = ok ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,.08)';
-  btn.style.color      = ok ? '#0d0a04' : 'rgba(255,255,255,.3)';
-  btn.style.boxShadow  = ok ? '0 6px 20px rgba(245,158,11,.3)' : 'none';
-  btn.style.cursor     = ok ? 'pointer' : 'default';
+  btn.style.background = ok ? 'linear-gradient(135deg,#10b981,#059669)' : '#e2e8f0';
+  btn.style.color      = ok ? '#fff' : '#94a3b8';
+  btn.style.boxShadow  = ok ? '0 6px 20px rgba(16,185,129,.3)' : 'none';
 }
 
 function ouderNaamVolgende(){
@@ -1499,6 +1497,776 @@ function ouderPinView(){
   </div>`;
 }
 
+function ouderNaamInputUpdate(){
+  // Geen render() — alleen kleur aanpassen, toetsenbord blijft open
+  const ok = state.ouderTypedName.trim().length >= 1;
+  const btn = document.getElementById('ouder-volgende-btn');
+  if(!btn) return;
+  btn.style.background = ok ? 'linear-gradient(135deg,#10b981,#059669)' : '#e2e8f0';
+  btn.style.color      = ok ? '#fff' : '#94a3b8';
+  btn.style.boxShadow  = ok ? '0 6px 20px rgba(16,185,129,.3)' : 'none';
+}
+
+function ouderNaamVolgende(){
+  const typed = state.ouderTypedName.trim();
+  if(!typed) return;
+  const norm = normName(typed);
+  // Zoek: exacte match eerst, dan begint-met
+  let match = PARENTS.find(p => normName(p.name) === norm);
+  if(!match) match = PARENTS.find(p => normName(p.name).startsWith(norm));
+  if(!match){
+    state.ouderNameError = L('Naam niet gevonden. Controleer je naam of vraag de efendija om hulp.','Ime nije pronađeno. Provjerite ime ili pitajte efendiju.');
+    render(); return;
+  }
+  state.selectedPerson = match;
+  state.pin = '';
+  render();
+}
+
+function ouderPinView(){
+  const p = state.selectedPerson;
+  const kids = KIDS.filter(k => p.kidIds.includes(k.id));
+  return `<div class="screen">
+    <div class="head-back" style="margin-top:14px">
+      <button class="back-btn" onclick="state.selectedPerson=null;state.pin='';render()">←</button>
+      <div>
+        <div class="ttl">${L('Ouder login','Prijava roditelja')}</div>
+        <div class="stl">IKC DIN Mekteb</div>
+      </div>
+      ${langToggleSmall()}
+    </div>
+    <div style="display:flex;align-items:center;padding:8px 16px 0;gap:0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green-d);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">✓</div>
+        <div style="font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.4px">${L('Naam','Ime')}</div>
+      </div>
+      <div style="flex:1;height:2px;background:var(--green);margin-bottom:14px"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;box-shadow:0 4px 12px rgba(16,185,129,.3)">2</div>
+        <div style="font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.4px">PIN</div>
+      </div>
+    </div>
+    <div style="padding:16px">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--green-soft);border-radius:14px;padding:12px 14px;margin-bottom:16px">
+        <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
+        <div>
+          <div style="font-weight:800;font-size:13px;color:#166534">${p.name}</div>
+          <div style="font-size:10px;color:var(--green);font-weight:700">${L('Ouder van','Roditelj od')} ${kids.map(k=>k.name).join(' & ')}</div>
+        </div>
+      </div>
+    </div>
+    <div class="pin-area">
+      <div class="pin-dots">
+        ${[0,1,2,3].map(i=>`<div class="pin-dot ${state.pin.length>i?'filled':''}"></div>`).join('')}
+      </div>
+      <div class="keypad">
+        ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="tapKey('${n}')">${n}</button>`).join('')}
+        <button class="key fn" onclick="state.selectedPerson=null;state.pin='';render()">${T('back')}</button>
+        <button class="key" onclick="tapKey('0')">0</button>
+        <button class="key fn" onclick="tapKey('back')">⌫</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function pinView(){
+  const p = state.selectedPerson;
+  const isDirectLogin = state.role==='efendija' || state.role==='bestuur';
+  const backFn = isDirectLogin ? `logout()` : `state.selectedPerson=null;state.pin='';render()`;
+  // Rol-specifieke kleuren
+  const rCfg = {
+    efendija: {bg:'#03090e', acc:'rgba(56,189,248,', dot:'#38bdf8', dotS:'rgba(56,189,248,.2)', badge:'Lesgever · Efendija', icon:'👨‍🏫', title:'Welkom terug', sub:'Voer uw pincode in', cardBg:'rgba(56,189,248,.07)', cardBdr:'rgba(56,189,248,.15)', keyBg:'rgba(56,189,248,.07)', keyBdr:'rgba(56,189,248,.12)', fnC:'#7dd3fc', numC:'#e0f2fe', pinLbl:'#7dd3fc'},
+    bestuur:  {bg:'#07040e', acc:'rgba(139,92,246,',  dot:'#a78bfa', dotS:'rgba(167,139,250,.2)', badge:'Bestuur · Beheer',    icon:'📊',   title:'Bestuur toegang', sub:'Voer de bestuurscode in', cardBg:'rgba(139,92,246,.07)', cardBdr:'rgba(139,92,246,.15)', keyBg:'rgba(139,92,246,.07)', keyBdr:'rgba(139,92,246,.12)', fnC:'#c4b5fd', numC:'#f3f0ff', pinLbl:'#c4b5fd'},
+    kind:     {bg:'#020d07', acc:'rgba(16,185,129,', dot:'#10b981', dotS:'rgba(16,185,129,.2)', badge:'Mekteb Leerling', icon:'⭐', title:`Hey ${p?p.name:''}! 👋`, sub:'Voer je pincode in', cardBg:'rgba(16,185,129,.07)', cardBdr:'rgba(16,185,129,.15)', keyBg:'rgba(16,185,129,.07)', keyBdr:'rgba(16,185,129,.14)', fnC:'#6ee7b7', numC:'#e0fdf4', pinLbl:'#6ee7b7'},
+  };
+  const rc = rCfg[state.role] || rCfg.kind;
+  const letters = ['','ABC','DEF','GHI','JKL','MNO','PQRS','TUV','WXYZ'];
+  return `<div class="login-wrap" style="background:${rc.bg}">
+    <canvas id="login-cv" class="login-cv"></canvas>
+    <div class="login-ui">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button onclick="${backFn}" style="background:${rc.acc}.1);border:1px solid ${rc.acc}.2);color:${rc.fnC};width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
+        <span class="login-badge" style="background:${rc.acc}.1);color:${rc.fnC};border:1px solid ${rc.acc}.18)">${rc.badge}</span>
+        ${langToggleSmall()}
+      </div>
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:32px;margin-bottom:6px">${rc.icon}</div>
+        <div class="login-title" style="color:${rc.numC}">${rc.title}</div>
+        <div class="login-sub" style="color:${rc.fnC}">${rc.sub}</div>
+      </div>
+      <div class="dk-card" style="background:${rc.cardBg};border:1px solid ${rc.cardBdr}">
+        <div class="avatar ${colorOf(p.name)}" style="flex-shrink:0">${initial(p.name)}</div>
+        <div>
+          <div style="font-weight:900;font-size:14px;color:${rc.numC}">${p.name}</div>
+          <div style="font-size:10px;font-weight:700;color:${rc.fnC};opacity:.7;margin-top:2px">IKC DIN Mekteb — Eindhoven</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:${rc.pinLbl};opacity:.65;margin-bottom:8px">${T('enterPin')}</div>
+      <div style="display:flex;justify-content:center;gap:13px;margin-bottom:14px">
+        ${[0,1,2,3].map(i=>`<div class="dk-dot${state.pin.length>i?' filled':''}" style="background:${state.pin.length>i?rc.dot:rc.dotS};${state.pin.length>i?'box-shadow:0 0 10px '+rc.acc+'.35)':''}"></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 4px">
+        ${[1,2,3,4,5,6,7,8,9].map((n,i)=>`<button class="dk-key" style="background:${rc.keyBg};border:1px solid ${rc.keyBdr}" onclick="tapKey('${n}')"><span class="dk-num" style="color:${rc.numC}">${n}</span>${letters[i]?`<span class="dk-let">${letters[i]}</span>`:''}</button>`).join('')}
+        <button class="dk-key fn" onclick="${backFn}"><span class="dk-num" style="color:${rc.fnC};font-size:11px">←</span></button>
+        <button class="dk-key" style="background:${rc.keyBg};border:1px solid ${rc.keyBdr}" onclick="tapKey('0')"><span class="dk-num" style="color:${rc.numC}">0</span></button>
+        <button class="dk-key fn" onclick="tapKey('back')"><span class="dk-num" style="color:${rc.fnC}">⌫</span></button>
+      </div>
+      ${isDirectLogin ? `<div style="margin-top:12px;text-align:center;font-size:12px;color:${rc.fnC};font-weight:700;opacity:.6">PIN: ${p.pin}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function tapKey(k){
+  if(k==='back'){
+    state.pin = state.pin.slice(0,-1);
+    _updatePinDots(); return;
+  }
+  if(state.pin.length>=4) return;
+  state.pin += k;
+  _updatePinDots();
+  if(state.pin.length===4){
+    setTimeout(()=>{
+      if(state.pin===state.selectedPerson.pin){
+        state.me = state.selectedPerson;
+        state.view = 'app'; state.nav='home'; state.pin='';
+        if(state.role==='kind') state.pathLevel = state.me.level;
+        render();
+      } else {
+        // Fout: dots rood, geen full render
+        document.querySelectorAll('.dk-dot,.pin-dot').forEach(d=>{
+          d.style.background='#ef4444';
+          d.style.boxShadow='0 0 10px rgba(239,68,68,.4)';
+        });
+        setTimeout(()=>{ state.pin=''; _updatePinDots(); }, 450);
+      }
+    }, 80);
+  }
+}
+
+function _updatePinDots(){
+  // Update dots direct in DOM — geen volledige render, geen canvas-herstart
+  const len = state.pin.length;
+  const role = state.role || 'kind';
+  const dotColors = {kind:'#10b981',ouder:'#f59e0b',efendija:'#38bdf8',bestuur:'#a78bfa'};
+  const dotShadows = {kind:'rgba(16,185,129,.35)',ouder:'rgba(245,158,11,.35)',efendija:'rgba(56,189,248,.35)',bestuur:'rgba(167,139,250,.35)'};
+  const emptyColors = {kind:'rgba(16,185,129,.2)',ouder:'rgba(245,158,11,.2)',efendija:'rgba(56,189,248,.2)',bestuur:'rgba(167,139,250,.2)'};
+  const col = dotColors[role]; const sh = dotShadows[role]; const emp = emptyColors[role];
+  document.querySelectorAll('.dk-dot,.pin-dot').forEach((d,i)=>{
+    if(i < len){
+      d.style.background = col;
+      d.style.boxShadow = `0 0 10px ${sh}`;
+      d.style.transform = 'scale(1.15)';
+    } else {
+      d.style.background = emp;
+      d.style.boxShadow = 'none';
+      d.style.transform = 'none';
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SHARED HEADER (in-app role bar)
+// ═══════════════════════════════════════════════════════════════
+function topbarKid(){
+  const k = state.me;
+  return `<div class="topbar">
+    <div class="row">
+      <div class="avatar ${colorOf(k.name)}">${initial(k.name)}</div>
+      <div>
+        <div style="font-weight:900">${k.name}</div>
+        <div class="muted" style="font-size:12px">${T('currentLevel')} ${k.level} • #${k.rank}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="streak-chip">🔥 ${k.streak}</div>
+      <button onclick="logout()" style="background:var(--red-soft);color:var(--red);width:36px;height:36px;border-radius:11px;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center" title="${T('logout')}">⏻</button>
+    </div>
+  </div>`;
+}
+
+function navBar(items){
+  const ic = {
+    home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v10a2 2 0 0 1-2 2h-4a1 1 0 0 1-1-1v-5h-4v5a1 1 0 0 1-1 1H5a2 2 0 0 1-2-2z"/></svg>',
+    path:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18c4 0 4-12 8-12s4 12 8 12"/><circle cx="5" cy="18" r="2"/><circle cx="21" cy="18" r="2"/></svg>',
+    leader:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V9m0 0V5a3 3 0 0 1 6 0v4m-6 0h6m-6 12h6m4 0V13"/></svg>',
+    me:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>',
+    hw:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+    msg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg>',
+    students:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>',
+    overview:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>',
+  };
+  return `<div class="nav">${items.map(([k,l])=>`<button class="${state.nav===k?'active':''}" onclick="setNav('${k}')">${ic[k]}<span>${l}</span></button>`).join('')}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KID APP
+// ═══════════════════════════════════════════════════════════════
+function kidApp(){
+  if(state.nav==='home')   return kidHome();
+  if(state.nav==='path')   return kidPath();
+  if(state.nav==='leader') return kidLeader();
+  return kidHome();
+}
+
+function kidHome(){
+  const k = state.me;
+  const myHw = HOMEWORK.filter(h=>h.kidId===k.id && !h.done);
+  const allMyHw = HOMEWORK.filter(h=>h.kidId===k.id);
+  const lastAtt = ATTENDANCE[k.id]?.[WEEKS.length-1];
+  const wasAbsent = lastAtt && !lastAtt.present;
+  const ilmScore = ilmPts(k.id);
+  return `${topbarKid()}
+    <div class="screen">
+      <div class="greeting">
+        <h1>${T('salam')}, ${k.name}!</h1>
+        <p>${T('greetSub')}</p>
+      </div>
+      ${wasAbsent ? `<div style="background:linear-gradient(135deg,#fef9ec,#fef3c7);border:1px solid #fde68a;border-radius:16px;padding:13px 15px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px">
+        <div style="font-size:20px;flex-shrink:0">🤍</div>
+        <div style="font-size:13px;font-weight:700;color:#92400e;line-height:1.5">
+          ${L(`Selam ${k.name}, we hebben je gemist bij de laatste mekteb, hopelijk ben je er aanstaande zondag wel bij!`,
+              `Selam ${k.name}, nedostajao/la si nam na posljednjem mektebu, nadamo se da ćeš doći sljedeće nedjelje!`)}
+        </div>
+      </div>` : ''}
+
+      <!-- STATS + BADGES direct na greeting -->
+      <div class="stats" style="margin-bottom:12px">
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('streak')"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">${L('Streak','Sedmice')}</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('hafiz')"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${L('Hafiz (suras)','Hafiz (sure)')}</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('ilmihal')"><div class="icon" style="background:var(--blue-soft);color:var(--blue)">🌙</div><div class="num">${ilmScore}</div><div class="lbl">Ilmihal pt</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
+      </div>
+      <div class="section-head" style="margin-top:2px;margin-bottom:6px"><div class="h3">${T('myBadges')}</div></div>
+      <div class="badge-row" style="margin-bottom:14px">
+        ${BADGES.map((b,i)=>`<div class="badge ${b.got?'':'locked'}" style="cursor:pointer" onclick="openBadgeModal(${i})"><div class="b-icon">${b.icon}</div><div class="b-name">${state.lang==='nl'?b.name:b.name_bs}</div></div>`).join('')}
+      </div>
+
+      ${(()=>{
+        // Huidige sura: scan alle niveaus N1→N2→N3 voor eerste 'current' sura
+        let curSura = null;
+        for(const lv of [1,2,3]){
+          const lvSuras = kidStations(k,'suras',lv);
+          const found = lvSuras.find(s=>s.status==='current') || lvSuras.find(s=>s.status!=='done' && s.status!=='locked');
+          if(found){ curSura=found; break; }
+        }
+        if(!curSura){ const fallback=kidStations(k,'suras',k.level); curSura=fallback[0]||{label:'—',sub:''}; }
+        // Volgende ilmihal-les: scan alle niveaus N1→N2→N3 voor eerste open les
+        const kDoneIlm = state.ilmDone[k.id] || {};
+        let nextIlm = null;
+        for(const lv of [1,2,3]){
+          for(const cat of (ILMIHAL[lv]||[])){
+            for(const les of cat.lessen){
+              if(!kDoneIlm[les.id]){ nextIlm={naam:les.naam,naam_bs:les.naam_bs,cat:state.lang==='nl'?cat.name:cat.name_bs}; break; }
+            }
+            if(nextIlm) break;
+          }
+          if(nextIlm) break;
+        }
+        const ilm=ilmStats(k.level,k.id);
+        return`
+        <div class="hero" onclick="setNav('path');state.pathTab='suras';render()">
+          <div class="hero-label">📖 ${T('nextLesson')} — Sura</div>
+          <div class="hero-title">${curSura.label}${curSura.sub?' — '+curSura.sub:''}</div>
+          <button class="hero-cta">${T('continue')} →</button>
+        </div>
+        ${nextIlm?`<div class="hero gold" style="margin-top:-4px" onclick="setNav('path');state.pathTab='ilmihal';render()">
+          <div class="hero-label">📚 ${T('nextLesson')} — Ilmihal</div>
+          <div class="hero-title">${state.lang==='nl'?nextIlm.naam:nextIlm.naam_bs}</div>
+          <div style="font-size:11px;opacity:.85;font-weight:700;margin-top:2px">${nextIlm.cat}</div>
+          <button class="hero-cta">${T('continue')} →</button>
+        </div>`:`<div class="card" style="margin-bottom:14px;cursor:pointer;padding:14px;text-align:center" onclick="setNav('path');state.pathTab='ilmihal';render()">
+          <div style="font-size:24px">🏆</div>
+          <div style="font-weight:800;font-size:13px;margin-top:4px">${L('Ilmihal volledig afgerond!','Ilmihal kompletno završen!')}</div>
+        </div>`}
+        <div class="card" style="margin-bottom:14px;cursor:pointer;padding:14px" onclick="setNav('path');state.pathTab='ilmihal';render()">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+            <div style="font-weight:800;font-size:13px">📚 ${T('ilmihal')}</div>
+            <div style="font-weight:900;color:var(--green);font-size:13px">${ilm.gedaan}/${ilm.totaal}</div>
+          </div>
+          <div class="bar"><div class="bar-fill" style="width:${ilm.pct}%"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:5px">${ilm.pct}% ${T('completed')} — N${computedLevel(k)}</div>
+        </div>`;
+      })()}
+      ${allMyHw.length ? `
+        <div class="section-head" style="margin-top:4px"><div class="h3">📝 ${T('homework')}</div><div style="font-size:12px;color:var(--muted);font-weight:700">${myHw.length} ${L('open','otvoreno')}</div></div>
+        ${allMyHw.map(h=>hwCard(h)).join('')}` : ''}
+      <div class="section-head" style="margin-top:14px"><div class="h3">${T('topThisWeek')}</div><a onclick="setNav('leader')">${T('leaderboard')} →</a></div>
+      <div class="list">
+        ${KIDS.slice(0,3).map((kk,i)=>`
+          <div class="list-row ${kk.id===k.id?'me':''}" onclick="setNav('leader')">
+            <div class="rank r${i+1}">${i+1}</div>
+            <div class="avatar sm ${colorOf(kk.name)}">${initial(kk.name)}</div>
+            <div class="name" style="flex:1">${kk.name}<div style="font-size:11px;color:var(--muted);font-weight:700">${T('currentLevel')} ${computedLevel(kk)}</div></div>
+            <div class="pts">${kk.pts}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}
+    ${badgeModalHtml()}
+    ${scoreModalHtml()}`;
+}
+
+function currentStation(level, cat){
+  const arr = PATH[cat][level] || [];
+  return arr.find(s=>s.status==='current') || arr[0];
+}
+
+function kidPath(){
+  const k = state.me;
+  const cat = state.pathTab;
+  const lvl = state.pathLevel;
+  const stations = kidStations(k, cat, lvl);
+  const doneCount = stations.filter(s=>s.status==='done').length;
+  const cur = stations.find(s=>s.status==='current') || stations[0];
+
+  // build levels with status
+  const levels = [1,2,3].map(L=>({
+    n:L,
+    status: L<k.level ? 'done' : L===k.level ? 'doing' : 'locked'
+  }));
+
+  return `<div class="topbar">
+      <button class="back-btn" onclick="setNav('home')">←</button>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">${T('myPath')}</div><div class="muted" style="font-size:12px">${T(cat==='suras'?'suras':cat==='ilmihal'?'ilmihal':'quranRead')} • ${T('currentLevel')} ${lvl}</div></div>
+      <div class="streak-chip">🔥 ${k.streak}</div>
+    </div>
+    <div class="screen" style="padding-bottom:170px">
+      <div class="subtabs">
+        <div class="subtab ${cat==='suras'?'on':''}" onclick="state.pathTab='suras';render()">📖 ${T('suras')}</div>
+        <div class="subtab ${cat==='ilmihal'?'on':''}" onclick="state.pathTab='ilmihal';render()">🌙 ${T('ilmihal')}</div>
+        <div class="subtab ${cat==='quran'?'on':''}" onclick="state.pathTab='quran';render()">ا ${T('quranRead')}</div>
+      </div>
+      <div class="level-tabs">
+        ${levels.map(L=>`<button class="level-pill ${state.pathLevel===L.n?'on':''} ${L.status==='done'?'done':''}" onclick="state.pathLevel=${L.n};render()">${niveauCompleted(k.id,L.n)?'🏆 ':''}N${L.n} ${L.status==='done'?'✓':''}</button>`).join('')}
+      </div>
+      ${levelCelebrationBanner(k.id, lvl)}
+      ${cat==='ilmihal' ? (()=>{
+        const ilmCats=ILMIHAL[lvl]||[];
+        const ilm=ilmStats(lvl,k.id);
+        return`<div class="ilm-overview">
+          <div class="ilm-ov-card"><div class="ilm-ov-num">${ilm.gedaan}</div><div class="ilm-ov-lbl">${state.lang==='nl'?'Lessen af':'Lekcija završeno'}</div></div>
+          <div class="ilm-ov-card"><div class="ilm-ov-num">${ilm.pct}%</div><div class="ilm-ov-lbl">${T('completed')}</div></div>
+          <div class="ilm-ov-card"><div class="ilm-ov-num">${ilm.totaal-ilm.gedaan}</div><div class="ilm-ov-lbl">${state.lang==='nl'?'Te gaan':'Preostalo'}</div></div>
+        </div>
+        <div style="background:var(--orange-soft);color:#9a3412;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:800;margin-bottom:12px;text-align:center">
+          🏫 ${state.lang==='nl'?'Efendija markeert jouw voortgang':'Efendija označava tvoj napredak'}
+        </div>
+        ${ilmCats.map(cat=>{
+          const kDone=(state.ilmDone[k.id]||{});
+          const gedaan=cat.lessen.filter(l=>kDone[l.id]).length;
+          const pct=Math.round(gedaan/cat.lessen.length*100);
+          const isOpen=state.openIlmCat===cat.id;
+          return`<div class="ilm-cat ${isOpen?'open':''}">
+            <div class="ilm-cat-head" onclick="toggleIlmCat('${cat.id}')">
+              <div class="ilm-cat-icon" style="background:${cat.bg}">${cat.icon}</div>
+              <div class="ilm-cat-info">
+                <div class="ilm-cat-name">${state.lang==='nl'?cat.name:cat.name_bs}</div>
+                <div class="ilm-cat-prog">${gedaan}/${cat.lessen.length} • ${pct}%</div>
+                <div class="ilm-cat-bar"><div class="ilm-cat-fill" style="width:${pct}%;background:${cat.color}"></div></div>
+              </div>
+              <div class="ilm-chevron">›</div>
+            </div>
+            <div class="ilm-lessons">
+              ${cat.lessen.map(les=>{
+                const done=!!kDone[les.id];
+                return`<div class="ilm-lesson ${done?'done':''}">
+                  <div class="ilm-check">${done?'✓':''}</div>
+                  <div class="ilm-lesson-name">${state.lang==='nl'?les.naam:les.naam_bs}</div>
+                  <div class="ilm-lesson-pts">+${les.pts}pt</div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>`;
+        }).join('')}`;
+      })() : `<div class="path-head">
+        <h2>${cat==='suras'?T('journey'):T('journeyQuran')}</h2>
+        <p>${doneCount} / ${stations.length} ${T('completed')}</p>
+      </div>
+      <div class="path">
+        ${stations.map((s,i)=>{
+          const zigzag = i%3===1 ? 'zigzag-r' : i%3===2 ? 'zigzag-l' : '';
+          return `<div class="station ${s.status} ${zigzag}">
+            <div class="station-bubble">${s.icon}${s.tag?`<div class="station-tag">${s.tag}</div>`:''}</div>
+            <div class="station-label">${s.label}</div>
+            <div class="station-sub">${s.sub}${cat==='suras'&&s.pts?' • <span style="color:var(--gold);font-weight:900">⭐'+s.pts+'pt</span>':''}</div>
+          </div>`;
+        }).join('')}
+      </div>`}
+    </div>
+    ${cur && cur.status==='current' && cat!=='ilmihal' ? `<div class="now-playing">
+      <div style="font-size:22px">${cur.icon}</div>
+      <div class="np-text"><div class="lbl">${T('nowBusy')}</div><div class="ttl">${cur.label}</div></div>
+      <button>${T('start_')}</button>
+    </div>`:''}
+    ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}`;
+}
+
+function kidLeader(){
+  const k = state.me;
+  const tab = state.leaderTab || 'myLevel';
+
+  // Rangschik op basis van actieve tab
+  let ranked;
+  if(tab==='streakTop'){
+    ranked = [...KIDS].sort((a,b)=>b.streak-a.streak).map((kk,i)=>({...kk, _rank:i+1}));
+  } else if(tab==='hafizTop'){
+    ranked = [...KIDS].sort((a,b)=>b.pts-a.pts).map((kk,i)=>({...kk, _rank:i+1}));
+  } else {
+    // myLevel: kids van hetzelfde niveau, gesorteerd op pts
+    const sameLevel = [...KIDS].filter(kk=>kk.level===k.level).sort((a,b)=>b.pts-a.pts).map((kk,i)=>({...kk, _rank:i+1}));
+    const others = [...KIDS].filter(kk=>kk.level!==k.level).sort((a,b)=>b.pts-a.pts).map((kk,i)=>({...kk, _rank:sameLevel.length+i+1}));
+    ranked = [...sameLevel, ...others];
+  }
+
+  // Podium: top 3 van de gesorteerde lijst (alleen als er ≥3 kids zijn)
+  const podiumKids = ranked.slice(0, Math.min(3, ranked.length));
+  const podiumOrder = podiumKids.length>=3 ? [podiumKids[1], podiumKids[0], podiumKids[2]] : podiumKids;
+  const podiumPos   = podiumKids.length>=3 ? [2,1,3] : [1,2,3];
+  const sortVal = tab==='streakTop' ? (kk=>kk.streak+'w 🔥') : (kk=>kk.pts+' pt');
+
+  return `<div class="topbar">
+      <button class="back-btn" onclick="setNav('home')">←</button>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">${T('tabLeader')}</div><div class="muted" style="font-size:12px">${T('podiumSub')}</div></div>
+      <div style="width:42px"></div>
+    </div>
+    <div class="screen">
+      <div class="subtabs">
+        <div class="subtab ${tab==='myLevel'?'on':''}" onclick="state.leaderTab='myLevel';render()">${T('myLevel')}</div>
+        <div class="subtab ${tab==='hafizTop'?'on':''}" onclick="state.leaderTab='hafizTop';render()">⭐ ${T('hafizTop')}</div>
+        <div class="subtab ${tab==='streakTop'?'on':''}" onclick="state.leaderTab='streakTop';render()">🔥 ${T('streakTop')}</div>
+      </div>
+      ${podiumKids.length>=2 ? `<div class="podium">
+        ${podiumOrder.map((kk,i)=>{
+          const pos=podiumPos[i];
+          return `<div class="pod ${pos===1?'pod-1':''}">
+            ${pos===1?'<div class="crown">👑</div>':''}
+            <div class="pod-avatar ${colorOf(kk.name)}">${initial(kk.name)}</div>
+            <div class="pod-name">${kk.name}</div>
+            <div class="pod-pts">${sortVal(kk)}</div>
+          </div>`;
+        }).join('')}
+      </div>` : ''}
+      <div class="list">
+        ${ranked.map(kk=>`
+          <div class="list-row ${kk.id===k.id?'me':''}">
+            <div class="rank ${kk._rank<=3?'r'+kk._rank:''}">${kk._rank}</div>
+            <div class="avatar sm ${colorOf(kk.name)}">${initial(kk.name)}</div>
+            <div class="name">${kk.name}<div style="font-size:11px;font-weight:700;color:var(--muted)">N${computedLevel(kk)} • 🔥${kk.streak}w</div></div>
+            <div class="pts">${tab==='streakTop'?kk.streak+'<span style="font-size:10px">w</span>':kk.pts+'<span style="font-size:10px">pt</span>'}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+    ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}`;
+}
+
+function kidProfile(){
+  const k = state.me;
+  return `<div class="topbar">
+      <button class="back-btn" onclick="setNav('home')">←</button>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">${T('profile')}</div></div>
+      <button class="back-btn" onclick="logout()" title="${T('logout')}">⏻</button>
+    </div>
+    <div class="screen">
+      <div style="text-align:center;padding:14px 0 16px">
+        <div class="avatar xl ${colorOf(k.name)}" style="margin:0 auto 10px">${initial(k.name)}</div>
+        <div style="font-size:22px;font-weight:900">${k.name}</div>
+        <div class="muted" style="font-size:13px">${T('currentLevel')} ${computedLevel(k)} • ${T('memberSince')} ${k.sinceYear}</div>
+      </div>
+      <div class="stats">
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('streak')"><div class="icon" style="background:var(--orange-soft);color:var(--orange)">🔥</div><div class="num">${k.streak}</div><div class="lbl">streak</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
+        <div class="stat" style="cursor:pointer;position:relative" onclick="openScoreModal('hafiz')"><div class="icon" style="background:var(--gold-soft);color:var(--gold)">⭐</div><div class="num">${k.pts}</div><div class="lbl">${T('hafizPts').split(' ')[1]||'pt'}</div><div style="position:absolute;top:6px;right:8px;width:18px;height:18px;border-radius:50%;background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center">?</div></div>
+        <div class="stat"><div class="icon" style="background:var(--purple-soft);color:var(--purple)">🏅</div><div class="num">${BADGES.filter(b=>b.got).length}</div><div class="lbl">badges</div></div>
+      </div>
+      <div class="section-head" style="margin-top:16px"><div class="h3">${T('allBadgesTtl')}</div></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        ${BADGES.map((b,i)=>`<div class="badge ${b.got?'':'locked'}" style="flex:0;cursor:pointer" onclick="openBadgeModal(${i})">
+          <div class="b-icon">${b.icon}</div>
+          <div class="b-name">${state.lang==='nl'?b.name:b.name_bs}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px;font-weight:700">${b.got?T('badgesEarned'):T('badgesNotYet')}</div>
+        </div>`).join('')}
+      </div>
+    </div>
+    ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}
+    ${badgeModalHtml()}
+    ${scoreModalHtml()}`;
+}
+
+function kidHomework(){
+  // Niet meer in nav — hw staat op home. Redirect naar home.
+  state.nav='home'; return kidHome();
+}
+// hwCard — readOnly=true voor kind & ouder, false voor efendija
+function hwCard(h, readOnly=true){
+  const due = h.dueDays===0 ? T('dueToday') : h.dueDays<0 ? T('overdue') : `${T('dueIn')} ${h.dueDays} ${T('daysLeft')}`;
+  return `<div class="hw">
+    <div class="hw-head">
+      <div style="flex:1">
+        <div class="hw-due">${due}</div>
+        <div class="hw-title">${state.lang==='nl'?h.title:h.title_bs}</div>
+        <div class="hw-desc">${state.lang==='nl'?h.desc:h.desc_bs}</div>
+      </div>
+      <div class="check ${h.done?'done':''}" ${readOnly?'style="opacity:.5;cursor:default"':('onclick="efToggleHw('+h.id+')"')}>${h.done?'✓':''}</div>
+    </div>
+    <div class="hw-meta" style="display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:11px;color:var(--muted);font-weight:700">— ${EFENDIJAS.find(e=>e.id===h.fromTeacher)?.name||'efendija'}</span>
+      ${readOnly?'':`<button onclick="efDelHw(${h.id})" title="${L('Verwijder huiswerk','Obriši zadaću')}" style="background:transparent;color:var(--red);font-size:14px;padding:4px 8px;border-radius:8px;font-weight:900">🗑️</button>`}
+    </div>
+  </div>`;
+}
+function toggleHw(id){ /* disabled — only efendija via efToggleHw */ }
+
+// ── LEERLINGENBEHEER ──────────────────────────────────────────
+let _parentIdCounter = 200;
+function addKid(){
+  const n = state.newKid;
+  if(!n.name.trim() || !n.pin.trim()){ alert(L('Naam en PIN zijn verplicht','Ime i PIN su obavezni')); return; }
+  const newId = crypto.randomUUID ? crypto.randomUUID().slice(0,18) : ('k'+Date.now());
+  const ouder1 = n.ouder1name.trim();
+  const ouder1pin = n.ouder1pin.trim()||n.pin.trim();
+  if(ouder1){
+    const p1Id = ++_parentIdCounter;
+    PARENTS.push({id:p1Id, name:ouder1, pin:ouder1pin, kidIds:[newId]});
+  }
+  if(n.ouder2name.trim()){
+    const p2Id = ++_parentIdCounter;
+    PARENTS.push({id:p2Id, name:n.ouder2name.trim(), pin:n.ouder2pin.trim()||n.pin.trim(), kidIds:[newId]});
+  }
+  const newKid = {id:newId, name:n.name.trim(), level:parseInt(n.level), pin:n.pin.trim(), pts:0, streak:0, rank:KIDS.length+1, sinceYear:new Date().getFullYear(), stationData:{}, ilmDoneData:{}};
+  KIDS.push(newKid);
+  ATTENDANCE[newId] = WEEKS.map(w=>({date:w, present:false}));
+  state.ilmDone[newId] = {};
+  state.newKid = {name:'', level:1, pin:'', ouder1name:'', ouder1pin:'', ouder2name:'', ouder2pin:''};
+  state.showAddKid = false;
+  render();
+  saveKidToDB(newId); // async
+}
+async function removeKid(id){
+  const k = KIDS.find(x=>x.id===id);
+  if(!k) return;
+  if(!confirm(L(`${k.name} verwijderen?`,`Obrisati ${k.name}?`))) return;
+  KIDS.splice(KIDS.indexOf(k),1);
+  delete ATTENDANCE[k.id];
+  // Verwijder ook de ouder als die geen andere kinderen meer heeft
+  const parentIdx = PARENTS.findIndex(p=>p.kidIds.includes(k.id));
+  if(parentIdx!==-1){
+    const p = PARENTS[parentIdx];
+    p.kidIds = p.kidIds.filter(x=>x!==k.id);
+    if(p.kidIds.length===0) PARENTS.splice(parentIdx,1);
+  }
+  [...KIDS].sort((a,b)=>b.pts-a.pts).forEach((kid,i)=>{ kid.rank=i+1; });
+  render();
+  const {error} = await DB.from('leerlingen_v5').delete().eq('id', id);
+  if(error) console.error('Delete fout:', error);
+}
+function setNewKidField(field,val){ state.newKid[field]=val; }
+
+function addKidFormHtml(){
+  const n = state.newKid;
+  const label = (nl,bs) => `<div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 6px">${L(nl,bs)}</div>`;
+  return `<div class="card" style="margin-bottom:14px;border:2px solid var(--green-soft)">
+    <div style="font-weight:900;font-size:14px;margin-bottom:4px">➕ ${L('Nieuwe leerling','Novi učenik')}</div>
+    ${label('Kind','Dijete')}
+    <input type="text" placeholder="${L('Naam kind','Ime djeteta')}" value="${n.name}" oninput="setNewKidField('name',this.value)" style="margin-bottom:8px">
+    <select onchange="setNewKidField('level',this.value)" style="width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);font-size:14px;margin-bottom:8px;background:#fff">
+      <option value="1" ${n.level==1?'selected':''}>Niveau 1</option>
+      <option value="2" ${n.level==2?'selected':''}>Niveau 2</option>
+      <option value="3" ${n.level==3?'selected':''}>Niveau 3</option>
+    </select>
+    <input type="text" placeholder="${L('PIN kind (4 cijfers)','PIN djeteta (4 cifre)')}" value="${n.pin}" oninput="setNewKidField('pin',this.value)" maxlength="6" style="margin-bottom:4px">
+    ${label('Ouder 1','Roditelj 1')}
+    <input type="text" placeholder="${L('Naam ouder 1','Ime roditelja 1')}" value="${n.ouder1name}" oninput="setNewKidField('ouder1name',this.value)" style="margin-bottom:8px">
+    <input type="text" placeholder="${L('PIN ouder 1','PIN roditelja 1')}" value="${n.ouder1pin}" oninput="setNewKidField('ouder1pin',this.value)" maxlength="6" style="margin-bottom:4px">
+    ${label('Ouder 2 (optioneel)','Roditelj 2 (opcionalno)')}
+    <input type="text" placeholder="${L('Naam ouder 2','Ime roditelja 2')}" value="${n.ouder2name}" oninput="setNewKidField('ouder2name',this.value)" style="margin-bottom:8px">
+    <input type="text" placeholder="${L('PIN ouder 2','PIN roditelja 2')}" value="${n.ouder2pin}" oninput="setNewKidField('ouder2pin',this.value)" maxlength="6" style="margin-bottom:12px">
+    <div style="display:flex;gap:8px">
+      <button onclick="state.showAddKid=false;render()" style="flex:1;padding:12px;border-radius:12px;border:1.5px solid var(--line);font-weight:800;font-size:13px">${L('Annuleren','Odustani')}</button>
+      <button onclick="addKid()" style="flex:1;background:var(--green);color:#fff;padding:12px;border-radius:12px;font-weight:800;font-size:13px">${L('Opslaan','Sačuvaj')}</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OUDER APP
+// ═══════════════════════════════════════════════════════════════
+function ouderApp(){
+  if(state.threadOpen) return msgThread();
+  if(state.nav==='me')   return ouderProfile();
+  return ouderHome();
+}
+function topbarOuder(){
+  const p = state.me;
+  return `<div class="topbar">
+    <div class="row" style="cursor:pointer" onclick="setNav('me')">
+      <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
+      <div>
+        <div style="font-weight:900">${p.name.split('(')[0].trim()}</div>
+        <div class="muted" style="font-size:11px">${T('ouder')}</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.4px">${state.lang==='nl'?'Ouder':'Roditelj'}</div>
+  </div>`;
+}
+function ouderHome(){
+  const p = state.me;
+  const kids = KIDS.filter(k=>p.kidIds.includes(k.id));
+  const allHw = HOMEWORK.filter(h=>p.kidIds.includes(h.kidId));
+
+  return `<div class="topbar">
+    <div class="row">
+      <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
+      <div>
+        <div style="font-weight:900">${p.name.split('(')[0].trim()}</div>
+        <div class="muted" style="font-size:11px">${T('ouder')}</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="font-size:12px;font-weight:800;background:var(--gold-soft);color:var(--gold);padding:5px 11px;border-radius:10px">IKC DIN</div>
+      <button onclick="setNav('me')" style="background:var(--green-soft);color:var(--green);width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;border:0;cursor:pointer">⚙️</button>
+      <button onclick="logout()" style="background:var(--red-soft);color:var(--red);width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;border:0;cursor:pointer">⏻</button>
+    </div>
+  </div>
+  <div class="screen">
+    <div class="greeting"><h1>${T('salam')}, ${p.name.split('(')[0].split(' ')[0]}!</h1></div>
+
+    <!-- KIND(EREN) VOORTGANG -->
+    <div class="section-head"><div class="h3">👦 ${T('parentDash')}</div></div>
+    ${kids.map(k=>{
+      let cur = null;
+      for(let lv=1;lv<=3;lv++){
+        const lvSuras = kidStations(k,'suras',lv);
+        const found = lvSuras.find(s=>s.status==='current') || lvSuras.find(s=>s.status!=='done' && s.status!=='locked');
+        if(found){ cur=found; break; }
+      }
+      if(!cur){ const fb=kidStations(k,'suras',k.level); cur=fb[0]||{label:'—'}; }
+      const kDoneIlm = state.ilmDone[k.id] || {};
+      let nextIlm = null;
+      for(const cat of (ILMIHAL[k.level]||[])){ for(const les of cat.lessen){ if(!kDoneIlm[les.id]){ nextIlm=les; break; } } if(nextIlm) break; }
+      const ilm = ilmStats(k.level, k.id);
+      const kHw = HOMEWORK.filter(h=>h.kidId===k.id && !h.done);
+      return `<div class="card" style="margin-bottom:12px">
+        <div class="row" style="margin-bottom:10px">
+          <div class="avatar ${colorOf(k.name)}" style="width:48px;height:48px;font-size:19px">${initial(k.name)}</div>
+          <div style="flex:1">
+            <div style="font-weight:900;font-size:16px">${k.name}</div>
+            <div class="muted" style="font-size:12px">${T('currentLevel')} ${computedLevel(k)} • 🔥${k.streak}w • ${k.pts} pt</div>
+          </div>
+          <div style="font-size:18px;font-weight:900;color:var(--green)">#${k.rank}</div>
+        </div>
+        <!-- sura voortgang -->
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px">
+          <span>📖 ${L('Volgende les — Sura','Sljedeći čas — Sura')}: <span style="color:var(--ink);font-weight:800">${cur.label}${cur.sub?' — '+cur.sub:''}</span></span>
+        </div>
+        ${nextIlm?`<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px">
+          📚 ${L('Volgende ilmihal','Sljedeći ilmihal')}: <span style="color:var(--ink);font-weight:800">${state.lang==='nl'?nextIlm.naam:nextIlm.naam_bs}</span>
+        </div>`:''}
+        <!-- ilmihal voortgang -->
+        <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--muted);margin:6px 0 3px">
+          <span>🌙 Ilmihal</span><span style="font-weight:900;color:var(--blue)">${ilm.gedaan}/${ilm.totaal} • ${ilm.pct}%</span>
+        </div>
+        <div class="bar" style="margin-bottom:8px"><div class="bar-fill" style="width:${ilm.pct}%;background:var(--blue)"></div></div>
+        ${kHw.length ? `<div style="background:var(--orange-soft);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#9a3412">
+          📝 ${kHw.length} ${L('huiswerk openstaand','zadaće otvoreno')}
+        </div>` : `<div style="font-size:12px;color:var(--green);font-weight:800">✓ ${L('Geen openstaand huiswerk','Nema otvorene zadaće')}</div>`}
+      </div>`;
+    }).join('')}
+
+    <!-- AANWEZIGHEID AANSTAANDE ZONDAG -->
+    ${(()=>{
+      const nextSun = nextSundayDate();
+      const nextSunLbl = new Date(nextSun).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{weekday:'long',day:'numeric',month:'long'});
+      return kids.map(k=>{
+        const notif = PARENT_NOTIFICATIONS[k.id]?.[nextSun] ?? null;
+        return `<div class="card" style="margin-bottom:12px;border-left:4px solid ${notif==='yes'?'var(--green)':notif==='no'?'var(--red)':'var(--gold)'}">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="font-size:20px">📅</div>
+            <div style="flex:1">
+              <div style="font-weight:900;font-size:13px">${k.name} — ${L('aanstaande les','sljedeći čas')}</div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:capitalize">${nextSunLbl}</div>
+            </div>
+            ${notif ? `<div style="font-size:11px;font-weight:900;padding:4px 10px;border-radius:8px;background:${notif==='yes'?'var(--green-soft)':'var(--red-soft)'};color:${notif==='yes'?'var(--green)':'var(--red)'}">
+              ${notif==='yes'?(state.lang==='nl'?'✅ Aanwezig':'✅ Prisutan/na'):(state.lang==='nl'?'❌ Afwezig':'❌ Odsutan/na')}
+            </div>` : ''}
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">
+            ${L('Geef aan of','Navedite da li') + ' ' + k.name + ' ' + (L('er aanstaande zondag bij is:','dolazi sljedeće nedjelje:'))}
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onclick="parentConfirmAttendance('${k.id}','yes')" style="flex:1;padding:11px;border-radius:12px;font-weight:900;font-size:13px;background:${notif==='yes'?'var(--green)':'var(--green-soft)'};color:${notif==='yes'?'#fff':'var(--green)'};border:2px solid ${notif==='yes'?'var(--green)':'var(--green-mid)'}">
+              ✅ ${L('Ja, ik kom','Da, dolazi')}
+            </button>
+            <button onclick="parentConfirmAttendance('${k.id}','no')" style="flex:1;padding:11px;border-radius:12px;font-weight:900;font-size:13px;background:${notif==='no'?'var(--red)':'var(--red-soft)'};color:${notif==='no'?'#fff':'var(--red)'};border:2px solid ${notif==='no'?'var(--red)':'#fca5a5'}">
+              ❌ ${L('Nee, afwezig','Ne, odsutan/na')}
+            </button>
+          </div>
+          ${notif ? `<div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:8px;text-align:center">
+            ${L('Efendija ziet jouw aanmelding. Hij registreert de definitieve aanwezigheid op de dag zelf.','Efendija vidi vašu najavu. On sam bilježi konačno prisustvo na dan časa.')}
+          </div>` : ''}
+        </div>`;
+      }).join('');
+    })()}
+
+    <!-- HUISWERK -->
+    <div class="section-head" style="margin-top:6px"><div class="h3">📝 ${T('homework')}</div></div>
+    ${allHw.length ? allHw.map(h=>{
+      const hKid = KIDS.find(x=>x.id===h.kidId);
+      return (kids.length>1 ? `<div style="font-size:11px;font-weight:800;color:var(--muted);padding:4px 4px 2px">👦 ${hKid?.name||''}</div>` : '') + hwCard(h,true);
+    }).join('') : `<div class="card" style="text-align:center;color:var(--muted);padding:18px;font-weight:700">${T('noHw')}</div>`}
+
+  </div>`;
+}
+function msgThread(){
+  const m = MESSAGES.find(x=>x.id===state.threadOpen);
+  if(!m){ state.threadOpen=null; render(); return ''; }
+  return `<div class="topbar">
+      <button class="back-btn" onclick="state.threadOpen=null;render()">←</button>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">${m.fromName}</div><div class="muted" style="font-size:12px">${state.lang==='nl'?m.subject:m.subject_bs}</div></div>
+      <div style="width:42px"></div>
+    </div>
+    <div class="screen" style="padding-bottom:160px">
+      <div class="thread">
+        ${m.thread.map(b=>`<div class="bubble ${b.who}">${state.lang==='nl'?b.txt:b.txt_bs}<span class="when">${state.lang==='nl'?b.when:b.when_bs}</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="compose">
+      <textarea placeholder="${T('writeReply')}"></textarea>
+      <button onclick="sendReply()">↑</button>
+    </div>`;
+}
+function sendReply(){
+  const ta = document.querySelector('.compose textarea');
+  if(!ta || !ta.value.trim()) return;
+  const m = MESSAGES.find(x=>x.id===state.threadOpen);
+  m.thread.push({who:'me', txt:ta.value, txt_bs:ta.value, when:'Net', when_bs:'Sad'});
+  m.unread=false;
+  render();
+}
+function ouderHw(){
+  const p = state.me;
+  const allHw = HOMEWORK.filter(h=>p.kidIds.includes(h.kidId));
+  return `${topbarOuder()}
+    <div class="screen">
+      <div class="greeting"><h1>${T('homework')}</h1><p>${T('homeworkSub')}</p></div>
+      ${allHw.length ? allHw.map(h=>{
+        const k = KIDS.find(x=>x.id===h.kidId);
+        return `<div class="hw">
+          <div style="font-size:11px;color:var(--muted);font-weight:800;margin-bottom:4px">— ${k.name}</div>
+          ${hwCardBody(h)}
+        </div>`;
+      }).join('') : `<div class="card" style="text-align:center;color:var(--muted);font-weight:700;padding:30px">${T('noHw')}</div>`}
+    </div>
+    ${navBar([['home',T('tabHome')]])}`;
+}
+function hwCardBody(h){
+  const due = h.dueDays===0 ? T('dueToday') : h.dueDays<0 ? T('overdue') : `${T('dueIn')} ${h.dueDays} ${T('daysLeft')}`;
+  return `<div class="hw-head">
+    <div style="flex:1">
+      <div class="hw-due">${due}</div>
+      <div class="hw-title">${state.lang==='nl'?h.title:h.title_bs}</div>
+      <div class="hw-desc">${state.lang==='nl'?h.desc:h.desc_bs}</div>
+    </div>
+    <div class="check ${h.done?'done':''}" onclick="toggleHw(${h.id})">${h.done?'✓':''}</div>
+  </div>`;
+}
 function ouderProfile(){
   const p = state.me;
   const kids = KIDS.filter(k => p.kidIds.includes(k.id));
