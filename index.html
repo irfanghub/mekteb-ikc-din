@@ -1427,13 +1427,15 @@ function ouderLoginView(){
 }
 
 function ouderNaamInputUpdate(){
-  // Geen render() — alleen kleur aanpassen, toetsenbord blijft open
+  // Geen render() — knop direct updaten, toetsenbord blijft open
   const ok = state.ouderTypedName.trim().length >= 1;
   const btn = document.getElementById('ouder-volgende-btn');
   if(!btn) return;
-  btn.style.background = ok ? 'linear-gradient(135deg,#10b981,#059669)' : '#e2e8f0';
-  btn.style.color      = ok ? '#fff' : '#94a3b8';
-  btn.style.boxShadow  = ok ? '0 6px 20px rgba(16,185,129,.3)' : 'none';
+  btn.disabled = !ok;
+  btn.style.background = ok ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,.08)';
+  btn.style.color      = ok ? '#0d0a04' : 'rgba(255,255,255,.3)';
+  btn.style.boxShadow  = ok ? '0 6px 20px rgba(245,158,11,.3)' : 'none';
+  btn.style.cursor     = ok ? 'pointer' : 'default';
 }
 
 function ouderNaamVolgende(){
@@ -1497,15 +1499,7 @@ function ouderPinView(){
   </div>`;
 }
 
-function ouderNaamInputUpdate(){
-  // Geen render() — alleen kleur aanpassen, toetsenbord blijft open
-  const ok = state.ouderTypedName.trim().length >= 1;
-  const btn = document.getElementById('ouder-volgende-btn');
-  if(!btn) return;
-  btn.style.background = ok ? 'linear-gradient(135deg,#10b981,#059669)' : '#e2e8f0';
-  btn.style.color      = ok ? '#fff' : '#94a3b8';
-  btn.style.boxShadow  = ok ? '0 6px 20px rgba(16,185,129,.3)' : 'none';
-}
+/* ouderNaamInputUpdate: zie definitie hierboven */
 
 function ouderNaamVolgende(){
   const typed = state.ouderTypedName.trim();
