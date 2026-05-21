@@ -313,12 +313,14 @@ select{font-family:inherit;font-weight:600}
     border:none!important;
     max-width:100%!important;
     width:100%!important;
-    min-height:100vh;
-    min-height:100dvh;
     height:100vh;
     height:100dvh;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
     -webkit-font-smoothing:antialiased;
   }
+  body{height:100vh;height:100dvh;overflow:hidden;background:#020c06!important}
+  html{height:100%;background:#020c06}
 }
 
 /* ── Print ── */
@@ -1598,9 +1600,13 @@ function pinView(){
 }
 
 function tapKey(k){
-  if(k==='back'){ state.pin=state.pin.slice(0,-1); render(); return; }
+  if(k==='back'){
+    state.pin = state.pin.slice(0,-1);
+    _updatePinDots(); return;
+  }
   if(state.pin.length>=4) return;
-  state.pin += k; render();
+  state.pin += k;
+  _updatePinDots();
   if(state.pin.length===4){
     setTimeout(()=>{
       if(state.pin===state.selectedPerson.pin){
@@ -1609,11 +1615,36 @@ function tapKey(k){
         if(state.role==='kind') state.pathLevel = state.me.level;
         render();
       } else {
-        document.querySelectorAll('.pin-dot').forEach(d=>d.classList.add('error'));
-        setTimeout(()=>{ state.pin=''; render(); }, 450);
+        // Fout: dots rood, geen full render
+        document.querySelectorAll('.dk-dot,.pin-dot').forEach(d=>{
+          d.style.background='#ef4444';
+          d.style.boxShadow='0 0 10px rgba(239,68,68,.4)';
+        });
+        setTimeout(()=>{ state.pin=''; _updatePinDots(); }, 450);
       }
-    }, 120);
+    }, 80);
   }
+}
+
+function _updatePinDots(){
+  // Update dots direct in DOM — geen volledige render, geen canvas-herstart
+  const len = state.pin.length;
+  const role = state.role || 'kind';
+  const dotColors = {kind:'#10b981',ouder:'#f59e0b',efendija:'#38bdf8',bestuur:'#a78bfa'};
+  const dotShadows = {kind:'rgba(16,185,129,.35)',ouder:'rgba(245,158,11,.35)',efendija:'rgba(56,189,248,.35)',bestuur:'rgba(167,139,250,.35)'};
+  const emptyColors = {kind:'rgba(16,185,129,.2)',ouder:'rgba(245,158,11,.2)',efendija:'rgba(56,189,248,.2)',bestuur:'rgba(167,139,250,.2)'};
+  const col = dotColors[role]; const sh = dotShadows[role]; const emp = emptyColors[role];
+  document.querySelectorAll('.dk-dot,.pin-dot').forEach((d,i)=>{
+    if(i < len){
+      d.style.background = col;
+      d.style.boxShadow = `0 0 10px ${sh}`;
+      d.style.transform = 'scale(1.15)';
+    } else {
+      d.style.background = emp;
+      d.style.boxShadow = 'none';
+      d.style.transform = 'none';
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
