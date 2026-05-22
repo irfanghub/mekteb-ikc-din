@@ -51,6 +51,9 @@ input,select,textarea{font-family:inherit;font-weight:600}
 .back-btn{width:42px;height:42px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);font-size:18px}
 
 .nav{position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 6px;z-index:10;border-radius:0 0 31px 31px}
+.ef-tabs{display:flex;background:var(--card,#fff);border-bottom:2px solid var(--line);}
+.ef-tab{flex:1;padding:11px 4px 9px;text-align:center;font-size:11px;font-weight:800;color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;margin-bottom:-2px}
+.ef-tab.on{color:var(--green);border-bottom-color:var(--green-mid)}
 .nav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;color:var(--muted);font-size:10px;font-weight:800;border-radius:14px;flex:1;max-width:80px}
 .nav button.active{color:var(--green);background:var(--green-soft)}
 .nav svg{width:22px;height:22px}
@@ -846,17 +849,17 @@ function ilmPts(kidId){
 }
 
 const BADGES = [
-  {name:'Eerste sura', name_bs:'Prva sura', icon:'🌟', got:true,
+  {name:'Eerste sura', name_bs:'Prva sura', icon:'🌟', got:false,
    desc:'Je hebt je allereerste sura geleerd en opgezegd! Een geweldige start van je leerpad. Mašallah!',
    desc_bs:'Naučio/la si svoju prvu suru i recitovao/la je efendiji! Odličan početak tvog puta. Mašallah!',
    how:'Word behaald als je je eerste sura "done" krijgt van de efendija.',
    how_bs:'Osvaja se kad efendija označi tvoju prvu suru kao završenu.'},
-  {name:'7-weken', name_bs:'7-sedmica', icon:'🔥', got:true,
+  {name:'7-weken', name_bs:'7-sedmica', icon:'🔥', got:false,
    desc:'Je bent 7 weken op rij naar de mekteb gekomen! Trouw zijn aan je belofte verdient een beloning.',
    desc_bs:'Prisustvovao/la si mektebu 7 sedmica zaredom! Doći svake sedmice zaslužuje nagradu.',
    how:'Word behaald als je 7 aanwezigheidsvinkjes hebt van de efendija.',
    how_bs:'Osvaja se kad efendija zabilježi 7 prisustava.'},
-  {name:'Hafiz brons', name_bs:'Hafiz bronza', icon:'🥉', got:true,
+  {name:'Hafiz brons', name_bs:'Hafiz bronza', icon:'🥉', got:false,
    desc:'Je hebt al 3 suras geleerd en opgezegd. Je bent op weg om een echte hafiz te worden!',
    desc_bs:'Naučio/la si 3 sure napamet. Na putu si da postaneš pravi hafiz!',
    how:'Word behaald als je 3 of meer suras als "done" hebt.',
@@ -877,6 +880,29 @@ const BADGES = [
    how:'Zorg dat alle suras van N1, N2 én N3 op "done" staan. Dit vergt veel studie en geduld!',
    how_bs:'Postavi sve sure N1, N2 i N3 na "završeno". Ovo zahtijeva puno truda i strpljenja!'},
 ];
+
+function computeBadgesForKid(k){
+  if(!k) return;
+  // Tel klaar-gezette suras
+  let doneSuras = 0;
+  let allN1Done = true;
+  let allDone = true;
+  [1,2,3].forEach(lvl=>{
+    const stations = kidStations(k,'suras',lvl);
+    const allLvlDone = stations.every(s=>s.status==='done');
+    if(!allLvlDone) allDone = false;
+    if(lvl===1 && !allLvlDone) allN1Done = false;
+    doneSuras += stations.filter(s=>s.status==='done').length;
+  });
+  const att = ATTENDANCE[k.id]||[];
+  const presentCount = att.filter(a=>a.present).length;
+  BADGES[0].got = doneSuras >= 1;
+  BADGES[1].got = presentCount >= 7;
+  BADGES[2].got = doneSuras >= 3;
+  BADGES[3].got = presentCount >= 30;
+  BADGES[4].got = allN1Done && doneSuras > 0;
+  BADGES[5].got = allDone && doneSuras > 0;
+}
 
 let HOMEWORK = []; // wordt geladen vanuit Supabase in loadData()
 
@@ -978,6 +1004,15 @@ let state = {
 function kidStations(k, cat, lvl){
   const template = (PATH[cat]&&PATH[cat][lvl]) || [];
   const saved = k && k.stationData && k.stationData[cat] && k.stationData[cat][lvl];
+  if(!saved || !saved.some(s=>s)){
+    // Nieuw kind / leeg station-data: alles locked, eerste = current
+    return template.map((s,i)=>({
+      ...s,
+      status: i===0 ? 'current' : 'locked',
+      tag:    i===0 ? 'NU' : undefined,
+      icon:   i===0 ? '🎯' : (i===template.length-1 ? '🏆' : '🔒'),
+    }));
+  }
   return template.map((s,i)=>{
     if(saved && saved[i]) return {...s, status:saved[i].status, tag:saved[i].tag||undefined};
     return {...s};
@@ -991,6 +1026,8 @@ const colorOf = s => 'c' + (s.charCodeAt(0) % 6);
 const initial = n => n.replace(/^ef\. /,'').replace(/[^a-zA-Z]/g,'')[0]?.toUpperCase() || '?';
 
 const render = () => {
+  // Bereken badges voor huidig kind
+  if(state.role==='kind' && state.selectedPerson) computeBadgesForKid(state.selectedPerson);
   // Bewaar search-focus zodat typen niet onderbroken wordt
   const activeEl = document.activeElement;
   const wasSearch = activeEl && activeEl.closest && activeEl.closest('.search-box');
@@ -1354,7 +1391,7 @@ function loginView(){
         <div class="login-title" style="color:#fde68a">${T('whoAreYou')}</div>
         <div class="login-sub" style="color:#6ee7b7">Kies je naam, avonturier</div>
       </div>
-      <div style="position:relative;margin-bottom:10px">
+      <div class="search-box" style="position:relative;margin-bottom:10px">
         <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;opacity:.5">🔍</span>
         <input type="search"
           style="width:100%;background:rgba(16,185,129,.08);border:1.5px solid rgba(16,185,129,.18);border-radius:13px;padding:10px 14px 10px 34px;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;color:#e0fdf4;outline:none"
@@ -2514,9 +2551,17 @@ function enterChildView(id){ /* could deeplink to a child detail page; for proto
 // EFENDIJA APP
 // ═══════════════════════════════════════════════════════════════
 function efApp(){
-  if(state.nav==='home')     return efHome();
-  if(state.nav==='students') return state.selectedKid ? efStudentDetail() : efStudents();
+  if(state.nav==='home')      return efHome();
+  if(state.nav==='students')  return state.selectedKid ? efStudentDetail() : efStudents();
+  if(state.nav==='overzicht') return efOverzicht();
   return efHome();
+}
+function efOverzicht(){
+  // Zelfde dashboard als bestuur, maar met efendija topbar + tabs
+  const html = bestuurHome();
+  const bTopbar = topbarBestuur();
+  const eTopbar = topbarEf();
+  return html.replace(bTopbar, eTopbar);
 }
 function openKid(id){
   state.selectedKid=id;
@@ -2584,7 +2629,8 @@ function efStudentDetail(){
       ${tab==='huiswerk' ? efDetailHuiswerk(k) : ''}
       ${tab==='bewerken' ? efDetailBewerken(k) : ''}
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
 }
 
 function niveauCompleted(kidId, lvl){
@@ -2779,12 +2825,18 @@ function efDetailHuiswerk(k){
 }
 function topbarEf(){
   const e = state.me;
+  const nav = state.nav || 'home';
   return `<div class="topbar">
     <div class="row">
       <div class="avatar ${colorOf(e.name)}">${initial(e.name)}</div>
       <div><div style="font-weight:900">${e.name}</div><div class="muted" style="font-size:11px">${T('efendija')} • N${e.levels.join(',')}</div></div>
     </div>
     <button onclick="logout()" style="background:var(--red-soft);color:var(--red);padding:7px 13px;border-radius:10px;font-size:12px;font-weight:800">⏻ ${T('logout')}</button>
+  </div>
+  <div class="ef-tabs">
+    <div class="ef-tab ${nav==='home'?'on':''}" onclick="state.nav='home';state.selectedKid=null;render()">${L('Start','Start')}</div>
+    <div class="ef-tab ${(nav==='students'||state.selectedKid)?'on':''}" onclick="state.nav='students';state.selectedKid=null;render()">${L('Klas','Razred')}</div>
+    <div class="ef-tab ${nav==='overzicht'?'on':''}" onclick="state.nav='overzicht';state.selectedKid=null;render()">${L('Overzicht','Pregled')}</div>
   </div>`;
 }
 function efHome(){
@@ -2853,7 +2905,8 @@ function efHome(){
           </div>`).join('')}
       </div>
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
 }
 function efStudents(){
   const e = state.me;
@@ -2921,7 +2974,8 @@ function efStudents(){
         })()}
       `}
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
 }
 function efMessages(){
   // For demo: efendija ziet alle conversaties met ouders (zelfde lijst, andere kant)
@@ -2942,7 +2996,8 @@ function efMessages(){
       }).join('')}
       <button style="width:100%;margin-top:14px;background:var(--green);color:#fff;padding:14px;border-radius:14px;font-weight:800">+ ${state.lang==='nl'?'Nieuw bericht':'Nova poruka'}</button>
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
 }
 function efProfile(){
   return `<div class="topbar">
@@ -2963,7 +3018,8 @@ function efProfile(){
         </div>
       </div>
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
 }
 
 // ═══════════════════════════════════════════════════════════════
