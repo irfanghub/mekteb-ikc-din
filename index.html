@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>Mekteb IKC DIN</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -318,10 +318,9 @@ select{font-family:inherit;font-weight:600}
     overflow-y:auto!important;
     overflow-x:hidden!important;
     -webkit-overflow-scrolling:touch;
-    padding-bottom:calc(72px + env(safe-area-inset-bottom, 0px))!important;
+    padding-bottom:72px!important;
     -webkit-font-smoothing:antialiased;
   }
-  /* Nav vast onderaan — ook safe area onderin */
   .nav{
     position:fixed!important;
     bottom:0!important;
@@ -329,18 +328,11 @@ select{font-family:inherit;font-weight:600}
     right:0!important;
     border-radius:0!important;
     z-index:999!important;
-    padding-bottom:env(safe-area-inset-bottom, 0px)!important;
   }
-  /* Topbar: sticky + safe-area zodat content onder statusbalk valt */
   .topbar{
     position:sticky!important;
     top:0!important;
     z-index:50!important;
-    padding-top:calc(env(safe-area-inset-top, 0px) + 6px)!important;
-  }
-  /* Login schermen safe area */
-  .login-ui{
-    padding-top:calc(env(safe-area-inset-top, 0px) + 26px)!important;
   }
 
   body{height:100vh;height:100dvh;overflow:hidden;background:#020c06!important}
