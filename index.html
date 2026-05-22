@@ -1419,6 +1419,13 @@ function ouderLoginView(){
         style="width:100%;padding:13px;background:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.08)':'linear-gradient(135deg,#f59e0b,#d97706)'};color:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.3)':'#0d0a04'};font-family:Nunito,sans-serif;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer;transition:.15s">
         ${L('Volgende →','Dalje →')}
       </button>
+
+      <!-- Nieuw account aanmaken -->
+      <button onclick="state.showRegForm=!state.showRegForm;render()"
+        style="width:100%;padding:12px;margin-top:10px;border-radius:13px;background:rgba(245,158,11,.07);border:1.5px dashed rgba(245,158,11,.3);color:rgba(253,230,138,.8);font-family:Nunito,sans-serif;font-weight:800;font-size:13px;cursor:pointer">
+        ➕ ${L('Nog geen account? Kind hier aanmelden →','Nemate nalog? Prijavite dijete ovdje →')}
+      </button>
+      ${state.showRegForm ? ouderRegFormHtml() : ''}
     </div>
   </div>`;
 }
