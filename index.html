@@ -1450,7 +1450,10 @@ function ouderNaamVolgende(){
   let match = PARENTS.find(p => normName(p.name) === norm);
   if(!match) match = PARENTS.find(p => normName(p.name).startsWith(norm));
   if(!match){
-    state.ouderNameError = L('Naam niet gevonden. Controleer je naam of vraag de efendija om hulp.','Ime nije pronađeno. Provjerite ime ili pitajte efendiju.');
+    // Naam niet gevonden → reg-form direct openen, naam alvast invullen
+    state.ouderNameError = L('Naam niet gevonden. Ben je nieuw? Meld je hieronder aan.','Ime nije pronađeno. Novi ste? Prijavite se ispod.');
+    state.regData.ouderNaam = typed;
+    state.showRegForm = true;
     render(); return;
   }
   state.selectedPerson = match;
@@ -1513,7 +1516,10 @@ function ouderNaamVolgende(){
   let match = PARENTS.find(p => normName(p.name) === norm);
   if(!match) match = PARENTS.find(p => normName(p.name).startsWith(norm));
   if(!match){
-    state.ouderNameError = L('Naam niet gevonden. Controleer je naam of vraag de efendija om hulp.','Ime nije pronađeno. Provjerite ime ili pitajte efendiju.');
+    // Naam niet gevonden → reg-form direct openen, naam alvast invullen
+    state.ouderNameError = L('Naam niet gevonden. Ben je nieuw? Meld je hieronder aan.','Ime nije pronađeno. Novi ste? Prijavite se ispod.');
+    state.regData.ouderNaam = typed;
+    state.showRegForm = true;
     render(); return;
   }
   state.selectedPerson = match;
@@ -3614,25 +3620,47 @@ function ouderReg(){
   if(r.ouderPin.trim().length<4){ alert(L('PIN moet 4 cijfers zijn.','PIN mora biti 4 cifre.')); return; }
   const pin=r.ouderPin.trim();
   const ouderNaam=r.ouderNaam.trim();
-  const newKidIds=[];
+  const kidIds=[];
+  const gekoppeld=[], nieuw=[];
+
   kinderenGevuld.forEach(kindNaam=>{
-    const newKidId = crypto.randomUUID ? crypto.randomUUID().slice(0,18) : ('k'+Date.now()+Math.random().toString(36).slice(2,6));
-    const newKid = {id:newKidId, name:kindNaam, level:1, pin, pts:0, streak:0, rank:KIDS.length+1, sinceYear:new Date().getFullYear(), stationData:{}, ilmDoneData:{}};
-    KIDS.push(newKid);
-    ATTENDANCE[newKidId]=WEEKS.map(w=>({date:w,present:false}));
-    state.ilmDone[newKidId]={};
-    newKidIds.push(newKidId);
+    // Eerst zoeken of kind al bestaat (toegevoegd door efendija)
+    const bestaand = KIDS.find(k => normName(k.name) === normName(kindNaam));
+    if(bestaand){
+      // Koppelen aan bestaand kind — GEEN duplicaat aanmaken
+      kidIds.push(bestaand.id);
+      gekoppeld.push(kindNaam);
+    } else {
+      // Nieuw kind aanmaken
+      const newKidId = crypto.randomUUID ? crypto.randomUUID().slice(0,18) : ('k'+Date.now()+Math.random().toString(36).slice(2,6));
+      const newKid = {id:newKidId, name:kindNaam, level:1, pin, pts:0, streak:0, rank:KIDS.length+1, sinceYear:new Date().getFullYear(), stationData:{}, ilmDoneData:{}};
+      KIDS.push(newKid);
+      ATTENDANCE[newKidId]=WEEKS.map(w=>({date:w,present:false}));
+      state.ilmDone[newKidId]={};
+      kidIds.push(newKidId);
+      nieuw.push(kindNaam);
+    }
   });
+
   // Koppel aan bestaande ouder (zelfde naam+PIN) of maak nieuwe ouder aan
   const bestaandeOuder = PARENTS.find(p=>p.name===ouderNaam && p.pin===pin);
-  if(bestaandeOuder){ bestaandeOuder.kidIds.push(...newKidIds); }
-  else { PARENTS.push({id:++_parentIdCounter, name:ouderNaam, pin, kidIds:newKidIds}); }
+  if(bestaandeOuder){
+    // Voeg alleen nog niet gekoppelde kids toe
+    kidIds.forEach(id=>{ if(!bestaandeOuder.kidIds.includes(id)) bestaandeOuder.kidIds.push(id); });
+  } else {
+    PARENTS.push({id:++_parentIdCounter, name:ouderNaam, pin, kidIds});
+  }
+
   state.regData={ouderNaam:'',ouderPin:'',kinderen:['']};
   state.showRegForm=false;
   render();
-  newKidIds.forEach(id=>saveKidToDB(id));
+  // Sla alle betrokken kids op (ook bestaande, zodat ouder-koppeling bewaard blijft)
+  kidIds.forEach(id=>saveKidToDB(id));
+
   const namen=kinderenGevuld.join(', ');
-  alert(L(`${namen} ${kinderenGevuld.length===1?'is':'zijn'} aangemeld! Log in als ouder met PIN ${pin}.`,`${namen} ${kinderenGevuld.length===1?'je prijavljen/a':'su prijavljeni'}! Prijavite se kao roditelj s PIN-om ${pin}.`));
+  const gekoppeldMsg = gekoppeld.length ? L(` (${gekoppeld.join(', ')} was al in het systeem en is gekoppeld)`,` (${gekoppeld.join(', ')} je već u sustavu i povezano)`) : '';
+  alert(L(`Aangemeld! ${namen} is nu gekoppeld aan jouw ouderaccount.${gekoppeldMsg} Log in met PIN ${pin}.`,
+          `Prijavljeno! ${namen} je sada povezano s vašim računom.${gekoppeldMsg} Prijavite se s PIN-om ${pin}.`));
 }
 
 // ═══════════════════════════════════════════════════════════════
