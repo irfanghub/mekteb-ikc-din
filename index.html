@@ -1354,10 +1354,8 @@ function loginView(){
     <div class="login-ui">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <button onclick="go('splash')" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:#6ee7b7;width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
-        <div style="text-align:center">
-          <span class="login-badge" style="background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.18)">Mekteb Leerling</span>
-        </div>
-        ${langToggleSmall()}
+        <span class="login-badge" style="background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.18)">Mekteb Leerling</span>
+        <div style="width:36px"></div>
       </div>
       <div style="text-align:center;margin-bottom:12px">
         <div style="font-size:30px;margin-bottom:4px">⭐</div>
@@ -1394,7 +1392,7 @@ function ouderLoginView(){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <button onclick="go('splash')" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:#fcd34d;width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
         <span class="login-badge" style="background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.18)">Ouder / Voogd</span>
-        ${langToggleSmall()}
+        <div style="width:36px"></div>
       </div>
       <div style="text-align:center;margin-bottom:14px">
         <div style="font-size:30px;margin-bottom:5px">👪</div>
@@ -1470,7 +1468,7 @@ function ouderPinView(){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <button onclick="state.selectedPerson=null;state.pin='';render()" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:#fcd34d;width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
         <span class="login-badge" style="background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.18)">Ouder / Voogd</span>
-        ${langToggleSmall()}
+        <div style="width:36px"></div>
       </div>
       <!-- Stap 2 indicator -->
       <div style="display:flex;align-items:center;margin-bottom:14px">
@@ -1534,7 +1532,7 @@ function ouderPinView(){
         <div class="ttl">${L('Ouder login','Prijava roditelja')}</div>
         <div class="stl">IKC DIN Mekteb</div>
       </div>
-      ${langToggleSmall()}
+      <div style="width:36px"></div>
     </div>
     <div style="display:flex;align-items:center;padding:8px 16px 0;gap:0">
       <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
@@ -1588,7 +1586,7 @@ function pinView(){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <button onclick="${backFn}" style="background:${rc.acc}.1);border:1px solid ${rc.acc}.2);color:${rc.fnC};width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
         <span class="login-badge" style="background:${rc.acc}.1);color:${rc.fnC};border:1px solid ${rc.acc}.18)">${rc.badge}</span>
-        ${langToggleSmall()}
+        <div style="width:36px"></div>
       </div>
       <div style="text-align:center;margin-bottom:14px">
         <div style="font-size:32px;margin-bottom:6px">${rc.icon}</div>
