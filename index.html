@@ -2098,6 +2098,19 @@ async function removeKid(id){
   const {error} = await DB.from('leerlingen_v5').delete().eq('id', id);
   if(error) console.error('Delete fout:', error);
 }
+
+function efVerwijderOuder(parentId, kidId){
+  const p = PARENTS.find(x=>x.id==parentId);
+  if(!p) return;
+  const kid = KIDS.find(k=>k.id==kidId);
+  if(!confirm(L(`${p.name} loskoppelen van ${kid?kid.name:'dit kind'}?`,
+               `Ukloniti ${p.name} od ${kid?kid.name:'ovog djeteta'}?`))) return;
+  // Verwijder dit kind uit ouder-kidIds
+  p.kidIds = p.kidIds.filter(id=>id!=kidId);
+  if(p.kidIds.length===0) PARENTS.splice(PARENTS.indexOf(p),1);
+  saveKidToDB(kidId);
+  render();
+}
 function setNewKidField(field,val){ state.newKid[field]=val; }
 
 function addKidFormHtml(){
@@ -2359,11 +2372,42 @@ function ouderProfile(){
           <div class="name" style="color:var(--red)">${T('logout')}</div>
         </div>
       </div>
+      <div class="list" style="margin:8px 14px">
+        <div class="list-row" onclick="ouderVerwijderAccount()">
+          <div style="font-size:18px">🗑️</div>
+          <div style="flex:1">
+            <div class="name" style="color:var(--red)">${L('Account volledig verwijderen','Potpuno brisanje naloga')}</div>
+            <div class="muted" style="font-size:11px">${L('Verwijdert jouw account én alle gekoppelde kinderen','Briše vaš nalog i svu povezanu djecu')}</div>
+          </div>
+        </div>
+      </div>
     </div>
     ${navBar([['home',T('tabHome')]])}`;
 }
 
 // ── Ouder modal opener ──
+
+async function ouderVerwijderAccount(){
+  const p = state.me;
+  const kids = KIDS.filter(k=>p.kidIds.includes(k.id));
+  const namen = kids.map(k=>k.name).join(', ');
+  const msg = kids.length > 0
+    ? L(`Dit verwijdert jouw account én de volgende kinderen permanent:\n${namen}\n\nWeet je het zeker?`,
+        `Ovo briše vaš nalog i sljedeću djecu trajno:\n${namen}\n\nJeste li sigurni?`)
+    : L('Dit verwijdert jouw account permanent. Weet je het zeker?',
+        'Ovo trajno briše vaš nalog. Jeste li sigurni?');
+  if(!confirm(msg)) return;
+  // Verwijder alle kinderen uit Supabase
+  for(const k of kids){
+    await DB.from('leerlingen_v5').delete().eq('id', k.id);
+    const idx = KIDS.findIndex(x=>x.id===k.id);
+    if(idx!==-1) KIDS.splice(idx,1);
+  }
+  // Verwijder ouder uit PARENTS array
+  const pi = PARENTS.findIndex(x=>x.id===p.id);
+  if(pi!==-1) PARENTS.splice(pi,1);
+  logout();
+}
 function ouderOpenModal(type, kidId=null, kidName=''){
   state.ouderModal=type; state.ouderModalStep=1;
   state.ouderModalPin=''; state.ouderModalInput=''; state.ouderModalInput2='';
@@ -2761,7 +2805,19 @@ function efDetailBewerken(k){
         <button onclick="saveParentName('${p.id}')" style="background:var(--green);color:#fff;padding:9px 14px;border-radius:11px;font-weight:800;font-size:13px">${L('Opslaan','Sačuvaj')}</button>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:700">PIN: ${p.pin} · ${p.kidIds.length} ${L('kind(eren)','djece')}</div>
+      <button onclick="efVerwijderOuder('${p.id}','${k.id}')"
+        style="margin-top:10px;width:100%;padding:9px;background:var(--red-soft);color:var(--red);border:1.5px solid #fca5a5;border-radius:11px;font-weight:800;font-size:12px;cursor:pointer">
+        🗑️ ${L('Ouder verwijderen van dit kind','Ukloni roditelja od ovog djeteta')}
+      </button>
     </div>`).join('')}
+    <!-- Kind verwijderen -->
+    <div class="card" style="border:1.5px solid #fca5a5;background:var(--red-soft)">
+      <div style="font-weight:900;font-size:14px;margin-bottom:8px;color:var(--red)">🗑️ ${L('Kind verwijderen','Obriši učenika')}</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Verwijdert de leerling en alle bijbehorende data permanent.','Trajno briše učenika i sve podatke.')}</div>
+      <button onclick="deleteKid('${k.id}')" style="width:100%;padding:10px;background:var(--red);color:#fff;border:0;border-radius:11px;font-weight:900;font-size:13px;cursor:pointer">
+        ${L('Ja, leerling verwijderen','Da, obriši učenika')}
+      </button>
+    </div>
     <!-- Nieuwe ouder koppelen -->
     <div class="card" style="border:1.5px dashed var(--green-mid)">
       <div style="font-weight:900;font-size:14px;margin-bottom:10px">➕ ${L('Ouder koppelen','Poveži roditelja')}</div>
