@@ -1068,11 +1068,11 @@ function splashView(){
   return `<div style="position:absolute;inset:0;background:#020c06;display:flex;flex-direction:column;overflow:hidden">
     <canvas id="splash-cv" style="position:absolute;inset:0;z-index:0"></canvas>
 
-    <div style="position:relative;z-index:10;display:flex;flex-direction:column;height:100%;padding:28px 22px 18px">
+    <div style="position:relative;z-index:10;display:flex;flex-direction:column;height:100%;padding:18px 22px 10px">
 
-      <!-- SVG logo — vector, altijd scherp -->
-      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:12px">
-        <svg style="width:148px;height:auto;overflow:visible" viewBox="0 0 220 225" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+      <!-- SVG logo — kleiner zodat medaillon meer ruimte krijgt -->
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:10px">
+        <svg style="width:110px;height:auto;overflow:visible" viewBox="0 0 220 195" xmlns="http://www.w3.org/2000/svg" overflow="visible">
           <defs><mask id="splcm"><rect width="220" height="115" fill="white"/><circle cx="107" cy="53" r="35" fill="black"/></mask></defs>
           <circle cx="90" cy="53" r="45" fill="#2ecc71" mask="url(#splcm)"/>
           <g transform="translate(119,49)">
@@ -1084,9 +1084,11 @@ function splashView(){
           </g>
           <text x="110" y="118" text-anchor="middle" font-family="Georgia,serif" font-size="16.5" font-weight="bold" fill="#4ecb70" letter-spacing=".6">ISLAMSKA ZAJEDNICA</text>
           <text x="110" y="139" text-anchor="middle" font-family="Georgia,serif" font-size="14.5" font-weight="bold" fill="#4ecb70" letter-spacing=".4">BOŠNJAKA U NIZOZEMSKOJ</text>
-          <text x="110" y="163" text-anchor="middle" font-family="Georgia,serif" font-size="12.5" font-style="italic" fill="#c8932a">Islamski kulturni centar Din</text>
-          <text x="110" y="181" text-anchor="middle" font-family="Georgia,serif" font-size="12.5" font-style="italic" fill="#c8932a">Eindhoven</text>
+          <text x="110" y="160" text-anchor="middle" font-family="Georgia,serif" font-size="11.5" font-style="italic" fill="#c8932a">Islamski kulturni centar Din Eindhoven</text>
         </svg>
+        <!-- Mekteb IKC DIN Eindhoven — direct onder logo -->
+        <div style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:#fde68a;text-align:center;margin-top:6px;text-shadow:0 0 16px rgba(201,162,39,.35);letter-spacing:.2px">Mekteb IKC DIN Eindhoven</div>
+        <div style="font-size:10px;font-weight:700;color:rgba(201,162,39,.55);text-align:center;margin-top:3px;letter-spacing:.3px">Učimo zajedno · Samen leren</div>
       </div>
 
       <!-- Rol label -->
@@ -1111,14 +1113,14 @@ function splashView(){
       </div>
 
       <!-- Taal toggle -->
-      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:13px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:9px">
         <div style="display:flex;gap:3px;background:rgba(0,0,0,.4);border:1px solid rgba(201,162,39,.15);border-radius:11px;padding:3px">
           ${['nl','bs'].map(l=>`<button onclick="setLang('${l}')" style="padding:5px 13px;border-radius:8px;font-size:12px;font-weight:800;background:${state.lang===l?'rgba(201,162,39,.2)':'transparent'};color:${state.lang===l?'#fbbf24':'rgba(201,162,39,.45)'}">${l==='nl'?'🇳🇱 NL':'🇧🇦 BiH'}</button>`).join('')}
         </div>
       </div>
 
       <!-- Draaiend medaillon -->
-      <div style="flex:1;display:flex;justify-content:center;align-items:center;margin:2px -22px 0;overflow:hidden;position:relative;min-height:140px">
+      <div style="flex:1;display:flex;justify-content:center;align-items:center;margin:4px -22px 0;overflow:visible;position:relative;min-height:160px">
         <div style="position:absolute;left:0;top:0;bottom:0;width:50px;background:linear-gradient(90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
         <div style="position:absolute;right:0;top:0;bottom:0;width:50px;background:linear-gradient(-90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
         <div style="position:absolute;top:0;left:0;right:0;height:28px;background:linear-gradient(180deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
@@ -1174,7 +1176,7 @@ function splashView(){
       </div>
 
       <!-- Footer -->
-      <div style="display:flex;align-items:center;gap:9px;margin-top:4px">
+      <div style="display:flex;align-items:center;gap:9px;margin-top:6px;padding-bottom:4px">
         <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(201,162,39,.2),transparent)"></div>
         <div style="font-size:9px;font-weight:800;color:rgba(201,162,39,.4);letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">IZBN · Eindhoven</div>
         <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(201,162,39,.2),transparent)"></div>
@@ -1240,14 +1242,7 @@ function splashInitCanvas(){
     mg.addColorStop(0,`rgba(201,162,39,${.16+Math.sin(t*.55)*.05})`);
     mg.addColorStop(1,'transparent');
     ctx.fillStyle=mg; ctx.fillRect(0,0,W,H);
-    // Maan — goed zichtbaar rechtsboven, niet te dicht op de rand
-    ctx.save();
-    ctx.translate(W*.78, H*.1);
-    ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2);
-    ctx.fillStyle=`rgba(253,230,138,${.7+Math.sin(t*.38)*.12})`; ctx.fill();
-    ctx.beginPath(); ctx.arc(9,0,16,0,Math.PI*2);
-    ctx.fillStyle='#010503'; ctx.fill();
-    ctx.restore();
+    // Gele maan verwijderd
     raf=requestAnimationFrame(draw);
   }
   draw();
