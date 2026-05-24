@@ -1741,8 +1741,15 @@ function kidHome(){
   const k = state.me;
   const myHw = HOMEWORK.filter(h=>h.kidId===k.id && !h.done);
   const allMyHw = HOMEWORK.filter(h=>h.kidId===k.id);
-  const lastAtt = ATTENDANCE[k.id]?.[WEEKS.length-1];
-  const wasAbsent = lastAtt && !lastAtt.present;
+  const doneHw = HOMEWORK.filter(h=>h.kidId===k.id && h.done);
+  const allHwDone = allMyHw.length > 0 && myHw.length === 0;
+  const lastDoneHw = doneHw.length > 0 ? doneHw[doneHw.length-1] : null;
+  // Controleer afwezigheid: laatste AFGELOPEN zondag (niet de aanstaande)
+  const attArr = ATTENDANCE[k.id]||[];
+  const today = new Date().toISOString().slice(0,10);
+  const pastAtt = attArr.filter(a=>a.date < today);
+  const lastPastAtt = pastAtt.length ? pastAtt[pastAtt.length-1] : null;
+  const wasAbsent = lastPastAtt && !lastPastAtt.present;
   const ilmScore = ilmPts(k.id);
   return `${topbarKid()}
     <div class="screen">
@@ -1755,6 +1762,13 @@ function kidHome(){
         <div style="font-size:13px;font-weight:700;color:#92400e;line-height:1.5">
           ${L(`Selam ${k.name}, we hebben je gemist bij de laatste mekteb, hopelijk ben je er aanstaande zondag wel bij!`,
               `Selam ${k.name}, nedostajao/la si nam na posljednjem mektebu, nadamo se da ćeš doći sljedeće nedjelje!`)}
+        </div>
+      </div>` : ''}
+      ${allHwDone && !wasAbsent ? `<div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;border-radius:16px;padding:13px 15px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px">
+        <div style="font-size:22px;flex-shrink:0">🎉</div>
+        <div style="font-size:13px;font-weight:700;color:#065f46;line-height:1.5">
+          ${L(`MašaAllah ${k.name}! Je hebt${lastDoneHw?' <span style="font-style:italic">'+lastDoneHw.title+'</span>':' je huiswerk'} afgerond. Ga zo door!`,
+              `MašaAllah ${k.name}! Završio/la si${lastDoneHw?' <span style="font-style:italic">'+lastDoneHw.title+'</span>':' zadaću'}. Nastavi ovako!`)}
         </div>
       </div>` : ''}
 
@@ -2209,6 +2223,30 @@ function ouderHome(){
         ${kHw.length ? `<div style="background:var(--orange-soft);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#9a3412">
           📝 ${kHw.length} ${L('huiswerk openstaand','zadaće otvoreno')}
         </div>` : `<div style="font-size:12px;color:var(--green);font-weight:800">✓ ${L('Geen openstaand huiswerk','Nema otvorene zadaće')}</div>`}
+        <!-- AANWEZIGHEIDSHISTORIE -->
+        ${(()=>{
+          const att = (ATTENDANCE[k.id]||[]).filter(a=>a.date<new Date().toISOString().slice(0,10));
+          const last8 = att.slice(-8);
+          if(!last8.length) return '';
+          const dots = last8.map(a=>`<div title="${a.date}" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;background:${a.present?'var(--green-soft)':'var(--red-soft)'};color:${a.present?'var(--green)':'var(--red)'};">${a.present?'✓':'✗'}</div>`).join('');
+          const pct = Math.round(last8.filter(a=>a.present).length/last8.length*100);
+          return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="font-size:11px;font-weight:800;color:var(--muted)">📅 ${L('Aanwezigheid','Prisustvo')}</div>
+              <div style="font-size:11px;font-weight:900;color:${pct>=75?'var(--green)':pct>=50?'var(--gold)':'var(--red)'};">${pct}%</div>
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">${dots}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px;font-weight:700">${L('Laatste','Posljednjih')} ${last8.length} ${L('lessen','časova')}</div>
+          </div>`;
+        })()}
+        ${(()=>{
+          const n = k.notities||'';
+          if(!n.trim()) return '';
+          return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+            <div style="font-size:11px;font-weight:900;color:var(--muted);margin-bottom:5px">💬 ${L('Notitie efendija','Bilješka efendije')}</div>
+            <div style="font-size:13px;color:var(--ink);line-height:1.5;white-space:pre-wrap">${n}</div>
+          </div>`;
+        })()}
       </div>`;
     }).join('')}
 
@@ -2653,16 +2691,45 @@ function efStudentDetail(){
         <div class="subtab ${tab==='voortgang'?'on':''}" onclick="state.efDetailTab='voortgang';render()">📚 ${L('Voortgang','Napredak')}</div>
         <div class="subtab ${tab==='aanwezigheid'?'on':''}" onclick="state.efDetailTab='aanwezigheid';render()">📅 ${L('Aanwezigheid','Prisustvo')}</div>
         <div class="subtab ${tab==='huiswerk'?'on':''}" onclick="state.efDetailTab='huiswerk';render()">✅ ${L('Huiswerk','Zadaća')}</div>
+        <div class="subtab ${tab==='notities'?'on':''}" onclick="state.efDetailTab='notities';render()">📝 ${L('Notities','Bilješke')}</div>
         <div class="subtab ${tab==='bewerken'?'on':''}" onclick="state.efDetailTab='bewerken';render()">✏️ ${L('Bewerken','Uredi')}</div>
       </div>
 
       ${tab==='voortgang' ? efDetailVoortgang(k) : ''}
       ${tab==='aanwezigheid' ? efDetailAanwezigheid(k) : ''}
       ${tab==='huiswerk' ? efDetailHuiswerk(k) : ''}
+      ${tab==='notities' ? efDetailNotities(k) : ''}
       ${tab==='bewerken' ? efDetailBewerken(k) : ''}
     </div>
   `;
 // ef-nav-removed
+}
+
+// EFENDIJA — NOTITIES PER LEERLING
+function efDetailNotities(k){
+  const val = k.notities||'';
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="font-weight:900;font-size:14px;margin-bottom:10px">📝 ${L('Notities over','Bilješke o')} ${k.name}</div>
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:8px;line-height:1.5">
+      ${L('Alleen zichtbaar voor efendija en ouders. Gebruik dit voor observaties, aandachtspunten of mijlpalen.',
+          'Vidljivo samo efendiji i roditeljima. Koristite za zapažanja, napomene ili postignute prekretnice.')}
+    </div>
+    <textarea id="ef-notitie-${k.id}" style="width:100%;min-height:120px;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-size:13px;font-family:inherit;resize:vertical;background:var(--bg);color:var(--ink);box-sizing:border-box;line-height:1.5" placeholder="${L('Schrijf hier een notitie...','Napišite bilješku ovdje...')}">${val}</textarea>
+    <button onclick="efSaveNotitie('${k.id}')" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;font-weight:900;font-size:13px;background:var(--green);color:#fff;border:0;cursor:pointer">
+      💾 ${L('Opslaan','Sačuvaj')}
+    </button>
+    ${val ? `<div style="margin-top:10px;font-size:11px;color:var(--muted);font-weight:700">
+      ✓ ${L('Notitie opgeslagen.','Bilješka je sačuvana.')}
+    </div>` : ''}
+  </div>`;
+}
+function efSaveNotitie(kidId){
+  const k = KIDS.find(x=>x.id===kidId);
+  const ta = document.getElementById('ef-notitie-'+kidId);
+  if(!k||!ta) return;
+  k.notities = ta.value;
+  saveKidToDB(kidId);
+  render();
 }
 
 function niveauCompleted(kidId, lvl){
@@ -4037,6 +4104,7 @@ async function loadData(){
         sinceYear: row.since_year||2026,
         stationData: row.suras||{},
         ilmDoneData: row.ilmihal||{},
+        notities: row.notities||'',
       };
       KIDS.push(kid);
       state.ilmDone[row.id] = row.ilmihal||{};
@@ -4092,6 +4160,7 @@ async function saveKidToDB(kidId){
       since_year: k.sinceYear||2026,
       huiswerk: HOMEWORK.filter(h=>h.kidId===k.id),
       parent_notifications: PARENT_NOTIFICATIONS[k.id]||{},
+      notities: k.notities||'',
     });
   } catch(e){ console.error('DB fout bij opslaan:', e); }
 }
