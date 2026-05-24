@@ -986,7 +986,7 @@ let state = {
   newHw: {title:'', desc:'', dueDays:7}, // nieuw huiswerk formulier
   showAddHw: false,   // toon add-huiswerk formulier
   showRegForm: false, // ouder zelf-registratie (beginfase)
-  regData: {ouderNaam:'', ouderPin:'', kinderen:['']},
+  regData: {ouderNaam:'', ouderPin:'', kinderen:[''], ouderNaam2:''},
   ouderTypedName: '',
   ouderNameError: '',
   ouderModal: null,
@@ -1090,7 +1090,7 @@ function splashView(){
         </svg>
         <!-- Mekteb IKC DIN Eindhoven — direct onder logo -->
         <div style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:#fde68a;text-align:center;margin-top:6px;text-shadow:0 0 16px rgba(201,162,39,.35);letter-spacing:.2px">Mekteb IKC DIN Eindhoven</div>
-        <div style="font-size:10px;font-weight:700;color:rgba(201,162,39,.55);text-align:center;margin-top:3px;letter-spacing:.3px">Učimo zajedno · Samen leren</div>
+
       </div>
 
       <!-- Rol label -->
@@ -1177,12 +1177,7 @@ function splashView(){
         </svg>
       </div>
 
-      <!-- Footer -->
-      <div style="display:flex;align-items:center;gap:9px;margin-top:6px;padding-bottom:4px">
-        <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(201,162,39,.2),transparent)"></div>
-        <div style="font-size:9px;font-weight:800;color:rgba(201,162,39,.4);letter-spacing:.5px;text-transform:uppercase;white-space:nowrap">IZBN · Eindhoven</div>
-        <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(201,162,39,.2),transparent)"></div>
-      </div>
+
     </div>
   </div>`;
 }
@@ -1219,10 +1214,9 @@ function splashInitCanvas(){
   function draw(){
     if(!document.getElementById('splash-cv')){ cancelAnimationFrame(raf); return; }
     ctx.clearRect(0,0,W,H); t+=.007;
-    // Achtergrond
-    const bg=ctx.createRadialGradient(W/2,H*.2,0,W/2,H*.2,W);
-    bg.addColorStop(0,'#031208'); bg.addColorStop(1,'#010503');
-    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    // Uniforme achtergrond — geen radiale gradient die een zichtbare 'box' geeft
+    ctx.fillStyle='#020c06';
+    ctx.fillRect(0,0,W,H);
     // Sterren — alleen in bovenste 65%
     stars.forEach(s=>{
       s.a=Math.max(.05,Math.min(.9,s.a+(s.a<=.05||s.a>=.9?-s.da:s.da)));
@@ -3703,8 +3697,10 @@ function ouderRegFormHtml(){
   return`<div style="background:${state.darkMode?'#0c2416':'#fff'};border-radius:14px;padding:14px;margin-top:10px;border:1.5px solid var(--green-mid);box-shadow:var(--shadow)">
     <div style="font-weight:900;font-size:13px;margin-bottom:4px">👪 ${L('Kind(eren) aanmelden','Prijava djece')}</div>
     <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Één PIN voor jou én al je kinderen — gebruik dit om in te loggen.','Jedan PIN za vas i svu vašu djecu — koristite ga za prijavu.')}</div>
-    ${lbl('Jouw naam (ouder)','Vaše ime (roditelj)')}
-    <input type="text" placeholder="${L('Naam ouder','Ime roditelja')}" value="${r.ouderNaam}" oninput="state.regData.ouderNaam=this.value" style="margin-bottom:4px;font-size:14px">
+    ${lbl('Jouw naam (ouder)','Vaše ime (roditelja)')}
+    <input type="text" placeholder="${L('Naam ouder 1','Ime roditelja 1')}" value="${r.ouderNaam}" oninput="state.regData.ouderNaam=this.value" style="margin-bottom:4px;font-size:14px">
+    ${lbl('Naam tweede ouder (optioneel)','Ime drugog roditelja (opcija)')}
+    <input type="text" placeholder="${L('Naam ouder 2 — optioneel','Ime roditelja 2 — opcionalno')}" value="${r.ouderNaam2||''}" oninput="state.regData.ouderNaam2=this.value" style="margin-bottom:4px;font-size:14px;border-color:var(--line)">
     ${lbl('Naam kind(eren)','Ime djece')}
     ${kinderenHtml}
     <button onclick="state.regData.kinderen.push('');render()" style="width:100%;padding:8px;border-radius:10px;border:1.5px dashed var(--green-mid);color:var(--green);font-weight:800;font-size:12px;margin-bottom:4px">
@@ -3752,13 +3748,22 @@ function ouderReg(){
   // Koppel aan bestaande ouder (zelfde naam+PIN) of maak nieuwe ouder aan
   const bestaandeOuder = PARENTS.find(p=>p.name===ouderNaam && p.pin===pin);
   if(bestaandeOuder){
-    // Voeg alleen nog niet gekoppelde kids toe
     kidIds.forEach(id=>{ if(!bestaandeOuder.kidIds.includes(id)) bestaandeOuder.kidIds.push(id); });
   } else {
     PARENTS.push({id:++_parentIdCounter, name:ouderNaam, pin, kidIds});
   }
+  // Tweede ouder aanmaken als ingevuld
+  const ouderNaam2 = (r.ouderNaam2||'').trim();
+  if(ouderNaam2){
+    const bestaandeOuder2 = PARENTS.find(p=>p.name===ouderNaam2 && p.pin===pin);
+    if(bestaandeOuder2){
+      kidIds.forEach(id=>{ if(!bestaandeOuder2.kidIds.includes(id)) bestaandeOuder2.kidIds.push(id); });
+    } else {
+      PARENTS.push({id:++_parentIdCounter, name:ouderNaam2, pin, kidIds:[...kidIds]});
+    }
+  }
 
-  state.regData={ouderNaam:'',ouderPin:'',kinderen:['']};
+  state.regData={ouderNaam:'',ouderPin:'',kinderen:[''],ouderNaam2:''};
   state.showRegForm=false;
   render();
   // Sla alle betrokken kids op (ook bestaande, zodat ouder-koppeling bewaard blijft)
