@@ -340,6 +340,8 @@ select{font-family:inherit;font-weight:600}
 
   body{height:100vh;height:100dvh;overflow:hidden;background:#020c06!important}
   html{height:100%;background:#020c06}
+  /* App background matcht de nacht-canvas zodat er geen zichtbare rand is */
+  .app{background:#010503!important}
 }
 
 /* ── Print ── */
@@ -1120,7 +1122,7 @@ function splashView(){
       </div>
 
       <!-- Draaiend medaillon -->
-      <div style="flex:1;display:flex;justify-content:center;align-items:center;margin:4px -22px 0;overflow:visible;position:relative;min-height:160px">
+      <div style="flex:1;display:flex;justify-content:center;align-items:center;margin:4px -22px 0;overflow:hidden;position:relative;min-height:160px;pointer-events:none">
         <div style="position:absolute;left:0;top:0;bottom:0;width:50px;background:linear-gradient(90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
         <div style="position:absolute;right:0;top:0;bottom:0;width:50px;background:linear-gradient(-90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
         <div style="position:absolute;top:0;left:0;right:0;height:28px;background:linear-gradient(180deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
@@ -1443,9 +1445,7 @@ function ouderLoginView(){
         oninput="state.ouderTypedName=this.value;ouderNaamInputUpdate()"
         onkeydown="if(event.key==='Enter')ouderNaamVolgende()">
       ${err ? `<div style="color:rgba(239,68,68,.9);font-size:12px;font-weight:800;margin-bottom:8px">${err}</div>` : ''}
-      <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.15);border-radius:11px;padding:9px 11px;font-size:11px;font-weight:700;color:rgba(253,230,138,.7);line-height:1.5;margin-bottom:12px">
-        🔒 ${L('Niemand anders ziet jouw naam of pincode.','Nitko drugi ne vidi vaše ime ni PIN.')}
-      </div>
+
       <button id="ouder-volgende-btn" onclick="ouderNaamVolgende()"
         ${state.ouderTypedName.trim().length<1?'disabled':''}
         style="width:100%;padding:13px;background:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.08)':'linear-gradient(135deg,#f59e0b,#d97706)'};color:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.3)':'#0d0a04'};font-family:Nunito,sans-serif;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer;transition:.15s">
