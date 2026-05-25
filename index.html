@@ -870,8 +870,8 @@ const BADGES = [
    how_bs:'Neka efendija označi tvoju prvu ilmihal lekciju.'},
   // 3
   {name:'Huiswerkster', name_bs:'Marljivi učenik', icon:'✅', got:false,
-   desc:'3 keer je huiswerk gemaakt! Thuis leren telt net zo mee. Zo trots op jou!',
-   desc_bs:'3 puta si uradio/la zadaću! Učenje kod kuće se cijeni jednako. Ponosni smo na tebe!',
+   desc:'Mashallah, 3x achter elkaar je huiswerk gedaan! Ga zo door!',
+   desc_bs:'Mašallah, 3 puta zaredom uradio/la zadaću! Nastavi ovako!',
    how:'Laat 3 huiswerkopdrachten afvinken door de efendija.',
    how_bs:'Neka efendija označi 3 zadaće kao završene.'},
   // 4
@@ -3901,6 +3901,10 @@ function ouderReg(){
 // ═══════════════════════════════════════════════════════════════
 function openBadgeModal(idx){ state.showBadgeModal=idx; render(); }
 function closeBadgeModal(){ state.showBadgeModal=null; render(); }
+const BADGE_COLORS = [
+  '#10b981','#a855f7','#3b82f6','#ec4899','#f59e0b',
+  '#06b6d4','#ef4444','#b45309','#0ea5e9','#94a3b8','#eab308'
+];
 function badgeModalHtml(){
   if(state.showBadgeModal===null) return '';
   const b = BADGES[state.showBadgeModal];
@@ -3908,25 +3912,53 @@ function badgeModalHtml(){
   const name = state.lang==='nl' ? b.name : b.name_bs;
   const desc = state.lang==='nl' ? b.desc : b.desc_bs;
   const how  = state.lang==='nl' ? b.how  : b.how_bs;
+  const col  = BADGE_COLORS[state.showBadgeModal] || '#10b981';
+
+  // ── BEHAALD → dark glow modal ──
+  if(b.got){
+    return `<div onclick="closeBadgeModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .2s ease">
+      <div onclick="event.stopPropagation()" style="width:100%;max-width:360px;background:linear-gradient(160deg,#090f1c,#0b1a12);border:1.5px solid ${col}30;border-radius:28px;padding:32px 22px 26px;text-align:center;animation:popIn .25s ease;position:relative;overflow:hidden">
+        <!-- glow achtergrond -->
+        <div style="position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:200px;height:200px;background:radial-gradient(circle,${col}22 0%,transparent 70%);pointer-events:none"></div>
+        <!-- badge icoon -->
+        <div style="width:90px;height:90px;border-radius:50%;background:radial-gradient(circle at 35% 35%,${col}dd,${col}88);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:42px;box-shadow:0 0 32px ${col}55,0 0 64px ${col}22;position:relative;z-index:1">
+          ${b.icon}
+        </div>
+        <!-- label -->
+        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${col};opacity:.8;margin-bottom:6px;font-family:system-ui">
+          ${L('Badge behaald','Značka osvojena')} ✦
+        </div>
+        <!-- naam -->
+        <div style="font-size:26px;font-weight:900;color:#fff;margin-bottom:16px;text-shadow:0 0 24px ${col}88;letter-spacing:-.3px">
+          ${name}
+        </div>
+        <!-- beschrijving -->
+        <div style="background:rgba(255,255,255,.05);border:1px solid ${col}25;border-radius:16px;padding:14px 16px;margin-bottom:20px">
+          <div style="font-size:14px;color:#ccc;line-height:1.6;font-weight:600">${desc}</div>
+        </div>
+        <!-- sluit knop -->
+        <button onclick="closeBadgeModal()" style="width:100%;padding:14px;background:${col};color:#fff;border:0;border-radius:16px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 4px 16px ${col}44">
+          ${L('Super! Sluiten','Super! Zatvori')} 🎉
+        </button>
+      </div>
+    </div>`;
+  }
+
+  // ── NOG NIET BEHAALD → lichte bottom sheet ──
   return `<div class="badge-modal-overlay" onclick="closeBadgeModal()">
     <div class="badge-modal-sheet" onclick="event.stopPropagation()">
-      <div class="badge-modal-icon ${b.got?'':'locked'}">${b.icon}</div>
+      <div class="badge-modal-icon locked">${b.icon}</div>
       <div style="text-align:center;margin-bottom:14px">
         <div style="font-weight:900;font-size:19px;letter-spacing:-.3px">${name}</div>
         <div style="margin-top:4px">
-          ${b.got
-            ? `<span style="background:var(--green-soft);color:var(--green);font-size:11px;font-weight:800;padding:3px 10px;border-radius:8px">✅ ${T('badgesEarned')}</span>`
-            : `<span style="background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:800;padding:3px 10px;border-radius:8px">🔒 ${T('badgesNotYet')}</span>`}
+          <span style="background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:800;padding:3px 10px;border-radius:8px">🔒 ${T('badgesNotYet')}</span>
         </div>
       </div>
-      <div style="background:var(--bg);border-radius:16px;padding:14px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.5">${desc}</div>
-      </div>
-      ${!b.got ? `<div style="background:var(--gold-soft);border-radius:16px;padding:12px 14px;margin-bottom:14px">
+      <div style="background:var(--gold-soft);border-radius:16px;padding:12px 14px;margin-bottom:14px">
         <div style="font-size:11px;font-weight:900;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💡 ${L('Hoe behaal je dit?','Kako to osvojiti?')}</div>
         <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.5">${how}</div>
-      </div>` : ''}
-      <button onclick="closeBadgeModal()" style="width:100%;padding:14px;background:var(--green);color:#fff;border-radius:16px;font-weight:900;font-size:15px">
+      </div>
+      <button onclick="closeBadgeModal()" style="width:100%;padding:14px;background:var(--green);color:#fff;border-radius:16px;font-weight:900;font-size:15px;border:0;cursor:pointer">
         ${L('Sluiten','Zatvori')}
       </button>
     </div>
