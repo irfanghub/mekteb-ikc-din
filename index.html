@@ -850,31 +850,67 @@ function ilmPts(kidId){
 }
 
 const BADGES = [
+  // 0 — makkelijkst
+  {name:'Welkom!', name_bs:'Dobrodošao!', icon:'🌱', got:false,
+   desc:'Je bent voor het eerst naar de mekteb gekomen. Dit is het begin van iets moois — mašallah!',
+   desc_bs:'Došao/la si po prvi put u mekteb. Ovo je početak nečeg lijepog — mašallah!',
+   how:'Kom één keer naar de mekteb.',
+   how_bs:'Dođi jednom u mekteb.'},
+  // 1
+  {name:'Op dreef', name_bs:'U ritmu', icon:'⚡', got:false,
+   desc:'Al drie weken naar de mekteb! Je bouwt een mooie gewoonte op. Zo moet dat!',
+   desc_bs:'Već tri sedmice u mektebu! Gradiš lijepu naviku. Ovako treba!',
+   how:'Kom 3 keer naar de mekteb.',
+   how_bs:'Dođi 3 puta u mekteb.'},
+  // 2
+  {name:'Eerste les', name_bs:'Prva lekcija', icon:'📖', got:false,
+   desc:'Je eerste ilmihal-les afgerond! Kennis over je geloof begint hier. Goed gedaan!',
+   desc_bs:'Prva ilmihal lekcija završena! Znanje o vjeri počinje ovdje. Bravo!',
+   how:'Laat de efendija je eerste ilmihal-les afvinken.',
+   how_bs:'Neka efendija označi tvoju prvu ilmihal lekciju.'},
+  // 3
+  {name:'Huiswerkster', name_bs:'Marljivi učenik', icon:'✅', got:false,
+   desc:'3 keer je huiswerk gemaakt! Thuis leren telt net zo mee. Zo trots op jou!',
+   desc_bs:'3 puta si uradio/la zadaću! Učenje kod kuće se cijeni jednako. Ponosni smo na tebe!',
+   how:'Laat 3 huiswerkopdrachten afvinken door de efendija.',
+   how_bs:'Neka efendija označi 3 zadaće kao završene.'},
+  // 4
   {name:'Eerste sura', name_bs:'Prva sura', icon:'🌟', got:false,
    desc:'Je hebt je allereerste sura geleerd en opgezegd! Een geweldige start van je leerpad. Mašallah!',
    desc_bs:'Naučio/la si svoju prvu suru i recitovao/la je efendiji! Odličan početak tvog puta. Mašallah!',
    how:'Word behaald als je je eerste sura "done" krijgt van de efendija.',
    how_bs:'Osvaja se kad efendija označi tvoju prvu suru kao završenu.'},
+  // 5
+  {name:'Categorie!', name_bs:'Kategorija!', icon:'🌙', got:false,
+   desc:'Alle lessen van één ilmihal-categorie afgerond! Dat is écht iets om trots op te zijn. MašaAllah!',
+   desc_bs:'Sve lekcije jedne ilmihal kategorije završene! To je zaista nešto za biti ponosan/na. MašaAllah!',
+   how:'Zorg dat alle lessen van één categorie (bijv. Akaid of Dove\'s) zijn afgevinkt.',
+   how_bs:'Postavi sve lekcije jedne kategorije (npr. Akaid ili Dove) kao završene.'},
+  // 6
   {name:'7-weken', name_bs:'7-sedmica', icon:'🔥', got:false,
    desc:'Je bent 7 weken op rij naar de mekteb gekomen! Trouw zijn aan je belofte verdient een beloning.',
    desc_bs:'Prisustvovao/la si mektebu 7 sedmica zaredom! Doći svake sedmice zaslužuje nagradu.',
    how:'Word behaald als je 7 aanwezigheidsvinkjes hebt van de efendija.',
    how_bs:'Osvaja se kad efendija zabilježi 7 prisustava.'},
+  // 7
   {name:'Hafiz brons', name_bs:'Hafiz bronza', icon:'🥉', got:false,
    desc:'Je hebt al 3 suras geleerd en opgezegd. Je bent op weg om een echte hafiz te worden!',
    desc_bs:'Naučio/la si 3 sure napamet. Na putu si da postaneš pravi hafiz!',
    how:'Word behaald als je 3 of meer suras als "done" hebt.',
    how_bs:'Osvaja se kad imaš 3 ili više sura označenih kao završenih.'},
+  // 8
   {name:'30-weken', name_bs:'30-sedmica', icon:'💎', got:false,
    desc:'Een heel jaar trouw naar de mekteb — dat is bijzonder! Dit is de zeldzaamste aanwezigheidsbadge.',
    desc_bs:'Cijelu godinu dolaziti u mekteb — to je posebno! Ovo je najrjeđa značka prisustva.',
    how:'Kom 30 keer naar de mekteb. Laat de efendija je aanwezigheid bijhouden.',
    how_bs:'Dođi u mekteb 30 puta. Neka efendija bilježi tvoje prisustvo.'},
+  // 9
   {name:'Hafiz zilver', name_bs:'Hafiz srebro', icon:'🥈', got:false,
-   desc:'Je hebt alle suras van Niveau 1 geleerd. Een enorme prestatie — je bent een echte halfiz in wording!',
+   desc:'Je hebt alle suras van Niveau 1 geleerd. Een enorme prestatie — je bent een echte hafiz in wording!',
    desc_bs:'Naučio/la si sve sure Nivoa 1. Sjajan uspjeh — pravi hafiz/hafiza u nastajanju!',
    how:'Zorg dat alle suras van N1 op "done" staan. Studeer thuis en oefen met efendija.',
    how_bs:'Postavi sve sure N1 na "završeno". Uči kod kuće i vježbaj s efendijom.'},
+  // 10 — moeilijkst
   {name:'Hafiz goud', name_bs:'Hafiz zlato', icon:'🥇', got:false,
    desc:'De hoogste badge in de mekteb! Je hebt alle suras van alle niveaus geleerd. Subhanallah!',
    desc_bs:'Najviša značka u mektebu! Naučio/la si sve sure svih nivoa. Subhanallah!',
@@ -884,10 +920,8 @@ const BADGES = [
 
 function computeBadgesForKid(k){
   if(!k) return;
-  // Tel klaar-gezette suras
-  let doneSuras = 0;
-  let allN1Done = true;
-  let allDone = true;
+  // Suras
+  let doneSuras = 0, allN1Done = true, allDone = true;
   [1,2,3].forEach(lvl=>{
     const stations = kidStations(k,'suras',lvl);
     const allLvlDone = stations.every(s=>s.status==='done');
@@ -895,14 +929,34 @@ function computeBadgesForKid(k){
     if(lvl===1 && !allLvlDone) allN1Done = false;
     doneSuras += stations.filter(s=>s.status==='done').length;
   });
-  const att = ATTENDANCE[k.id]||[];
+  // Aanwezigheid (alleen verleden)
+  const today = new Date().toISOString().slice(0,10);
+  const att = (ATTENDANCE[k.id]||[]).filter(a=>a.date<today);
   const presentCount = att.filter(a=>a.present).length;
-  BADGES[0].got = doneSuras >= 1;
-  BADGES[1].got = presentCount >= 7;
-  BADGES[2].got = doneSuras >= 3;
-  BADGES[3].got = presentCount >= 30;
-  BADGES[4].got = allN1Done && doneSuras > 0;
-  BADGES[5].got = allDone && doneSuras > 0;
+  // Ilmihal — totaal afgevinkt
+  const ilmDone = Object.keys(k.ilmDoneData||{}).filter(id=>k.ilmDoneData[id]).length;
+  // Ilmihal — volledige categorie
+  let anyCatDone = false;
+  [1,2,3].forEach(lvl=>{
+    (ILMIHAL[lvl]||[]).forEach(cat=>{
+      if(cat.lessen.length > 0 && cat.lessen.every(les=>k.ilmDoneData[les.id]))
+        anyCatDone = true;
+    });
+  });
+  // Huiswerk — afgerond
+  const doneHw = HOMEWORK.filter(h=>h.kidId===k.id && h.done).length;
+  // Badge toewijzing (volgorde = makkelijkst → moeilijkst)
+  BADGES[0].got  = presentCount >= 1;            // Welkom!
+  BADGES[1].got  = presentCount >= 3;            // Op dreef
+  BADGES[2].got  = ilmDone >= 1;                 // Eerste les
+  BADGES[3].got  = doneHw >= 3;                  // Huiswerkster
+  BADGES[4].got  = doneSuras >= 1;               // Eerste sura
+  BADGES[5].got  = anyCatDone;                   // Categorie!
+  BADGES[6].got  = presentCount >= 7;            // 7-weken
+  BADGES[7].got  = doneSuras >= 3;               // Hafiz brons
+  BADGES[8].got  = presentCount >= 30;           // 30-weken
+  BADGES[9].got  = allN1Done && doneSuras > 0;   // Hafiz zilver
+  BADGES[10].got = allDone && doneSuras > 0;     // Hafiz goud
 }
 
 let HOMEWORK = []; // wordt geladen vanuit Supabase in loadData()
