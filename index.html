@@ -921,12 +921,13 @@ const BADGES = [
 function computeBadgesForKid(k){
   if(!k) return;
   // Suras
-  let doneSuras = 0, allN1Done = true, allDone = true;
+  let doneSuras = 0, allN1Done = true, allN2Done = true, allDone = true;
   [1,2,3].forEach(lvl=>{
     const stations = kidStations(k,'suras',lvl);
     const allLvlDone = stations.every(s=>s.status==='done');
     if(!allLvlDone) allDone = false;
     if(lvl===1 && !allLvlDone) allN1Done = false;
+    if(lvl<=2 && !allLvlDone) allN2Done = false;
     doneSuras += stations.filter(s=>s.status==='done').length;
   });
   // Aanwezigheid (alleen verleden)
@@ -953,9 +954,9 @@ function computeBadgesForKid(k){
   BADGES[4].got  = doneSuras >= 1;               // Eerste sura
   BADGES[5].got  = anyCatDone;                   // Categorie!
   BADGES[6].got  = presentCount >= 7;            // 7-weken
-  BADGES[7].got  = doneSuras >= 3;               // Hafiz brons
+  BADGES[7].got  = allN1Done && doneSuras > 0;    // Hafiz brons  — alle N1 suras
   BADGES[8].got  = presentCount >= 30;           // 30-weken
-  BADGES[9].got  = allN1Done && doneSuras > 0;   // Hafiz zilver
+  BADGES[9].got  = allN2Done && doneSuras > 0;    // Hafiz zilver — alle N1+N2 suras
   BADGES[10].got = allDone && doneSuras > 0;     // Hafiz goud
 }
 
