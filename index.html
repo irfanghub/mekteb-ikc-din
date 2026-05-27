@@ -31,7 +31,7 @@ button:active{transform:scale(.97)}
 input,select,textarea{font-family:inherit;font-weight:600}
 
 .frame{display:flex;justify-content:center;padding:24px 12px}
-.app{width:100%;max-width:420px;min-height:760px;background:var(--bg);position:relative;overflow:hidden;border-radius:32px;box-shadow:0 30px 60px rgba(15,23,42,.18),0 8px 20px rgba(15,23,42,.08);border:1px solid #d8dbd5}
+.app{width:100%;max-width:430px;min-height:760px;background:var(--bg);position:relative;overflow:hidden;border-radius:32px;box-shadow:0 30px 60px rgba(15,23,42,.18),0 8px 20px rgba(15,23,42,.08);border:1px solid #d8dbd5;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
 
 .screen{padding:18px 16px 100px;animation:fadeIn .25s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -51,6 +51,9 @@ input,select,textarea{font-family:inherit;font-weight:600}
 .back-btn{width:42px;height:42px;border-radius:14px;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm);font-size:18px}
 
 .nav{position:absolute;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:space-around;padding:8px 6px;z-index:10;border-radius:0 0 31px 31px}
+.ef-tabs{display:flex;background:var(--card,#fff);border-bottom:2px solid var(--line);}
+.ef-tab{flex:1;padding:11px 4px 9px;text-align:center;font-size:11px;font-weight:800;color:var(--muted);border-bottom:3px solid transparent;cursor:pointer;letter-spacing:.3px;text-transform:uppercase;margin-bottom:-2px}
+.ef-tab.on{color:var(--green);border-bottom-color:var(--green-mid)}
 .nav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;color:var(--muted);font-size:10px;font-weight:800;border-radius:14px;flex:1;max-width:80px}
 .nav button.active{color:var(--green);background:var(--green-soft)}
 .nav svg{width:22px;height:22px}
@@ -304,10 +307,45 @@ input[type=text]:focus{border-color:var(--green)}
 input[type=number]{width:100%;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:#fff;font-size:14px;outline:0}
 select{font-family:inherit;font-weight:600}
 
+/* ── Alle schermen: volledig scherm, geen randen ── */
+@media(max-width:1200px){
+  html,body{background:#020c06;margin:0;padding:0}
+  .app{
+    border-radius:0!important;
+    box-shadow:none!important;
+    border:none!important;
+    max-width:100%!important;
+    width:100%!important;
+    height:100vh;
+    height:100dvh;
+    overflow-y:auto!important;
+    overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    padding-bottom:72px!important;
+    -webkit-font-smoothing:antialiased;
+  }
+  .nav{
+    position:fixed!important;
+    bottom:0!important;
+    left:0!important;
+    right:0!important;
+    border-radius:0!important;
+    z-index:999!important;
+  }
+  .topbar{
+    position:sticky!important;
+    top:0!important;
+    z-index:50!important;
+  }
+
+  body{height:100vh;height:100dvh;overflow:hidden;background:#020c06!important}
+  html{height:100%;background:#020c06}
+
+}
+
+/* ── Print ── */
 @media print {
-  body{background:white}
   .frame{padding:0}
-  .app{border-radius:0;box-shadow:none;max-width:100%;min-height:auto}
   .nav,.topbar{display:none!important}
   .screen{padding:12px!important}
   #bestuur-dashboard *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -432,6 +470,35 @@ body.dark { background: #04100a; }
 .app.dark .hero .hero-cta { color: #071a0e; }
 /* ── muted text ── */
 .app.dark .muted { color: #4ade80; }
+
+@keyframes splashSpin{to{transform:rotate(360deg)}}
+.splash-night-card{
+  background:rgba(0,0,0,.5)!important;
+  border:1px solid rgba(201,162,39,.18)!important;
+  backdrop-filter:blur(12px);
+  position:relative;overflow:hidden;
+}
+.splash-night-card:hover{border-color:rgba(201,162,39,.38)!important;transform:translateY(-2px)}
+.splash-night-card:active{transform:scale(.94)!important}
+
+/* Login dark overlay per rol */
+.login-wrap{position:absolute;inset:0;overflow:hidden}
+.login-cv{position:absolute;inset:0;z-index:0}
+.login-ui{position:relative;z-index:1;width:100%;height:100%;display:flex;flex-direction:column;padding:24px 20px 18px;overflow-y:auto}
+.login-badge{border-radius:20px;padding:4px 14px;font-size:9px;font-weight:900;letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;display:inline-block}
+.login-title{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:700;text-align:center;line-height:1.1}
+.login-sub{font-size:10.5px;font-weight:700;letter-spacing:.2px;text-align:center;opacity:.65;margin-top:3px}
+/* Dark keypad */
+.dk-key{border-radius:14px;padding:13px 8px 11px;display:flex;flex-direction:column;align-items:center;cursor:pointer;border:0;transition:.12s;font-family:'Nunito',sans-serif}
+.dk-key:active{transform:scale(.9)}
+.dk-num{font-size:20px;font-weight:900;line-height:1}
+.dk-let{font-size:7px;font-weight:800;letter-spacing:1.5px;margin-top:2px;opacity:.45}
+.dk-key.fn{background:transparent!important;border:0!important}
+/* Dark pin dots */
+.dk-dot{width:15px;height:15px;border-radius:50%;transition:.15s}
+.dk-dot.filled{transform:scale(1.15)}
+/* Dark card */
+.dk-card{border-radius:18px;padding:13px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -783,37 +850,115 @@ function ilmPts(kidId){
 }
 
 const BADGES = [
-  {name:'Eerste sura', name_bs:'Prva sura', icon:'🌟', got:true,
+  // 0 — makkelijkst
+  {name:'Welkom!', name_bs:'Dobrodošao!', icon:'🌱', got:false,
+   desc:'Je bent voor het eerst naar de mekteb gekomen. Dit is het begin van iets moois — mašallah!',
+   desc_bs:'Došao/la si po prvi put u mekteb. Ovo je početak nečeg lijepog — mašallah!',
+   how:'Kom één keer naar de mekteb.',
+   how_bs:'Dođi jednom u mekteb.'},
+  // 1
+  {name:'Op dreef', name_bs:'U ritmu', icon:'⚡', got:false,
+   desc:'Al drie weken naar de mekteb! Je bouwt een mooie gewoonte op. Zo moet dat!',
+   desc_bs:'Već tri sedmice u mektebu! Gradiš lijepu naviku. Ovako treba!',
+   how:'Kom 3 keer naar de mekteb.',
+   how_bs:'Dođi 3 puta u mekteb.'},
+  // 2
+  {name:'Eerste les', name_bs:'Prva lekcija', icon:'📖', got:false,
+   desc:'Je eerste ilmihal-les afgerond! Kennis over je geloof begint hier. Goed gedaan!',
+   desc_bs:'Prva ilmihal lekcija završena! Znanje o vjeri počinje ovdje. Bravo!',
+   how:'Laat de efendija je eerste ilmihal-les afvinken.',
+   how_bs:'Neka efendija označi tvoju prvu ilmihal lekciju.'},
+  // 3
+  {name:'Huiswerkster', name_bs:'Marljivi učenik', icon:'✅', got:false,
+   desc:'Mashallah, 3x achter elkaar je huiswerk gedaan! Ga zo door!',
+   desc_bs:'Mašallah, 3 puta zaredom uradio/la zadaću! Nastavi ovako!',
+   how:'Laat 3 huiswerkopdrachten afvinken door de efendija.',
+   how_bs:'Neka efendija označi 3 zadaće kao završene.'},
+  // 4
+  {name:'Eerste sura', name_bs:'Prva sura', icon:'🌟', got:false,
    desc:'Je hebt je allereerste sura geleerd en opgezegd! Een geweldige start van je leerpad. Mašallah!',
    desc_bs:'Naučio/la si svoju prvu suru i recitovao/la je efendiji! Odličan početak tvog puta. Mašallah!',
    how:'Word behaald als je je eerste sura "done" krijgt van de efendija.',
    how_bs:'Osvaja se kad efendija označi tvoju prvu suru kao završenu.'},
-  {name:'7-weken', name_bs:'7-sedmica', icon:'🔥', got:true,
+  // 5
+  {name:'Categorie!', name_bs:'Kategorija!', icon:'🌙', got:false,
+   desc:'Alle lessen van één ilmihal-categorie afgerond! Dat is écht iets om trots op te zijn. MašaAllah!',
+   desc_bs:'Sve lekcije jedne ilmihal kategorije završene! To je zaista nešto za biti ponosan/na. MašaAllah!',
+   how:'Zorg dat alle lessen van één categorie (bijv. Akaid of Dove\'s) zijn afgevinkt.',
+   how_bs:'Postavi sve lekcije jedne kategorije (npr. Akaid ili Dove) kao završene.'},
+  // 6
+  {name:'7-weken', name_bs:'7-sedmica', icon:'🔥', got:false,
    desc:'Je bent 7 weken op rij naar de mekteb gekomen! Trouw zijn aan je belofte verdient een beloning.',
    desc_bs:'Prisustvovao/la si mektebu 7 sedmica zaredom! Doći svake sedmice zaslužuje nagradu.',
    how:'Word behaald als je 7 aanwezigheidsvinkjes hebt van de efendija.',
    how_bs:'Osvaja se kad efendija zabilježi 7 prisustava.'},
-  {name:'Hafiz brons', name_bs:'Hafiz bronza', icon:'🥉', got:true,
+  // 7
+  {name:'Hafiz brons', name_bs:'Hafiz bronza', icon:'🥉', got:false,
    desc:'Je hebt al 3 suras geleerd en opgezegd. Je bent op weg om een echte hafiz te worden!',
    desc_bs:'Naučio/la si 3 sure napamet. Na putu si da postaneš pravi hafiz!',
    how:'Word behaald als je 3 of meer suras als "done" hebt.',
    how_bs:'Osvaja se kad imaš 3 ili više sura označenih kao završenih.'},
+  // 8
   {name:'30-weken', name_bs:'30-sedmica', icon:'💎', got:false,
    desc:'Een heel jaar trouw naar de mekteb — dat is bijzonder! Dit is de zeldzaamste aanwezigheidsbadge.',
    desc_bs:'Cijelu godinu dolaziti u mekteb — to je posebno! Ovo je najrjeđa značka prisustva.',
    how:'Kom 30 keer naar de mekteb. Laat de efendija je aanwezigheid bijhouden.',
    how_bs:'Dođi u mekteb 30 puta. Neka efendija bilježi tvoje prisustvo.'},
+  // 9
   {name:'Hafiz zilver', name_bs:'Hafiz srebro', icon:'🥈', got:false,
-   desc:'Je hebt alle suras van Niveau 1 geleerd. Een enorme prestatie — je bent een echte halfiz in wording!',
+   desc:'Je hebt alle suras van Niveau 1 geleerd. Een enorme prestatie — je bent een echte hafiz in wording!',
    desc_bs:'Naučio/la si sve sure Nivoa 1. Sjajan uspjeh — pravi hafiz/hafiza u nastajanju!',
    how:'Zorg dat alle suras van N1 op "done" staan. Studeer thuis en oefen met efendija.',
    how_bs:'Postavi sve sure N1 na "završeno". Uči kod kuće i vježbaj s efendijom.'},
+  // 10 — moeilijkst
   {name:'Hafiz goud', name_bs:'Hafiz zlato', icon:'🥇', got:false,
    desc:'De hoogste badge in de mekteb! Je hebt alle suras van alle niveaus geleerd. Subhanallah!',
    desc_bs:'Najviša značka u mektebu! Naučio/la si sve sure svih nivoa. Subhanallah!',
    how:'Zorg dat alle suras van N1, N2 én N3 op "done" staan. Dit vergt veel studie en geduld!',
    how_bs:'Postavi sve sure N1, N2 i N3 na "završeno". Ovo zahtijeva puno truda i strpljenja!'},
 ];
+
+function computeBadgesForKid(k){
+  if(!k) return;
+  // Suras
+  let doneSuras = 0, allN1Done = true, allN2Done = true, allDone = true;
+  [1,2,3].forEach(lvl=>{
+    const stations = kidStations(k,'suras',lvl);
+    const allLvlDone = stations.every(s=>s.status==='done');
+    if(!allLvlDone) allDone = false;
+    if(lvl===1 && !allLvlDone) allN1Done = false;
+    if(lvl<=2 && !allLvlDone) allN2Done = false;
+    doneSuras += stations.filter(s=>s.status==='done').length;
+  });
+  // Aanwezigheid (alleen verleden)
+  const today = new Date().toISOString().slice(0,10);
+  const att = (ATTENDANCE[k.id]||[]).filter(a=>a.date<today);
+  const presentCount = att.filter(a=>a.present).length;
+  // Ilmihal — totaal afgevinkt
+  const ilmDone = Object.keys(k.ilmDoneData||{}).filter(id=>k.ilmDoneData[id]).length;
+  // Ilmihal — volledige categorie
+  let anyCatDone = false;
+  [1,2,3].forEach(lvl=>{
+    (ILMIHAL[lvl]||[]).forEach(cat=>{
+      if(cat.lessen.length > 0 && cat.lessen.every(les=>k.ilmDoneData[les.id]))
+        anyCatDone = true;
+    });
+  });
+  // Huiswerk — afgerond
+  const doneHw = HOMEWORK.filter(h=>h.kidId===k.id && h.done).length;
+  // Badge toewijzing (volgorde = makkelijkst → moeilijkst)
+  BADGES[0].got  = presentCount >= 1;            // Welkom!
+  BADGES[1].got  = presentCount >= 3;            // Op dreef
+  BADGES[2].got  = ilmDone >= 1;                 // Eerste les
+  BADGES[3].got  = doneHw >= 3;                  // Huiswerkster
+  BADGES[4].got  = doneSuras >= 1;               // Eerste sura
+  BADGES[5].got  = anyCatDone;                   // Categorie!
+  BADGES[6].got  = presentCount >= 7;            // 7-weken
+  BADGES[7].got  = allN1Done && doneSuras > 0;    // Hafiz brons  — alle N1 suras
+  BADGES[8].got  = presentCount >= 30;           // 30-weken
+  BADGES[9].got  = allN2Done && doneSuras > 0;    // Hafiz zilver — alle N1+N2 suras
+  BADGES[10].got = allDone && doneSuras > 0;     // Hafiz goud
+}
 
 let HOMEWORK = []; // wordt geladen vanuit Supabase in loadData()
 
@@ -895,7 +1040,17 @@ let state = {
   newHw: {title:'', desc:'', dueDays:7}, // nieuw huiswerk formulier
   showAddHw: false,   // toon add-huiswerk formulier
   showRegForm: false, // ouder zelf-registratie (beginfase)
-  regData: {ouderNaam:'', ouderPin:'', kinderen:['']},
+  regData: {ouderNaam:'', ouderPin:'', kinderen:[''], ouderNaam2:''},
+  ouderTypedName: '',
+  ouderNameError: '',
+  ouderModal: null,
+  ouderModalStep: 1,
+  ouderModalPin: '',
+  ouderModalInput: '',
+  ouderModalInput2: '',
+  ouderModalKidId: null,
+  ouderModalErr: '',
+  ouderSuccess: '',
   leaderTab: 'myLevel', // 'myLevel' | 'hafizTop' | 'streakTop'
   showBadgeModal: null, // index in BADGES array, of null
   showScoreModal: null, // 'streak' | 'hafiz' | 'ilmihal' | null
@@ -905,6 +1060,15 @@ let state = {
 function kidStations(k, cat, lvl){
   const template = (PATH[cat]&&PATH[cat][lvl]) || [];
   const saved = k && k.stationData && k.stationData[cat] && k.stationData[cat][lvl];
+  if(!saved || !saved.some(s=>s)){
+    // Nieuw kind / leeg station-data: alles locked, eerste = current
+    return template.map((s,i)=>({
+      ...s,
+      status: i===0 ? 'current' : 'locked',
+      tag:    i===0 ? 'NU' : undefined,
+      icon:   i===0 ? '🎯' : (i===template.length-1 ? '🏆' : '🔒'),
+    }));
+  }
   return template.map((s,i)=>{
     if(saved && saved[i]) return {...s, status:saved[i].status, tag:saved[i].tag||undefined};
     return {...s};
@@ -918,12 +1082,16 @@ const colorOf = s => 'c' + (s.charCodeAt(0) % 6);
 const initial = n => n.replace(/^ef\. /,'').replace(/[^a-zA-Z]/g,'')[0]?.toUpperCase() || '?';
 
 const render = () => {
+  // Bereken badges voor huidig kind
+  if(state.role==='kind' && state.selectedPerson) computeBadgesForKid(state.selectedPerson);
   // Bewaar search-focus zodat typen niet onderbroken wordt
   const activeEl = document.activeElement;
   const wasSearch = activeEl && activeEl.closest && activeEl.closest('.search-box');
   const savedPos = wasSearch ? activeEl.selectionStart : null;
 
   $('#app').innerHTML = router();
+  if(state.view==='splash') setTimeout(splashInitCanvas, 200);
+  if(state.view==='login') setTimeout(loginAuroraInit, 200);
   $('#app').classList.toggle('dark', !!state.darkMode);
   document.body.classList.toggle('dark', !!state.darkMode);
 
@@ -933,7 +1101,7 @@ const render = () => {
     if(newInput){ newInput.focus(); if(savedPos!==null) newInput.setSelectionRange(savedPos, savedPos); }
   }
 };
-function toggleDark(){ state.darkMode=!state.darkMode; try{localStorage.setItem('mekteb_dark', state.darkMode?'1':'0');}catch(_){} render(); }
+function toggleDark(){ state.darkMode=!state.darkMode; render(); }
 
 function router(){
   if(state.loading) return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;color:var(--green)">
@@ -953,69 +1121,275 @@ function router(){
 // SPLASH (taal + start)
 // ═══════════════════════════════════════════════════════════════
 function splashView(){
-  const r = (id,icon,name,sub,cls) => `<button class="role-card ${cls}" onclick="pickRole('${id}')">
-    <div class="icon">${icon}</div><div class="role-name">${name}</div><div class="role-sub">${sub}</div>
-  </button>`;
-  // SVG logo: halve maan + roterende 5-pijlster, conform IKC DIN identiteit
-  const gc = state.darkMode ? '#163324' : '#1a5c2e';
-  const mc = state.darkMode ? '#5ecb80' : 'rgba(255,255,255,0.95)';
-  // Pinwheel: 5 pijlen op 72° interval, elk een kleine roterende chevron
-  const arrowPath = 'M0,-6 L2,-2 L1,-2 L1,6 L-1,6 L-1,-2 L-2,-2 Z';
-  const arrows5 = [0,72,144,216,288].map(a=>`<path d="${arrowPath}" fill="#c8932a" transform="rotate(${a+36}) translate(0,-2)"/>`).join('');
-  const logoSvg = `<svg viewBox="0 0 54 54" width="54" height="54" xmlns="http://www.w3.org/2000/svg">
-    <rect width="54" height="54" rx="14" fill="${gc}"/>
-    <!-- Sikkel: dikke C-vorm (grote cirkel - kleine cirkel offset rechts) -->
-    <circle cx="20" cy="28" r="13" fill="${mc}"/>
-    <circle cx="25.5" cy="28" r="10" fill="${gc}"/>
-    <!-- 5-pijl pinwiel rechtsboven -->
-    <g transform="translate(40,15)">${arrows5}</g>
-  </svg>`;
+  return `<div style="position:absolute;inset:0;background:#020c06;display:flex;flex-direction:column;overflow:hidden">
+    <canvas id="splash-cv" style="position:absolute;inset:0;z-index:0"></canvas>
 
-  return `<div class="splash" style="justify-content:flex-start;padding-top:28px">
-    <!-- App header — logo + naam, volle breedte -->
-    <div style="display:flex;align-items:center;gap:14px;width:100%;margin-bottom:22px">
-      <div style="width:56px;height:56px;border-radius:16px;overflow:hidden;box-shadow:var(--shadow);flex-shrink:0">${logoSvg}</div>
-      <div style="text-align:left;flex:1">
-        <div style="font-size:20px;font-weight:900;letter-spacing:-.4px;line-height:1.1">Mekteb IKC DIN Eindhoven</div>
-        <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">Učimo zajedno • Samen leren</div>
-      </div>
-    </div>
-    <!-- Rol selectie label -->
-    <div style="width:100%;text-align:left;margin-bottom:10px">
-      <div style="font-size:13px;color:var(--muted);font-weight:700">${T('selectRole')}</div>
-    </div>
-    <!-- 4 rol-cards -->
-    <div class="role-grid" style="width:100%">
-      ${r('kind','⭐',T('kind'),T('kindSub'),'kind')}
-      ${r('ouder','👪',T('ouder'),T('oudSub'),'ouder')}
-      ${r('efendija','👨‍🏫',T('efendija'),T('efSub'),'efendija')}
-      ${r('bestuur','📊',T('bestuur'),T('bestSub'),'bestuur')}
-    </div>
-    <!-- Taal + dag/nacht onder de cards -->
-    <div style="display:flex;align-items:center;gap:8px;margin-top:14px;width:100%;justify-content:center">
-      <div style="display:flex;gap:4px;background:${state.darkMode?'#163324':'#f1f5f9'};border-radius:10px;padding:2px">
-        ${['nl','bs'].map(l=>`<button onclick="setLang('${l}')" style="padding:5px 12px;border-radius:8px;font-size:12px;font-weight:800;color:${state.lang===l?'var(--green)':'var(--muted)'};background:${state.lang===l?(state.darkMode?'#0c2416':'#fff'):'transparent'};box-shadow:${state.lang===l?'var(--shadow-sm)':'none'}">${l==='nl'?'🇳🇱 NL':'🇧🇦 BiH'}</button>`).join('')}
-      </div>
-      <button onclick="toggleDark()" style="width:38px;height:38px;border-radius:10px;background:${state.darkMode?'#0c2416':'#f1f5f9'};border:1.5px solid ${state.darkMode?'#163324':'#e2e8f0'};font-size:17px;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-sm)" title="Dark mode">${state.darkMode?'☀️':'🌙'}</button>
-    </div>
+    <div style="position:relative;z-index:10;display:flex;flex-direction:column;height:100%;padding:18px 22px 10px">
 
-    <!-- IKC DIN footer — crescent + pinwheel + officiële tekst -->
-    <div style="margin-top:auto;padding-top:20px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;opacity:${state.darkMode?'0.8':'0.7'}">
-      <svg viewBox="0 0 32 32" width="30" height="30" xmlns="http://www.w3.org/2000/svg">
-        <!-- sikkel -->
-        <circle cx="12" cy="17" r="10" fill="${state.darkMode?'#5ecb80':'#1a5c2e'}"/>
-        <circle cx="16.5" cy="17" r="7.5" fill="${state.darkMode?'#071a0e':'#f7faf7'}"/>
-        <!-- 5-pijl pinwiel -->
-        <g transform="translate(26,7)">
-          ${[0,72,144,216,288].map(a=>`<path d="M0,-4.5 L1.4,-1.5 L1,-1.5 L1,4.5 L-1,4.5 L-1,-1.5 L-1.4,-1.5 Z" fill="#c8932a" transform="rotate(${a+36}) translate(0,-1.5)"/>`).join('')}
-        </g>
-      </svg>
-      <div style="font-size:10.5px;line-height:1.55;text-align:left">
-        <div style="font-weight:900;color:${state.darkMode?'#5ecb80':'#1a5c2e'};letter-spacing:.5px;text-transform:uppercase">ISLAMSKA ZAJEDNICA BOŠNJAKA U NIZOZEMSKOJ</div>
-        <div style="font-weight:700;font-style:italic;color:#c8932a;letter-spacing:.2px">Islamski kulturni centar Din Eindhoven</div>
+      <!-- SVG logo — kleiner zodat medaillon meer ruimte krijgt -->
+      <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:10px">
+        <svg style="width:110px;height:auto;overflow:visible" viewBox="0 0 220 195" xmlns="http://www.w3.org/2000/svg" overflow="visible">
+          <defs><mask id="splcm"><rect width="220" height="115" fill="white"/><circle cx="107" cy="53" r="35" fill="black"/></mask></defs>
+          <circle cx="90" cy="53" r="45" fill="#2ecc71" mask="url(#splcm)"/>
+          <g transform="translate(119,49)">
+            <g transform="rotate(36)"> <path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+            <g transform="rotate(108)"><path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+            <g transform="rotate(180)"><path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+            <g transform="rotate(252)"><path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+            <g transform="rotate(324)"><path d="M0,-19 L5,-7 L2,-9 L2,2 L-2,2 L-2,-9 L-5,-7Z" fill="#b8972a"/></g>
+          </g>
+          <text x="110" y="118" text-anchor="middle" font-family="Georgia,serif" font-size="16.5" font-weight="bold" fill="#4ecb70" letter-spacing=".6">ISLAMSKA ZAJEDNICA</text>
+          <text x="110" y="139" text-anchor="middle" font-family="Georgia,serif" font-size="14.5" font-weight="bold" fill="#4ecb70" letter-spacing=".4">BOŠNJAKA U NIZOZEMSKOJ</text>
+          <text x="110" y="160" text-anchor="middle" font-family="Georgia,serif" font-size="11.5" font-style="italic" fill="#c8932a">Islamski kulturni centar Din Eindhoven</text>
+        </svg>
+        <!-- Mekteb IKC DIN Eindhoven — direct onder logo -->
+        <div style="font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:#fde68a;text-align:center;margin-top:6px;text-shadow:0 0 16px rgba(201,162,39,.35);letter-spacing:.2px">Mekteb IKC DIN Eindhoven</div>
+
       </div>
+
+      <!-- Rol label -->
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:rgba(201,162,39,.55);margin-bottom:8px">${T('selectRole')}</div>
+
+      <!-- 4 rol-cards nacht-stijl -->
+      <div class="role-grid">
+        ${['kind','ouder','efendija','bestuur'].map((id,i)=>{
+          const icons=['⭐','👪','👨‍🏫','📊'];
+          const names=[T('kind'),T('ouder'),T('efendija'),T('bestuur')];
+          const subs=[T('kindSub'),T('oudSub'),T('efSub'),T('bestSub')];
+          return `<button class="role-card splash-night-card" onclick="traceAndPickRole(this,'${id}')">
+            <svg class="splash-trace-svg" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible" xmlns="http://www.w3.org/2000/svg">
+              <rect class="splash-trace-rect" x="1" y="1" width="99%" height="99%" rx="19" ry="19"
+                fill="none" stroke="rgba(201,162,39,.0)" stroke-width="2" stroke-dasharray="0 9999"/>
+            </svg>
+            <div class="icon">${icons[i]}</div>
+            <div class="role-name" style="color:#fde68a">${names[i]}</div>
+            <div class="role-sub" style="color:rgba(201,162,39,.5)">${subs[i]}</div>
+          </button>`;
+        }).join('')}
+      </div>
+
+      <!-- Taal toggle -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:9px">
+        <div style="display:flex;gap:3px;background:rgba(0,0,0,.4);border:1px solid rgba(201,162,39,.15);border-radius:11px;padding:3px">
+          ${['nl','bs'].map(l=>`<button onclick="setLang('${l}')" style="padding:5px 13px;border-radius:8px;font-size:12px;font-weight:800;background:${state.lang===l?'rgba(201,162,39,.2)':'transparent'};color:${state.lang===l?'#fbbf24':'rgba(201,162,39,.45)'}">${l==='nl'?'🇳🇱 NL':'🇧🇦 BiH'}</button>`).join('')}
+        </div>
+      </div>
+
+      <!-- Draaiend medaillon -->
+      <div style="flex:1;display:flex;justify-content:center;align-items:center;margin:4px -22px 0;overflow:hidden;position:relative;min-height:160px;pointer-events:none">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:50px;background:linear-gradient(90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
+        <div style="position:absolute;right:0;top:0;bottom:0;width:50px;background:linear-gradient(-90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
+        <div style="position:absolute;top:0;left:0;right:0;height:28px;background:linear-gradient(180deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
+        <svg style="animation:splashSpin 80s linear infinite;transform-origin:center" width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="eg" x1="0" y1="0" x2=".5" y2="1">
+              <stop offset="0%" stop-color="#6ee7b7"/><stop offset="55%" stop-color="#10b981"/><stop offset="100%" stop-color="#047857"/>
+            </linearGradient>
+            <filter id="eg_glow" x="-70%" y="-70%" width="240%" height="240%">
+              <feGaussianBlur stdDeviation="1.6" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <g transform="translate(160,160)">
+            <circle r="148" fill="none" stroke="rgba(201,162,39,.1)" stroke-width=".8"/>
+            <circle r="130" fill="none" stroke="rgba(201,162,39,.06)" stroke-width=".6"/>
+            <polygon points="0,-128 12,-52 52,-112 20,-32 112,-52 42,0 112,52 20,32 52,112 12,52 0,128 -12,52 -52,112 -20,32 -112,52 -42,0 -112,-52 -20,-32 -52,-112 -12,-52" fill="none" stroke="rgba(201,162,39,.3)" stroke-width="1.2"/>
+            <polygon points="0,-82 20,-38 56,-56 38,-20 82,0 38,20 56,56 20,38 0,82 -20,38 -56,56 -38,20 -82,0 -38,-20 -56,-56 -20,-38" fill="rgba(201,162,39,.04)" stroke="rgba(201,162,39,.2)" stroke-width="1"/>
+            <line x1="-148" y1="0" x2="148" y2="0" stroke="rgba(201,162,39,.08)" stroke-width=".8"/>
+            <line x1="0" y1="-148" x2="0" y2="148" stroke="rgba(201,162,39,.08)" stroke-width=".8"/>
+            <line x1="-105" y1="-105" x2="105" y2="105" stroke="rgba(201,162,39,.06)" stroke-width=".6"/>
+            <line x1="105" y1="-105" x2="-105" y2="105" stroke="rgba(201,162,39,.06)" stroke-width=".6"/>
+            <circle r="20" fill="rgba(201,162,39,.1)" stroke="rgba(201,162,39,.25)" stroke-width="1.2"/>
+            <circle r="6" fill="rgba(201,162,39,.4)"/>
+            <circle cx="0"    cy="-130" r="3"   fill="rgba(94,203,128,.4)"/><circle cx="65"  cy="-113" r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="113"  cy="-65"  r="3"   fill="rgba(94,203,128,.4)"/><circle cx="130" cy="0"    r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="113"  cy="65"   r="3"   fill="rgba(94,203,128,.4)"/><circle cx="65"  cy="113"  r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="0"    cy="130"  r="3"   fill="rgba(94,203,128,.4)"/><circle cx="-65" cy="113"  r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="-113" cy="65"   r="3"   fill="rgba(94,203,128,.4)"/><circle cx="-130" cy="0"   r="2.5" fill="rgba(201,162,39,.5)"/>
+            <circle cx="-113" cy="-65"  r="3"   fill="rgba(94,203,128,.4)"/><circle cx="-65" cy="-113" r="2.5" fill="rgba(201,162,39,.5)"/>
+            <!-- Ka'aba -->
+            <g transform="translate(0,-76)">
+              <line x1="0" y1="12" x2="0" y2="24" stroke="rgba(201,162,39,.4)" stroke-width="1" stroke-dasharray="2,2"/>
+              <circle cx="0" cy="0" r="14" fill="rgba(0,0,0,.5)" stroke="rgba(201,162,39,.3)" stroke-width="1"/>
+              <text x="0" y="5" text-anchor="middle" font-size="16" dominant-baseline="middle">🕋</text>
+              <text x="0" y="30" text-anchor="middle" font-family="Nunito,sans-serif" font-size="7" font-weight="800" fill="rgba(253,230,138,.65)" letter-spacing=".3">Ka'aba</text>
+            </g>
+            <!-- Smaragd pin Eindhoven -->
+            <g transform="translate(0,76)">
+              <line x1="0" y1="-24" x2="0" y2="-12" stroke="rgba(201,162,39,.4)" stroke-width="1" stroke-dasharray="2,2"/>
+              <g transform="translate(-9,-12)">
+                <path d="M9,1 C4.5,1 1,5 1,9.5 C1,15.5 9,23 9,23 C9,23 17,15.5 17,9.5 C17,5 13.5,1 9,1Z" fill="none" stroke="#10b981" stroke-width="3.5" opacity="0.2" filter="url(#eg_glow)"/>
+                <path d="M9,1 C4.5,1 1,5 1,9.5 C1,15.5 9,23 9,23 C9,23 17,15.5 17,9.5 C17,5 13.5,1 9,1Z" fill="none" stroke="url(#eg)" stroke-width="1.8" filter="url(#eg_glow)"/>
+                <line x1="3.5" y1="4.5" x2="11" y2="12" stroke="url(#eg)" stroke-width="1.4" stroke-linecap="round" opacity=".85" filter="url(#eg_glow)"/>
+                <circle cx="9" cy="8.5" r="3.8" fill="none" stroke="url(#eg)" stroke-width="1.4" filter="url(#eg_glow)"/>
+                <circle cx="3" cy="3" r="1.2" fill="#6ee7b7" opacity="0.7" filter="url(#eg_glow)"/>
+                <circle cx="9" cy="24" r="1" fill="#10b981" opacity="0.85"/>
+              </g>
+              <text x="0" y="-28" text-anchor="middle" font-family="Nunito,sans-serif" font-size="7" font-weight="800" fill="rgba(253,230,138,.65)" letter-spacing=".3">Eindhoven</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+
     </div>
   </div>`;
+}
+
+function splashInitCanvas(){
+  const cv = document.getElementById('splash-cv');
+  if(!cv) return;
+  // Gebruik .app dimensies — betrouwbaarder dan cv.offset
+  const app = document.getElementById('app');
+  const W = (app ? app.offsetWidth : window.innerWidth) || 390;
+  const H = (app ? app.offsetHeight : window.innerHeight) || 760;
+  cv.width = W;
+  cv.height = H;
+  const ctx = cv.getContext('2d');
+  let t = 0;
+  const stars = Array.from({length:100}, ()=>({
+    x: Math.random()*W,
+    y: Math.random()*H*.65,
+    r: Math.random()*1.3+.3,
+    a: Math.random(),
+    da: .003+Math.random()*.005,
+    vx: (Math.random()-.5)*.18,
+    vy: (Math.random()-.5)*.09,
+  }));
+  function aurora(yb,amp,freq,ph,c1,c2,op){
+    ctx.beginPath(); ctx.moveTo(0,H);
+    for(let x=0;x<=W;x+=3) ctx.lineTo(x, yb+Math.sin(x*freq+t+ph)*amp+Math.sin(x*freq*1.7+t*.8+ph)*amp*.35);
+    ctx.lineTo(W,H); ctx.closePath();
+    const g=ctx.createLinearGradient(0,yb-amp,0,H);
+    g.addColorStop(0,c1); g.addColorStop(.5,c2); g.addColorStop(1,'transparent');
+    ctx.fillStyle=g; ctx.globalAlpha=op; ctx.fill(); ctx.globalAlpha=1;
+  }
+  let raf;
+  function draw(){
+    if(!document.getElementById('splash-cv')){ cancelAnimationFrame(raf); return; }
+    ctx.clearRect(0,0,W,H); t+=.007;
+    // Uniforme achtergrond — geen radiale gradient die een zichtbare 'box' geeft
+    ctx.fillStyle='#020c06';
+    ctx.fillRect(0,0,W,H);
+    // Sterren — alleen in bovenste 65%
+    stars.forEach(s=>{
+      s.a=Math.max(.05,Math.min(.9,s.a+(s.a<=.05||s.a>=.9?-s.da:s.da)));
+      s.x+=s.vx; s.y+=s.vy;
+      if(s.x<-2)s.x=W+2; if(s.x>W+2)s.x=-2;
+      if(s.y<-2)s.y=H*.65+2; if(s.y>H*.65+2)s.y=-2;
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,6.28);
+      ctx.fillStyle=`rgba(200,240,215,${s.a*.7})`; ctx.fill();
+    });
+    // Aurora — helemaal onderaan (80-100% van hoogte)
+    const yOff = H*.82;
+    aurora(yOff,     60,.013,0,   'rgba(6,120,85,.45)','rgba(3,70,48,0)',.95);
+    aurora(yOff-15,  48,.016,.9,  'rgba(16,180,125,.3)','rgba(8,120,85,0)',.85);
+    aurora(yOff+40,  75,.009,1.7, 'rgba(10,150,100,.25)','rgba(4,90,58,0)',.75);
+    aurora(yOff-25,  38,.019,2.5, 'rgba(52,210,148,.22)','rgba(14,165,108,0)',.65);
+    aurora(yOff+65,  55,.011,3.2, 'rgba(4,100,68,.18)','rgba(2,55,36,0)',.8);
+    // Goud gloed onderaan
+    const mg=ctx.createRadialGradient(W/2,H,0,W/2,H,W*.65);
+    mg.addColorStop(0,`rgba(201,162,39,${.16+Math.sin(t*.55)*.05})`);
+    mg.addColorStop(1,'transparent');
+    ctx.fillStyle=mg; ctx.fillRect(0,0,W,H);
+    // Gele maan verwijderd
+    raf=requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+
+function loginAuroraInit(){
+  const cv = document.getElementById('login-cv');
+  if(!cv) return;
+  const role = state.role || 'kind';
+  const app = document.getElementById('app');
+  const W = (app ? app.offsetWidth : 390) || 390;
+  const H = (app ? app.offsetHeight : 760) || 760;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  // Kleur per rol: hue, starColor, bgTop, bgBot, moonCol
+  const cfg = {
+    kind:     {h:158, sc:'rgba(200,240,215,', bg0:'#031208', bg1:'#010503', mn:'rgba(253,230,138,'},
+    ouder:    {h:42,  sc:'rgba(255,235,200,', bg0:'#0d0800', bg1:'#060400', mn:'rgba(255,240,180,'},
+    efendija: {h:200, sc:'rgba(200,230,255,', bg0:'#020810', bg1:'#010307', mn:'rgba(220,240,255,'},
+    bestuur:  {h:270, sc:'rgba(220,210,255,', bg0:'#06030e', bg1:'#030108', mn:'rgba(240,235,255,'},
+  };
+  const c = cfg[role] || cfg.kind;
+  let t = 0;
+  const stars = Array.from({length:90}, ()=>({
+    x:Math.random()*W, y:Math.random()*H*.62,
+    r:Math.random()*1.3+.3, a:Math.random(),
+    da:.003+Math.random()*.005,
+    vx:(Math.random()-.5)*.16, vy:(Math.random()-.5)*.08
+  }));
+  function aur(yb,amp,freq,ph,op){
+    ctx.beginPath(); ctx.moveTo(0,H);
+    for(let x=0;x<=W;x+=3) ctx.lineTo(x, yb+Math.sin(x*freq+t+ph)*amp+Math.sin(x*freq*1.7+t*.8+ph)*amp*.35);
+    ctx.lineTo(W,H); ctx.closePath();
+    const g=ctx.createLinearGradient(0,yb-amp,0,H);
+    g.addColorStop(0,`hsla(${c.h},75%,42%,${op*1.1})`);
+    g.addColorStop(.5,`hsla(${c.h},65%,28%,${op*.3})`);
+    g.addColorStop(1,'transparent');
+    ctx.fillStyle=g; ctx.globalAlpha=op; ctx.fill(); ctx.globalAlpha=1;
+  }
+  let raf;
+  function draw(){
+    if(!document.getElementById('login-cv')){ cancelAnimationFrame(raf); return; }
+    ctx.clearRect(0,0,W,H); t+=.007;
+    const bg=ctx.createRadialGradient(W/2,H*.18,0,W/2,H*.18,W*.9);
+    bg.addColorStop(0,c.bg0); bg.addColorStop(1,c.bg1);
+    ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+    // Sterren
+    stars.forEach(s=>{
+      s.a=Math.max(.05,Math.min(.9,s.a+(s.a<=.05||s.a>=.9?-s.da:s.da)));
+      s.x+=s.vx; s.y+=s.vy;
+      if(s.x<-2)s.x=W+2; if(s.x>W+2)s.x=-2;
+      if(s.y<-2)s.y=H*.62; if(s.y>H*.62)s.y=-2;
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,6.28);
+      ctx.fillStyle=c.sc+s.a*.65+')'; ctx.fill();
+    });
+    // Aurora helemaal onderaan
+    const yO=H*.82;
+    aur(yO,    56,.013,0,   .9);
+    aur(yO-14, 44,.016,.9,  .78);
+    aur(yO+36, 70,.009,1.7, .7);
+    aur(yO-24, 34,.019,2.5, .6);
+    aur(yO+60, 50,.011,3.2, .75);
+    // Accent gloed onderaan
+    const mg=ctx.createRadialGradient(W/2,H,0,W/2,H,W*.6);
+    mg.addColorStop(0,`hsla(${c.h},70%,38%,${.13+Math.sin(t*.55)*.04})`);
+    mg.addColorStop(1,'transparent');
+    ctx.fillStyle=mg; ctx.fillRect(0,0,W,H);
+    // Maan rechtsboven
+    ctx.save(); ctx.translate(W*.8,H*.09);
+    ctx.beginPath(); ctx.arc(0,0,18,0,Math.PI*2);
+    ctx.fillStyle=c.mn+(.65+Math.sin(t*.38)*.1)+')'; ctx.fill();
+    ctx.beginPath(); ctx.arc(8,0,14,0,Math.PI*2);
+    ctx.fillStyle=c.bg1; ctx.fill();
+    ctx.restore();
+    raf=requestAnimationFrame(draw);
+  }
+  draw();
+}
+function traceAndPickRole(el, id){
+  if(el.dataset.tracing) return;
+  el.dataset.tracing = '1';
+  const rect = el.querySelector('.splash-trace-rect');
+  if(!rect){ pickRole(id); return; }
+  const w = el.offsetWidth - 2;
+  const h = el.offsetHeight - 2;
+  const perim = 2*(w+h);
+  rect.setAttribute('width', w);
+  rect.setAttribute('height', h);
+  rect.style.stroke = 'rgba(16,185,129,.9)';
+  rect.style.strokeDasharray = `0 ${perim}`;
+  rect.style.transition = 'none';
+  rect.getBoundingClientRect(); // reflow
+  rect.style.transition = `stroke-dasharray 1s cubic-bezier(.4,0,.2,1), stroke .4s ease`;
+  rect.style.strokeDasharray = `${perim} 0`;
+  rect.style.stroke = 'rgba(201,162,39,.9)';
+  setTimeout(()=>{ pickRole(id); }, 1050);
 }
 
 function langToggleSmall(){
@@ -1025,6 +1399,11 @@ function langToggleSmall(){
 }
 
 // ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
+// NAAM NORMALISATIE — voor robuust zoeken (case + diakrieten)
+// ═══════════════════════════════════════════════════════════════
+function normName(s){ return String(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+
 // LOGIN — naam + pincode
 // ═══════════════════════════════════════════════════════════════
 function pool(){
@@ -1035,74 +1414,300 @@ function pool(){
   return [];
 }
 function loginView(){
+  if(state.role==='ouder') return ouderLoginView();
   if(state.selectedPerson) return pinView();
-  // Efendija & bestuur: direct naar PIN — geen naamkeuze nodig
+  // Efendija & bestuur: direct naar PIN
   if(state.role==='efendija' || state.role==='bestuur'){
     const p = pool();
     if(p.length>=1){ state.selectedPerson=p[0]; state.pin=''; return pinView(); }
   }
+  // Kind: naam-picker grid — nacht aurora groen
   const items = pool().filter(p => !state.searchQuery || p.name.toLowerCase().includes(state.searchQuery.toLowerCase()));
-  return `<div class="screen">
-    <div class="head-back" style="margin-top:14px">
-      <button class="back-btn" onclick="go('splash')">←</button>
-      <div><div class="ttl">${T('whoAreYou')}</div><div class="stl">${state.role==='kind'?T('kind'):state.role==='ouder'?T('ouder'):state.role==='efendija'?T('efendija'):T('bestuur')}</div></div>
-      ${langToggleSmall()}
+  return `<div class="login-wrap" style="background:#020d07">
+    <canvas id="login-cv" class="login-cv"></canvas>
+    <div class="login-ui">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <button onclick="go('splash')" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:#6ee7b7;width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
+        <span class="login-badge" style="background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.18)">Mekteb Leerling</span>
+        <div style="width:36px"></div>
+      </div>
+      <div style="text-align:center;margin-bottom:12px">
+        <div style="font-size:30px;margin-bottom:4px">⭐</div>
+        <div class="login-title" style="color:#fde68a">${T('whoAreYou')}</div>
+        <div class="login-sub" style="color:#6ee7b7">Kies je naam, avonturier</div>
+      </div>
+      <div class="search-box" style="position:relative;margin-bottom:10px">
+        <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;opacity:.5">🔍</span>
+        <input type="search"
+          style="width:100%;background:rgba(16,185,129,.08);border:1.5px solid rgba(16,185,129,.18);border-radius:13px;padding:10px 14px 10px 34px;font-family:Nunito,sans-serif;font-size:14px;font-weight:700;color:#e0fdf4;outline:none"
+          placeholder="${T('searchName')}" value="${state.searchQuery}"
+          oninput="state.searchQuery=this.value;render()">
+      </div>
+      <div class="kid-grid" style="flex:1;overflow-y:auto">
+        ${items.map(p=>`
+          <button class="kid-card" onclick="pickPerson('${p.id}')"
+            style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.14);border-radius:14px">
+            <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
+            <div class="name" style="color:#e0fdf4">${p.name}</div>
+            <div class="pin-tip" style="color:rgba(110,231,183,.6)">PIN ${p.pin}</div>
+          </button>`).join('')}
+      </div>
     </div>
-    <div class="search-box">
-      <span style="color:var(--muted);font-size:16px">🔍</span>
-      <input type="search" placeholder="${T('searchName')}" value="${state.searchQuery}" oninput="state.searchQuery=this.value;render()">
-    </div>
-    <div class="kid-grid">
-      ${items.map(p=>`
-        <button class="kid-card" onclick="pickPerson('${p.id}')">
-          <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
-          <div class="name">${p.name}</div>
-          <div class="pin-tip">PIN ${p.pin}</div>
-        </button>`).join('')}
-    </div>
-    <div style="text-align:center;margin-top:18px;font-size:11px;color:var(--muted);font-weight:700">${state.lang==='nl'?'Pincodes zichtbaar voor demo.':'PIN-ovi vidljivi za demo.'}</div>
-    ${state.role==='ouder' ? `<div style="margin-top:14px">
-      <button onclick="state.showRegForm=!state.showRegForm;render()" style="width:100%;padding:12px;border-radius:14px;background:${state.darkMode?'#0c2416':'var(--green-soft)'};color:var(--green);border:1.5px dashed var(--green-mid);font-weight:800;font-size:13px">
-        ➕ ${L('Nog geen account? Kind hier aanmelden →','Nemate nalog? Prijavite dijete ovdje →')}
-      </button>
-      ${state.showRegForm ? ouderRegFormHtml() : ''}
-    </div>` : ''}
   </div>`;
 }
 
-function pinView(){
+// OUDER LOGIN — stap 1: naam typen, stap 2: pincode
+function ouderLoginView(){
+  if(state.selectedPerson) return ouderPinView();
+  const err = state.ouderNameError;
+  return `<div class="login-wrap" style="background:#08080a">
+    <canvas id="login-cv" class="login-cv"></canvas>
+    <div class="login-ui">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button onclick="go('splash')" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:#fcd34d;width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
+        <span class="login-badge" style="background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.18)">Ouder / Voogd</span>
+        <div style="width:36px"></div>
+      </div>
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:30px;margin-bottom:5px">👪</div>
+        <div class="login-title" style="color:#fde68a">${L('Ouder login','Prijava roditelja')}</div>
+        <div class="login-sub" style="color:#fcd34d">${L('Bekijk de voortgang van je kind','Pratite napredak svog djeteta')}</div>
+      </div>
+      <!-- Stap indicator -->
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#f59e0b;color:#0d0a04;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">1</div>
+          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#f59e0b">${L('Naam','Ime')}</div>
+        </div>
+        <div style="flex:1;height:2px;background:rgba(245,158,11,.18);margin-bottom:12px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.1);color:rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">2</div>
+          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:rgba(255,255,255,.3)">PIN</div>
+        </div>
+      </div>
+      <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:rgba(253,230,138,.6);margin-bottom:5px">${L('Jouw naam','Vaše ime')}</div>
+      <input id="ouder-naam-inp"
+        style="width:100%;background:rgba(245,158,11,.07);border:1.5px solid ${err?'rgba(239,68,68,.5)':'rgba(245,158,11,.2)'};border-radius:13px;padding:12px 14px;font-size:16px;font-family:Nunito,sans-serif;font-weight:700;color:#fde68a;outline:none;margin-bottom:8px"
+        type="text" autocomplete="given-name" placeholder="${L('Typ je voornaam…','Upišite ime…')}"
+        value="${state.ouderTypedName}"
+        oninput="state.ouderTypedName=this.value;ouderNaamInputUpdate()"
+        onkeydown="if(event.key==='Enter')ouderNaamVolgende()">
+      ${err ? `<div style="color:rgba(239,68,68,.9);font-size:12px;font-weight:800;margin-bottom:8px">${err}</div>` : ''}
+
+      <button id="ouder-volgende-btn" onclick="ouderNaamVolgende()"
+        ${state.ouderTypedName.trim().length<1?'disabled':''}
+        style="width:100%;padding:13px;background:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.08)':'linear-gradient(135deg,#f59e0b,#d97706)'};color:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.3)':'#0d0a04'};font-family:Nunito,sans-serif;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer;transition:.15s">
+        ${L('Volgende →','Dalje →')}
+      </button>
+
+      <!-- Nieuw account aanmaken -->
+      <button onclick="state.showRegForm=!state.showRegForm;render()"
+        style="width:100%;padding:12px;margin-top:10px;border-radius:13px;background:rgba(245,158,11,.07);border:1.5px dashed rgba(245,158,11,.3);color:rgba(253,230,138,.8);font-family:Nunito,sans-serif;font-weight:800;font-size:13px;cursor:pointer">
+        ➕ ${L('Nog geen account? Kind hier aanmelden →','Nemate nalog? Prijavite dijete ovdje →')}
+      </button>
+      ${state.showRegForm ? ouderRegFormHtml() : ''}
+    </div>
+  </div>`;
+}
+
+function ouderNaamInputUpdate(){
+  // Geen render() — knop direct updaten, toetsenbord blijft open
+  const ok = state.ouderTypedName.trim().length >= 1;
+  const btn = document.getElementById('ouder-volgende-btn');
+  if(!btn) return;
+  btn.disabled = !ok;
+  btn.style.background = ok ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,.08)';
+  btn.style.color      = ok ? '#0d0a04' : 'rgba(255,255,255,.3)';
+  btn.style.boxShadow  = ok ? '0 6px 20px rgba(245,158,11,.3)' : 'none';
+  btn.style.cursor     = ok ? 'pointer' : 'default';
+}
+
+function ouderNaamVolgende(){
+  const typed = state.ouderTypedName.trim();
+  if(!typed) return;
+  const norm = normName(typed);
+  // Zoek: exacte match eerst, dan begint-met
+  let match = PARENTS.find(p => normName(p.name) === norm);
+  if(!match) match = PARENTS.find(p => normName(p.name).startsWith(norm));
+  if(!match){
+    // Naam niet gevonden → reg-form direct openen, naam alvast invullen
+    state.ouderNameError = L('Naam niet gevonden. Ben je nieuw? Meld je hieronder aan.','Ime nije pronađeno. Novi ste? Prijavite se ispod.');
+    state.regData.ouderNaam = typed;
+    state.showRegForm = true;
+    render(); return;
+  }
+  state.selectedPerson = match;
+  state.pin = '';
+  render();
+}
+
+function ouderPinView(){
   const p = state.selectedPerson;
-  // Efendija/bestuur hebben geen naam-picker — terug = naar splash
-  const isDirectLogin = state.role==='efendija' || state.role==='bestuur';
-  const backFn = isDirectLogin
-    ? `logout()`
-    : `state.selectedPerson=null;state.pin='';render()`;
+  const kids = KIDS.filter(k => p.kidIds.includes(k.id));
+  return `<div class="login-wrap" style="background:#08080a">
+    <canvas id="login-cv" class="login-cv"></canvas>
+    <div class="login-ui">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button onclick="state.selectedPerson=null;state.pin='';render()" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:#fcd34d;width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
+        <span class="login-badge" style="background:rgba(245,158,11,.1);color:#fcd34d;border:1px solid rgba(245,158,11,.18)">Ouder / Voogd</span>
+        <div style="width:36px"></div>
+      </div>
+      <!-- Stap 2 indicator -->
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#d97706;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">✓</div>
+          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#f59e0b">${L('Naam','Ime')}</div>
+        </div>
+        <div style="flex:1;height:2px;background:#f59e0b;margin-bottom:12px"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          <div style="width:24px;height:24px;border-radius:50%;background:#f59e0b;color:#0d0a04;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;box-shadow:0 4px 12px rgba(245,158,11,.35)">2</div>
+          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#f59e0b">PIN</div>
+        </div>
+      </div>
+      <!-- Naam badge -->
+      <div class="dk-card" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.18);margin-bottom:14px">
+        <div class="avatar ${colorOf(p.name)}" style="flex-shrink:0">${initial(p.name)}</div>
+        <div>
+          <div style="font-weight:900;font-size:14px;color:#fde68a">${p.name}</div>
+          <div style="font-size:10px;font-weight:700;color:rgba(253,230,138,.6);margin-top:2px">${L('Ouder van','Roditelj od')} ${kids.map(k=>k.name).join(' & ')}</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:rgba(253,230,138,.6);margin-bottom:8px">${T('enterPin')}</div>
+      <div style="display:flex;justify-content:center;gap:13px;margin-bottom:14px">
+        ${[0,1,2,3].map(i=>`<div class="dk-dot${state.pin.length>i?' filled':''}" style="background:${state.pin.length>i?'#f59e0b':'rgba(245,158,11,.2)'};${state.pin.length>i?'box-shadow:0 0 10px rgba(245,158,11,.35)':''}"></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 4px">
+        ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="dk-key" style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.14)" onclick="tapKey('${n}')"><span class="dk-num" style="color:#fde68a">${n}</span></button>`).join('')}
+        <button class="dk-key fn" onclick="state.selectedPerson=null;state.pin='';render()"><span class="dk-num" style="color:#fcd34d;font-size:11px">←</span></button>
+        <button class="dk-key" style="background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.14)" onclick="tapKey('0')"><span class="dk-num" style="color:#fde68a">0</span></button>
+        <button class="dk-key fn" onclick="tapKey('back')"><span class="dk-num" style="color:#fcd34d">⌫</span></button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ouderNaamInputUpdate: zie definitie hierboven */
+
+function ouderNaamVolgende(){
+  const typed = state.ouderTypedName.trim();
+  if(!typed) return;
+  const norm = normName(typed);
+  // Zoek: exacte match eerst, dan begint-met
+  let match = PARENTS.find(p => normName(p.name) === norm);
+  if(!match) match = PARENTS.find(p => normName(p.name).startsWith(norm));
+  if(!match){
+    // Naam niet gevonden → reg-form direct openen, naam alvast invullen
+    state.ouderNameError = L('Naam niet gevonden. Ben je nieuw? Meld je hieronder aan.','Ime nije pronađeno. Novi ste? Prijavite se ispod.');
+    state.regData.ouderNaam = typed;
+    state.showRegForm = true;
+    render(); return;
+  }
+  state.selectedPerson = match;
+  state.pin = '';
+  render();
+}
+
+function ouderPinView(){
+  const p = state.selectedPerson;
+  const kids = KIDS.filter(k => p.kidIds.includes(k.id));
   return `<div class="screen">
     <div class="head-back" style="margin-top:14px">
-      <button class="back-btn" onclick="${backFn}">←</button>
-      <div><div class="ttl">Hey ${p.name}! 👋</div><div class="stl">${T('enterPin')}</div></div>
-      ${langToggleSmall()}
+      <button class="back-btn" onclick="state.selectedPerson=null;state.pin='';render()">←</button>
+      <div>
+        <div class="ttl">${L('Ouder login','Prijava roditelja')}</div>
+        <div class="stl">IKC DIN Mekteb</div>
+      </div>
+      <div style="width:36px"></div>
+    </div>
+    <div style="display:flex;align-items:center;padding:8px 16px 0;gap:0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green-d);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900">✓</div>
+        <div style="font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.4px">${L('Naam','Ime')}</div>
+      </div>
+      <div style="flex:1;height:2px;background:var(--green);margin-bottom:14px"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;box-shadow:0 4px 12px rgba(16,185,129,.3)">2</div>
+        <div style="font-size:9px;font-weight:800;color:var(--green);text-transform:uppercase;letter-spacing:.4px">PIN</div>
+      </div>
+    </div>
+    <div style="padding:16px">
+      <div style="display:flex;align-items:center;gap:10px;background:var(--green-soft);border-radius:14px;padding:12px 14px;margin-bottom:16px">
+        <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
+        <div>
+          <div style="font-weight:800;font-size:13px;color:#166534">${p.name}</div>
+          <div style="font-size:10px;color:var(--green);font-weight:700">${L('Ouder van','Roditelj od')} ${kids.map(k=>k.name).join(' & ')}</div>
+        </div>
+      </div>
     </div>
     <div class="pin-area">
-      <div class="avatar lg ${colorOf(p.name)}" style="margin:6px auto 10px">${initial(p.name)}</div>
       <div class="pin-dots">
         ${[0,1,2,3].map(i=>`<div class="pin-dot ${state.pin.length>i?'filled':''}"></div>`).join('')}
       </div>
       <div class="keypad">
         ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="tapKey('${n}')">${n}</button>`).join('')}
-        <button class="key fn" onclick="${backFn}">${T('back')}</button>
+        <button class="key fn" onclick="state.selectedPerson=null;state.pin='';render()">${T('back')}</button>
         <button class="key" onclick="tapKey('0')">0</button>
         <button class="key fn" onclick="tapKey('back')">⌫</button>
       </div>
-      <div style="margin-top:12px;font-size:11px;color:var(--muted)">PIN: ${p.pin}</div>
+    </div>
+  </div>`;
+}
+
+function pinView(){
+  const p = state.selectedPerson;
+  const isDirectLogin = state.role==='efendija' || state.role==='bestuur';
+  const backFn = isDirectLogin ? `logout()` : `state.selectedPerson=null;state.pin='';render()`;
+  // Rol-specifieke kleuren
+  const rCfg = {
+    efendija: {bg:'#03090e', acc:'rgba(56,189,248,', dot:'#38bdf8', dotS:'rgba(56,189,248,.2)', badge:'Lesgever · Efendija', icon:'👨‍🏫', title:'Welkom terug', sub:'Voer uw pincode in', cardBg:'rgba(56,189,248,.07)', cardBdr:'rgba(56,189,248,.15)', keyBg:'rgba(56,189,248,.07)', keyBdr:'rgba(56,189,248,.12)', fnC:'#7dd3fc', numC:'#e0f2fe', pinLbl:'#7dd3fc'},
+    bestuur:  {bg:'#07040e', acc:'rgba(139,92,246,',  dot:'#a78bfa', dotS:'rgba(167,139,250,.2)', badge:'Bestuur · Beheer',    icon:'📊',   title:'Bestuur toegang', sub:'Voer de bestuurscode in', cardBg:'rgba(139,92,246,.07)', cardBdr:'rgba(139,92,246,.15)', keyBg:'rgba(139,92,246,.07)', keyBdr:'rgba(139,92,246,.12)', fnC:'#c4b5fd', numC:'#f3f0ff', pinLbl:'#c4b5fd'},
+    kind:     {bg:'#020d07', acc:'rgba(16,185,129,', dot:'#10b981', dotS:'rgba(16,185,129,.2)', badge:'Mekteb Leerling', icon:'⭐', title:`Hey ${p?p.name:''}! 👋`, sub:'Voer je pincode in', cardBg:'rgba(16,185,129,.07)', cardBdr:'rgba(16,185,129,.15)', keyBg:'rgba(16,185,129,.07)', keyBdr:'rgba(16,185,129,.14)', fnC:'#6ee7b7', numC:'#e0fdf4', pinLbl:'#6ee7b7'},
+  };
+  const rc = rCfg[state.role] || rCfg.kind;
+  const letters = ['','ABC','DEF','GHI','JKL','MNO','PQRS','TUV','WXYZ'];
+  return `<div class="login-wrap" style="background:${rc.bg}">
+    <canvas id="login-cv" class="login-cv"></canvas>
+    <div class="login-ui">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <button onclick="${backFn}" style="background:${rc.acc}.1);border:1px solid ${rc.acc}.2);color:${rc.fnC};width:36px;height:36px;border-radius:11px;font-size:18px;font-weight:900;cursor:pointer">←</button>
+        <span class="login-badge" style="background:${rc.acc}.1);color:${rc.fnC};border:1px solid ${rc.acc}.18)">${rc.badge}</span>
+        <div style="width:36px"></div>
+      </div>
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:32px;margin-bottom:6px">${rc.icon}</div>
+        <div class="login-title" style="color:${rc.numC}">${rc.title}</div>
+        <div class="login-sub" style="color:${rc.fnC}">${rc.sub}</div>
+      </div>
+      <div class="dk-card" style="background:${rc.cardBg};border:1px solid ${rc.cardBdr}">
+        <div class="avatar ${colorOf(p.name)}" style="flex-shrink:0">${initial(p.name)}</div>
+        <div>
+          <div style="font-weight:900;font-size:14px;color:${rc.numC}">${p.name}</div>
+          <div style="font-size:10px;font-weight:700;color:${rc.fnC};opacity:.7;margin-top:2px">IKC DIN Mekteb — Eindhoven</div>
+        </div>
+      </div>
+      <div style="text-align:center;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:${rc.pinLbl};opacity:.65;margin-bottom:8px">${T('enterPin')}</div>
+      <div style="display:flex;justify-content:center;gap:13px;margin-bottom:14px">
+        ${[0,1,2,3].map(i=>`<div class="dk-dot${state.pin.length>i?' filled':''}" style="background:${state.pin.length>i?rc.dot:rc.dotS};${state.pin.length>i?'box-shadow:0 0 10px '+rc.acc+'.35)':''}"></div>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 4px">
+        ${[1,2,3,4,5,6,7,8,9].map((n,i)=>`<button class="dk-key" style="background:${rc.keyBg};border:1px solid ${rc.keyBdr}" onclick="tapKey('${n}')"><span class="dk-num" style="color:${rc.numC}">${n}</span>${letters[i]?`<span class="dk-let">${letters[i]}</span>`:''}</button>`).join('')}
+        <button class="dk-key fn" onclick="${backFn}"><span class="dk-num" style="color:${rc.fnC};font-size:11px">←</span></button>
+        <button class="dk-key" style="background:${rc.keyBg};border:1px solid ${rc.keyBdr}" onclick="tapKey('0')"><span class="dk-num" style="color:${rc.numC}">0</span></button>
+        <button class="dk-key fn" onclick="tapKey('back')"><span class="dk-num" style="color:${rc.fnC}">⌫</span></button>
+      </div>
+      ${isDirectLogin ? `<div style="margin-top:12px;text-align:center;font-size:12px;color:${rc.fnC};font-weight:700;opacity:.6">PIN: ${p.pin}</div>` : ''}
     </div>
   </div>`;
 }
 
 function tapKey(k){
-  if(k==='back'){ state.pin=state.pin.slice(0,-1); render(); return; }
+  if(k==='back'){
+    state.pin = state.pin.slice(0,-1);
+    _updatePinDots(); return;
+  }
   if(state.pin.length>=4) return;
-  state.pin += k; render();
+  state.pin += k;
+  _updatePinDots();
   if(state.pin.length===4){
     setTimeout(()=>{
       if(state.pin===state.selectedPerson.pin){
@@ -1111,11 +1716,36 @@ function tapKey(k){
         if(state.role==='kind') state.pathLevel = state.me.level;
         render();
       } else {
-        document.querySelectorAll('.pin-dot').forEach(d=>d.classList.add('error'));
-        setTimeout(()=>{ state.pin=''; render(); }, 450);
+        // Fout: dots rood, geen full render
+        document.querySelectorAll('.dk-dot,.pin-dot').forEach(d=>{
+          d.style.background='#ef4444';
+          d.style.boxShadow='0 0 10px rgba(239,68,68,.4)';
+        });
+        setTimeout(()=>{ state.pin=''; _updatePinDots(); }, 450);
       }
-    }, 120);
+    }, 80);
   }
+}
+
+function _updatePinDots(){
+  // Update dots direct in DOM — geen volledige render, geen canvas-herstart
+  const len = state.pin.length;
+  const role = state.role || 'kind';
+  const dotColors = {kind:'#10b981',ouder:'#f59e0b',efendija:'#38bdf8',bestuur:'#a78bfa'};
+  const dotShadows = {kind:'rgba(16,185,129,.35)',ouder:'rgba(245,158,11,.35)',efendija:'rgba(56,189,248,.35)',bestuur:'rgba(167,139,250,.35)'};
+  const emptyColors = {kind:'rgba(16,185,129,.2)',ouder:'rgba(245,158,11,.2)',efendija:'rgba(56,189,248,.2)',bestuur:'rgba(167,139,250,.2)'};
+  const col = dotColors[role]; const sh = dotShadows[role]; const emp = emptyColors[role];
+  document.querySelectorAll('.dk-dot,.pin-dot').forEach((d,i)=>{
+    if(i < len){
+      d.style.background = col;
+      d.style.boxShadow = `0 0 10px ${sh}`;
+      d.style.transform = 'scale(1.15)';
+    } else {
+      d.style.background = emp;
+      d.style.boxShadow = 'none';
+      d.style.transform = 'none';
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1166,8 +1796,15 @@ function kidHome(){
   const k = state.me;
   const myHw = HOMEWORK.filter(h=>h.kidId===k.id && !h.done);
   const allMyHw = HOMEWORK.filter(h=>h.kidId===k.id);
-  const lastAtt = ATTENDANCE[k.id]?.[WEEKS.length-1];
-  const wasAbsent = lastAtt && !lastAtt.present;
+  const doneHw = HOMEWORK.filter(h=>h.kidId===k.id && h.done);
+  const allHwDone = allMyHw.length > 0 && myHw.length === 0;
+  const lastDoneHw = doneHw.length > 0 ? doneHw[doneHw.length-1] : null;
+  // Controleer afwezigheid: laatste AFGELOPEN zondag (niet de aanstaande)
+  const attArr = ATTENDANCE[k.id]||[];
+  const today = new Date().toISOString().slice(0,10);
+  const pastAtt = attArr.filter(a=>a.date < today);
+  const lastPastAtt = pastAtt.length ? pastAtt[pastAtt.length-1] : null;
+  const wasAbsent = lastPastAtt && !lastPastAtt.present;
   const ilmScore = ilmPts(k.id);
   return `${topbarKid()}
     <div class="screen">
@@ -1180,6 +1817,13 @@ function kidHome(){
         <div style="font-size:13px;font-weight:700;color:#92400e;line-height:1.5">
           ${L(`Selam ${k.name}, we hebben je gemist bij de laatste mekteb, hopelijk ben je er aanstaande zondag wel bij!`,
               `Selam ${k.name}, nedostajao/la si nam na posljednjem mektebu, nadamo se da ćeš doći sljedeće nedjelje!`)}
+        </div>
+      </div>` : ''}
+      ${allHwDone && !wasAbsent ? `<div style="background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1px solid #6ee7b7;border-radius:16px;padding:13px 15px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px">
+        <div style="font-size:22px;flex-shrink:0">🎉</div>
+        <div style="font-size:13px;font-weight:700;color:#065f46;line-height:1.5">
+          ${L(`MašaAllah ${k.name}! Je hebt${lastDoneHw?' <span style="font-style:italic">'+lastDoneHw.title+'</span>':' je huiswerk'} afgerond. Ga zo door!`,
+              `MašaAllah ${k.name}! Završio/la si${lastDoneHw?' <span style="font-style:italic">'+lastDoneHw.title+'</span>':' zadaću'}. Nastavi ovako!`)}
         </div>
       </div>` : ''}
 
@@ -1511,6 +2155,19 @@ async function removeKid(id){
   const {error} = await DB.from('leerlingen_v5').delete().eq('id', id);
   if(error) console.error('Delete fout:', error);
 }
+
+function efVerwijderOuder(parentId, kidId){
+  const p = PARENTS.find(x=>x.id==parentId);
+  if(!p) return;
+  const kid = KIDS.find(k=>k.id==kidId);
+  if(!confirm(L(`${p.name} loskoppelen van ${kid?kid.name:'dit kind'}?`,
+               `Ukloniti ${p.name} od ${kid?kid.name:'ovog djeteta'}?`))) return;
+  // Verwijder dit kind uit ouder-kidIds
+  p.kidIds = p.kidIds.filter(id=>id!=kidId);
+  if(p.kidIds.length===0) PARENTS.splice(PARENTS.indexOf(p),1);
+  saveKidToDB(kidId);
+  render();
+}
 function setNewKidField(field,val){ state.newKid[field]=val; }
 
 function addKidFormHtml(){
@@ -1543,8 +2200,8 @@ function addKidFormHtml(){
 // OUDER APP
 // ═══════════════════════════════════════════════════════════════
 function ouderApp(){
-  // Alles op één scherm; thread opent als overlay
   if(state.threadOpen) return msgThread();
+  if(state.nav==='me')   return ouderProfile();
   return ouderHome();
 }
 function topbarOuder(){
@@ -1575,6 +2232,7 @@ function ouderHome(){
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <div style="font-size:12px;font-weight:800;background:var(--gold-soft);color:var(--gold);padding:5px 11px;border-radius:10px">IKC DIN</div>
+      <button onclick="setNav('me')" style="background:var(--green-soft);color:var(--green);width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;border:0;cursor:pointer">⚙️</button>
       <button onclick="logout()" style="background:var(--red-soft);color:var(--red);width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;border:0;cursor:pointer">⏻</button>
     </div>
   </div>
@@ -1584,8 +2242,13 @@ function ouderHome(){
     <!-- KIND(EREN) VOORTGANG -->
     <div class="section-head"><div class="h3">👦 ${T('parentDash')}</div></div>
     ${kids.map(k=>{
-      const kidSuras = kidStations(k,'suras',k.level);
-      const cur = kidSuras.find(s=>s.status==='current') || kidSuras.find(s=>s.status!=='done') || kidSuras[0] || {label:'—'};
+      let cur = null;
+      for(let lv=1;lv<=3;lv++){
+        const lvSuras = kidStations(k,'suras',lv);
+        const found = lvSuras.find(s=>s.status==='current') || lvSuras.find(s=>s.status!=='done' && s.status!=='locked');
+        if(found){ cur=found; break; }
+      }
+      if(!cur){ const fb=kidStations(k,'suras',k.level); cur=fb[0]||{label:'—'}; }
       const kDoneIlm = state.ilmDone[k.id] || {};
       let nextIlm = null;
       for(const cat of (ILMIHAL[k.level]||[])){ for(const les of cat.lessen){ if(!kDoneIlm[les.id]){ nextIlm=les; break; } } if(nextIlm) break; }
@@ -1602,7 +2265,7 @@ function ouderHome(){
         </div>
         <!-- sura voortgang -->
         <div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px">
-          <span>📖 ${L('Huidige sura','Trenutna sura')}: <span style="color:var(--ink);font-weight:800">${cur.label}</span></span>
+          <span>📖 ${L('Volgende les — Sura','Sljedeći čas — Sura')}: <span style="color:var(--ink);font-weight:800">${cur.label}${cur.sub?' — '+cur.sub:''}</span></span>
         </div>
         ${nextIlm?`<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:3px">
           📚 ${L('Volgende ilmihal','Sljedeći ilmihal')}: <span style="color:var(--ink);font-weight:800">${state.lang==='nl'?nextIlm.naam:nextIlm.naam_bs}</span>
@@ -1615,6 +2278,30 @@ function ouderHome(){
         ${kHw.length ? `<div style="background:var(--orange-soft);border-radius:10px;padding:8px 12px;font-size:12px;font-weight:800;color:#9a3412">
           📝 ${kHw.length} ${L('huiswerk openstaand','zadaće otvoreno')}
         </div>` : `<div style="font-size:12px;color:var(--green);font-weight:800">✓ ${L('Geen openstaand huiswerk','Nema otvorene zadaće')}</div>`}
+        <!-- AANWEZIGHEIDSHISTORIE -->
+        ${(()=>{
+          const att = (ATTENDANCE[k.id]||[]).filter(a=>a.date<new Date().toISOString().slice(0,10));
+          const last8 = att.slice(-8);
+          if(!last8.length) return '';
+          const dots = last8.map(a=>`<div title="${a.date}" style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0;background:${a.present?'var(--green-soft)':'var(--red-soft)'};color:${a.present?'var(--green)':'var(--red)'};">${a.present?'✓':'✗'}</div>`).join('');
+          const pct = Math.round(last8.filter(a=>a.present).length/last8.length*100);
+          return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <div style="font-size:11px;font-weight:800;color:var(--muted)">📅 ${L('Aanwezigheid','Prisustvo')}</div>
+              <div style="font-size:11px;font-weight:900;color:${pct>=75?'var(--green)':pct>=50?'var(--gold)':'var(--red)'};">${pct}%</div>
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap">${dots}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px;font-weight:700">${L('Laatste','Posljednjih')} ${last8.length} ${L('lessen','časova')}</div>
+          </div>`;
+        })()}
+        ${(()=>{
+          const n = k.notities||'';
+          if(!n.trim()) return '';
+          return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+            <div style="font-size:11px;font-weight:900;color:var(--muted);margin-bottom:5px">💬 ${L('Notitie efendija','Bilješka efendije')}</div>
+            <div style="font-size:13px;color:var(--ink);line-height:1.5;white-space:pre-wrap">${n}</div>
+          </div>`;
+        })()}
       </div>`;
     }).join('')}
 
@@ -1717,36 +2404,289 @@ function hwCardBody(h){
 }
 function ouderProfile(){
   const p = state.me;
+  const kids = KIDS.filter(k => p.kidIds.includes(k.id));
+  const suc = state.ouderSuccess;
   return `<div class="topbar">
       <button class="back-btn" onclick="setNav('home')">←</button>
-      <div style="text-align:center;flex:1"><div style="font-weight:900">${T('profile')}</div></div>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">${L('Mijn account','Moj nalog')}</div></div>
       <button class="back-btn" onclick="logout()">⏻</button>
     </div>
-    <div class="screen">
-      <div style="text-align:center;padding:14px 0 16px">
-        <div class="avatar xl ${colorOf(p.name)}" style="margin:0 auto 10px">${initial(p.name)}</div>
+    ${state.ouderModal ? ouderModalView() : ''}
+    <div class="screen" style="padding-top:4px">
+      <div style="text-align:center;padding:14px 0 12px">
+        <div class="avatar xl ${colorOf(p.name)}" style="margin:0 auto 8px">${initial(p.name)}</div>
         <div style="font-size:20px;font-weight:900">${p.name.split('(')[0].trim()}</div>
-        <div class="muted" style="font-size:13px">${T('ouder')} • ${p.kidIds.length} ${state.lang==='nl'?'kind(eren)':'djece'}</div>
+        <div class="muted" style="font-size:12px">${T('ouder')} • ${kids.length} ${state.lang==='nl'?'kind(eren)':'djece'}</div>
       </div>
-      <div class="list">
+      ${suc ? `<div style="margin:0 14px 10px;display:flex;align-items:center;gap:6px;background:var(--green-soft);border:1.5px solid var(--green-mid);border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;color:#166534">✅ ${suc}</div>` : ''}
+      <div style="padding:0 14px 4px;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">${L('Beveiliging','Sigurnost')}</div>
+      <div class="list" style="margin:0 14px 10px">
+        <div class="list-row" onclick="ouderOpenModal('pin')">
+          <div style="font-size:18px">🔑</div>
+          <div style="flex:1"><div class="name">${L('Pincode wijzigen','Promijeni PIN')}</div><div class="muted" style="font-size:11px">${L('Verander je persoonlijke pincode','Promijeni osobni PIN')}</div></div>
+          <div style="color:var(--muted);font-size:16px">›</div>
+        </div>
+      </div>
+      <div style="padding:0 14px 4px;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">${L('Mijn kinderen','Moja djeca')}</div>
+      <div class="list" style="margin:0 14px 10px">
+        ${kids.map(k=>`
+        <div class="list-row" onclick="ouderOpenModal('kind-naam',${k.id},'${k.name.replace(/'/g,"\\'")}')">
+          <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
+          <div style="flex:1"><div class="name">${k.name}</div><div class="muted" style="font-size:11px">N${k.level}</div></div>
+          <div style="color:var(--muted);font-size:16px">›</div>
+        </div>`).join('')}
+        <div class="list-row" onclick="ouderOpenModal('kind-add')">
+          <div style="font-size:18px">➕</div>
+          <div style="flex:1"><div class="name">${L('Kind toevoegen','Dodaj dijete')}</div><div class="muted" style="font-size:11px">${L('Koppel nog een kind aan jouw account','Poveži još jedno dijete')}</div></div>
+          <div style="color:var(--muted);font-size:16px">›</div>
+        </div>
+        ${kids.length > 1 ? kids.map(k=>`
+        <div class="list-row" onclick="ouderOpenModal('kind-del',${k.id},'${k.name.replace(/'/g,"\\'")}')">
+          <div style="font-size:18px">🗑️</div>
+          <div style="flex:1"><div class="name" style="color:var(--red)">${L('Loskoppelen','Odveži')} — ${k.name}</div><div class="muted" style="font-size:11px">${L('Verwijder koppeling met dit kind','Ukloni vezu s ovim djetetom')}</div></div>
+          <div style="color:var(--red);font-size:16px">›</div>
+        </div>`).join('') : ''}
+      </div>
+      <div class="list" style="margin:0 14px">
         <div class="list-row" onclick="logout()">
           <div style="font-size:18px">⏻</div>
           <div class="name" style="color:var(--red)">${T('logout')}</div>
         </div>
       </div>
+      <div class="list" style="margin:8px 14px">
+        <div class="list-row" onclick="ouderVerwijderAccount()">
+          <div style="font-size:18px">🗑️</div>
+          <div style="flex:1">
+            <div class="name" style="color:var(--red)">${L('Account volledig verwijderen','Potpuno brisanje naloga')}</div>
+            <div class="muted" style="font-size:11px">${L('Verwijdert jouw account én alle gekoppelde kinderen','Briše vaš nalog i svu povezanu djecu')}</div>
+          </div>
+        </div>
+      </div>
     </div>
     ${navBar([['home',T('tabHome')]])}`;
 }
-function openThread(id){ state.threadOpen=id; render(); }
+
+// ── Ouder modal opener ──
+
+async function ouderVerwijderAccount(){
+  const p = state.me;
+  const kids = KIDS.filter(k=>p.kidIds.includes(k.id));
+  const namen = kids.map(k=>k.name).join(', ');
+  const msg = kids.length > 0
+    ? L(`Dit verwijdert jouw account én de volgende kinderen permanent:\n${namen}\n\nWeet je het zeker?`,
+        `Ovo briše vaš nalog i sljedeću djecu trajno:\n${namen}\n\nJeste li sigurni?`)
+    : L('Dit verwijdert jouw account permanent. Weet je het zeker?',
+        'Ovo trajno briše vaš nalog. Jeste li sigurni?');
+  if(!confirm(msg)) return;
+  // Verwijder alle kinderen uit Supabase
+  for(const k of kids){
+    await DB.from('leerlingen_v5').delete().eq('id', k.id);
+    const idx = KIDS.findIndex(x=>x.id===k.id);
+    if(idx!==-1) KIDS.splice(idx,1);
+  }
+  // Verwijder ouder uit PARENTS array
+  const pi = PARENTS.findIndex(x=>x.id===p.id);
+  if(pi!==-1) PARENTS.splice(pi,1);
+  logout();
+}
+function ouderOpenModal(type, kidId=null, kidName=''){
+  state.ouderModal=type; state.ouderModalStep=1;
+  state.ouderModalPin=''; state.ouderModalInput=''; state.ouderModalInput2='';
+  state.ouderModalKidId=kidId; state.ouderModalErr='';
+  if(kidName) state.ouderModalInput=kidName;
+  render();
+}
+function ouderCloseModal(){ state.ouderModal=null; render(); }
+
+// ── Ouder modal renderer ──
+function ouderModalView(){
+  const type = state.ouderModal;
+  let title='', body='';
+  if(type==='pin')      { title=L('Pincode wijzigen','Promijeni PIN'); body=ouderPinModal(); }
+  if(type==='kind-naam'){ title=L('Naam kind wijzigen','Promijeni ime djeteta'); body=ouderKindNaamModal(); }
+  if(type==='kind-add') { title=L('Kind toevoegen','Dodaj dijete'); body=ouderKindAddModal(); }
+  if(type==='kind-del') { title=L('Kind loskoppelen','Odveži dijete'); body=ouderKindDelModal(); }
+  return `<div style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:flex-end" onclick="if(event.target===this)ouderCloseModal()">
+    <div style="background:#fff;border-radius:24px 24px 0 0;width:100%;padding:18px 18px 32px;max-height:80%;overflow-y:auto">
+      <div style="width:36px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 14px"></div>
+      <div style="font-size:17px;font-weight:900;margin-bottom:14px">${title}</div>
+      ${body}
+    </div>
+  </div>`;
+}
+
+// ── Pincode wijzigen ──
+function ouderPinNumpad(pressFn, delFn, cancelFn){
+  return `<div class="keypad">
+    ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="${pressFn}('${n}')">${n}</button>`).join('')}
+    <button class="key fn" onclick="${cancelFn}">↩</button>
+    <button class="key" onclick="${pressFn}('0')">0</button>
+    <button class="key fn" onclick="${delFn}">⌫</button>
+  </div>`;
+}
+function ouderPinDots(len, err){
+  return `<div class="pin-dots" style="justify-content:center;margin-bottom:14px">
+    ${[0,1,2,3].map(i=>`<div class="pin-dot${len>i?' filled':''}${err?' error':''}"></div>`).join('')}
+  </div>`;
+}
+function ouderPinModal(){
+  const step = state.ouderModalStep;
+  // Stap 1: huidige PIN verifiëren
+  if(step===1) return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Stap 1 van 3 — Voer huidige pincode in','Korak 1 od 3 — Unesite trenutni PIN')}</div>
+    ${ouderPinDots(state.ouderModalPin.length, state.ouderModalErr)}
+    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;text-align:center;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
+    ${ouderPinNumpad('ouderModalPin1','ouderModalPinDel1','ouderCloseModal')}`;
+  // Stap 2: nieuwe PIN kiezen
+  if(step===2) return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">${L('Stap 2 van 3 — Kies nieuwe pincode','Korak 2 od 3 — Odaberite novi PIN')}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${L('Nieuwe pincode','Novi PIN')}</div>
+    ${ouderPinDots(state.ouderModalPin.length, false)}
+    ${ouderPinNumpad('ouderModalPin2','ouderModalPinDel2','ouderModalPinTerug2')}`;
+  // Stap 3: nieuwe PIN bevestigen
+  return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">${L('Stap 3 van 3 — Herhaal nieuwe pincode','Korak 3 od 3 — Ponovite novi PIN')}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">${L('Herhaal nieuwe pincode','Ponovite novi PIN')}</div>
+    ${ouderPinDots(state.ouderModalPin.length, state.ouderModalErr)}
+    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;text-align:center;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
+    ${ouderPinNumpad('ouderModalPin3','ouderModalPinDel3','ouderModalPinTerug3')}`;
+}
+// Stap 1: huidige PIN
+function ouderModalPin1(d){
+  if(state.ouderModalPin.length>=4) return;
+  state.ouderModalPin+=d; state.ouderModalErr=''; render();
+  if(state.ouderModalPin.length===4){
+    setTimeout(()=>{
+      if(state.ouderModalPin===state.me.pin){ state.ouderModalStep=2; state.ouderModalPin=''; render(); }
+      else { state.ouderModalErr=L('Verkeerde pincode','Pogrešan PIN'); render(); setTimeout(()=>{ state.ouderModalPin=''; state.ouderModalErr=''; render(); },700); }
+    },80);
+  }
+}
+function ouderModalPinDel1(){ state.ouderModalPin=state.ouderModalPin.slice(0,-1); render(); }
+// Stap 2: nieuwe PIN invoeren
+function ouderModalPin2(d){
+  if(state.ouderModalPin.length>=4) return;
+  state.ouderModalPin+=d; render();
+  if(state.ouderModalPin.length===4){
+    setTimeout(()=>{ state.ouderModalInput=state.ouderModalPin; state.ouderModalPin=''; state.ouderModalStep=3; render(); },80);
+  }
+}
+function ouderModalPinDel2(){ state.ouderModalPin=state.ouderModalPin.slice(0,-1); render(); }
+function ouderModalPinTerug2(){ state.ouderModalStep=1; state.ouderModalPin=''; render(); }
+// Stap 3: nieuwe PIN bevestigen
+function ouderModalPin3(d){
+  if(state.ouderModalPin.length>=4) return;
+  state.ouderModalPin+=d; state.ouderModalErr=''; render();
+  if(state.ouderModalPin.length===4){
+    setTimeout(()=>{
+      if(state.ouderModalPin===state.ouderModalInput){
+        state.me.pin=state.ouderModalPin;
+        state.me.kidIds.forEach(id=>saveKidToDB(id));
+        state.ouderModal=null;
+        state.ouderSuccess=L('Pincode gewijzigd!','PIN je promijenjen!');
+        render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+      } else {
+        state.ouderModalErr=L('Pincodes komen niet overeen','PIN-ovi se ne poklapaju');
+        render(); setTimeout(()=>{ state.ouderModalPin=''; state.ouderModalErr=''; render(); },700);
+      }
+    },80);
+  }
+}
+function ouderModalPinDel3(){ state.ouderModalPin=state.ouderModalPin.slice(0,-1); render(); }
+function ouderModalPinTerug3(){ state.ouderModalStep=2; state.ouderModalPin=''; render(); }
+
+// ── Naam kind wijzigen ──
+function ouderKindNaamModal(){
+  const k = KIDS.find(x=>x.id===state.ouderModalKidId);
+  return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:12px">${L('Verander de naam van','Promijenite ime od')} ${k?k.name:''}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Nieuwe naam','Novo ime')}</div>
+    <input style="width:100%;background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px;font-size:16px;font-family:inherit;font-weight:700;color:var(--ink);outline:none;margin-bottom:10px" type="text" id="new-kind-naam" placeholder="${k?k.name:''}" oninput="state.ouderModalInput=this.value">
+    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
+    <button onclick="ouderSaveKindNaam()" style="width:100%;padding:13px;background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer">${L('Naam opslaan','Spremi ime')}</button>`;
+}
+function ouderSaveKindNaam(){
+  const val=(document.getElementById('new-kind-naam')?.value||state.ouderModalInput).trim();
+  if(!val){ state.ouderModalErr=L('Naam mag niet leeg zijn','Ime ne smije biti prazno'); render(); return; }
+  const k=KIDS.find(x=>x.id===state.ouderModalKidId);
+  if(k){ k.name=val; saveKidToDB(k.id); }
+  state.ouderModal=null;
+  state.ouderSuccess=L(`Naam gewijzigd naar ${val}`,`Ime promijenjeno u ${val}`);
+  render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+}
+
+// ── Kind toevoegen ──
+function ouderKindAddModal(){
+  return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:12px">${L('Voer de naam en pincode in die de efendija heeft meegegeven','Unesite ime i PIN koje je efendija dao')}</div>
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Naam kind','Ime djeteta')}</div>
+    <input style="width:100%;background:#fff;border:2px solid var(--line);border-radius:12px;padding:12px 14px;font-size:16px;font-family:inherit;font-weight:700;color:var(--ink);outline:none;margin-bottom:10px" type="text" id="add-kind-naam" placeholder="${L('Naam van je kind…','Ime djeteta…')}" oninput="state.ouderModalInput=this.value">
+    <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">${L('Pincode van het kind','PIN djeteta')}</div>
+    <input style="width:100%;background:#fff;border:2px solid ${state.ouderModalErr?'var(--red)':'var(--line)'};border-radius:12px;padding:12px 14px;font-size:20px;font-family:inherit;font-weight:900;letter-spacing:8px;outline:none;margin-bottom:6px" type="password" inputmode="numeric" maxlength="4" id="add-kind-pin" placeholder="••••" oninput="state.ouderModalInput2=this.value">
+    ${state.ouderModalErr?`<div style="color:var(--red);font-size:12px;font-weight:800;margin-bottom:8px">${state.ouderModalErr}</div>`:''}
+    <div style="display:flex;align-items:flex-start;gap:8px;background:var(--green-soft);border:1.5px solid var(--green-mid);border-radius:11px;padding:9px 11px;font-size:11px;font-weight:700;color:#166534;margin-bottom:12px">
+      🔒 ${L('De pincode van je kind staat op het briefje van efendija','PIN djeteta je na listiću efendije')}
+    </div>
+    <button onclick="ouderSaveKindAdd()" style="width:100%;padding:13px;background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;font-family:inherit;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer">${L('Kind koppelen','Poveži dijete')}</button>`;
+}
+function ouderSaveKindAdd(){
+  const naam=(document.getElementById('add-kind-naam')?.value||state.ouderModalInput).trim();
+  const pin=(document.getElementById('add-kind-pin')?.value||state.ouderModalInput2).trim();
+  const normN=normName(naam);
+  const match=KIDS.find(k=>normName(k.name)===normN && k.pin===pin);
+  if(!match){ state.ouderModalErr=L('Naam + pincode niet gevonden. Controleer het briefje van efendija.','Ime + PIN nije pronađeno. Provjerite listić efendije.'); render(); return; }
+  if(!state.me.kidIds.includes(match.id)) state.me.kidIds.push(match.id);
+  // Zorg dat deze ouder ook in de PARENTS entry staat + sla op
+  const pEntry=PARENTS.find(p=>p.id===state.me.id);
+  if(pEntry && !pEntry.kidIds.includes(match.id)) pEntry.kidIds.push(match.id);
+  saveKidToDB(match.id);
+  state.ouderModal=null;
+  state.ouderSuccess=L(`${match.name} gekoppeld aan jouw account!`,`${match.name} je spojen na vaš nalog!`);
+  render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+}
+
+// ── Kind loskoppelen ──
+function ouderKindDelModal(){
+  const k=KIDS.find(x=>x.id===state.ouderModalKidId);
+  const naam=k?k.name:state.ouderModalInput;
+  return `
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:12px">${L(`Weet je zeker dat je ${naam} wilt loskoppelen van jouw account?`,`Jeste li sigurni da želite odvojiti ${naam} od vašeg naloga?`)}</div>
+    <div style="display:flex;align-items:flex-start;gap:8px;background:var(--red-soft);border:1.5px solid #fca5a5;border-radius:11px;padding:9px 11px;font-size:11px;font-weight:700;color:#991b1b;margin-bottom:14px">
+      ⚠️ ${L('Het kind blijft in de mekteb-app staan. Alleen jouw koppeling wordt verwijderd.','Dijete ostaje u mekteb aplikaciji. Samo se vaša veza briše.')}
+    </div>
+    <button onclick="ouderSaveKindDel()" style="width:100%;padding:13px;background:var(--red-soft);color:var(--red);font-family:inherit;font-weight:900;font-size:15px;border:1.5px solid #fca5a5;border-radius:13px;cursor:pointer;margin-bottom:8px">${L('Ja, loskoppelen','Da, odveži')}</button>
+    <button onclick="ouderCloseModal()" style="width:100%;padding:13px;background:#fff;color:var(--muted);font-family:inherit;font-weight:900;font-size:15px;border:2px solid var(--line);border-radius:13px;cursor:pointer">${L('Annuleren','Odustani')}</button>`;
+}
+function ouderSaveKindDel(){
+  const id=state.ouderModalKidId;
+  state.me.kidIds=state.me.kidIds.filter(x=>x!==id);
+  const pEntry=PARENTS.find(p=>p.id===state.me.id);
+  if(pEntry) pEntry.kidIds=pEntry.kidIds.filter(x=>x!==id);
+  // Sla alle resterende kinderen op
+  state.me.kidIds.forEach(kid=>saveKidToDB(kid));
+  const naam=KIDS.find(k=>k.id===id)?.name||'';
+  state.ouderModal=null;
+  state.ouderSuccess=L(`${naam} losgekoppeld.`,`${naam} je odvojen.`);
+  render(); setTimeout(()=>{ state.ouderSuccess=''; render(); },3000);
+}
+
 function enterChildView(id){ /* could deeplink to a child detail page; for prototype: jump to homework filtered */ state.nav='hw'; render(); }
 
 // ═══════════════════════════════════════════════════════════════
 // EFENDIJA APP
 // ═══════════════════════════════════════════════════════════════
 function efApp(){
-  if(state.nav==='home')     return efHome();
-  if(state.nav==='students') return state.selectedKid ? efStudentDetail() : efStudents();
+  if(state.nav==='home')      return efHome();
+  if(state.nav==='students')  return state.selectedKid ? efStudentDetail() : efStudents();
+  if(state.nav==='overzicht') return efOverzicht();
   return efHome();
+}
+function efOverzicht(){
+  // Zelfde dashboard als bestuur, maar met efendija topbar + tabs
+  const html = bestuurHome();
+  const bTopbar = topbarBestuur();
+  const eTopbar = topbarEf();
+  return html.replace(bTopbar, eTopbar);
 }
 function openKid(id){
   state.selectedKid=id;
@@ -1806,15 +2746,45 @@ function efStudentDetail(){
         <div class="subtab ${tab==='voortgang'?'on':''}" onclick="state.efDetailTab='voortgang';render()">📚 ${L('Voortgang','Napredak')}</div>
         <div class="subtab ${tab==='aanwezigheid'?'on':''}" onclick="state.efDetailTab='aanwezigheid';render()">📅 ${L('Aanwezigheid','Prisustvo')}</div>
         <div class="subtab ${tab==='huiswerk'?'on':''}" onclick="state.efDetailTab='huiswerk';render()">✅ ${L('Huiswerk','Zadaća')}</div>
+        <div class="subtab ${tab==='notities'?'on':''}" onclick="state.efDetailTab='notities';render()">📝 ${L('Notities','Bilješke')}</div>
         <div class="subtab ${tab==='bewerken'?'on':''}" onclick="state.efDetailTab='bewerken';render()">✏️ ${L('Bewerken','Uredi')}</div>
       </div>
 
       ${tab==='voortgang' ? efDetailVoortgang(k) : ''}
       ${tab==='aanwezigheid' ? efDetailAanwezigheid(k) : ''}
       ${tab==='huiswerk' ? efDetailHuiswerk(k) : ''}
+      ${tab==='notities' ? efDetailNotities(k) : ''}
       ${tab==='bewerken' ? efDetailBewerken(k) : ''}
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
+}
+
+// EFENDIJA — NOTITIES PER LEERLING
+function efDetailNotities(k){
+  const val = k.notities||'';
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="font-weight:900;font-size:14px;margin-bottom:10px">📝 ${L('Notities over','Bilješke o')} ${k.name}</div>
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:8px;line-height:1.5">
+      ${L('Alleen zichtbaar voor efendija en ouders. Gebruik dit voor observaties, aandachtspunten of mijlpalen.',
+          'Vidljivo samo efendiji i roditeljima. Koristite za zapažanja, napomene ili postignute prekretnice.')}
+    </div>
+    <textarea id="ef-notitie-${k.id}" style="width:100%;min-height:120px;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-size:13px;font-family:inherit;resize:vertical;background:var(--bg);color:var(--ink);box-sizing:border-box;line-height:1.5" placeholder="${L('Schrijf hier een notitie...','Napišite bilješku ovdje...')}">${val}</textarea>
+    <button onclick="efSaveNotitie('${k.id}')" style="margin-top:10px;width:100%;padding:12px;border-radius:12px;font-weight:900;font-size:13px;background:var(--green);color:#fff;border:0;cursor:pointer">
+      💾 ${L('Opslaan','Sačuvaj')}
+    </button>
+    ${val ? `<div style="margin-top:10px;font-size:11px;color:var(--muted);font-weight:700">
+      ✓ ${L('Notitie opgeslagen.','Bilješka je sačuvana.')}
+    </div>` : ''}
+  </div>`;
+}
+function efSaveNotitie(kidId){
+  const k = KIDS.find(x=>x.id===kidId);
+  const ta = document.getElementById('ef-notitie-'+kidId);
+  if(!k||!ta) return;
+  k.notities = ta.value;
+  saveKidToDB(kidId);
+  render();
 }
 
 function niveauCompleted(kidId, lvl){
@@ -1945,7 +2915,19 @@ function efDetailBewerken(k){
         <button onclick="saveParentName('${p.id}')" style="background:var(--green);color:#fff;padding:9px 14px;border-radius:11px;font-weight:800;font-size:13px">${L('Opslaan','Sačuvaj')}</button>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:6px;font-weight:700">PIN: ${p.pin} · ${p.kidIds.length} ${L('kind(eren)','djece')}</div>
+      <button onclick="efVerwijderOuder('${p.id}','${k.id}')"
+        style="margin-top:10px;width:100%;padding:9px;background:var(--red-soft);color:var(--red);border:1.5px solid #fca5a5;border-radius:11px;font-weight:800;font-size:12px;cursor:pointer">
+        🗑️ ${L('Ouder verwijderen van dit kind','Ukloni roditelja od ovog djeteta')}
+      </button>
     </div>`).join('')}
+    <!-- Kind verwijderen -->
+    <div class="card" style="border:1.5px solid #fca5a5;background:var(--red-soft)">
+      <div style="font-weight:900;font-size:14px;margin-bottom:8px;color:var(--red)">🗑️ ${L('Kind verwijderen','Obriši učenika')}</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Verwijdert de leerling en alle bijbehorende data permanent.','Trajno briše učenika i sve podatke.')}</div>
+      <button onclick="deleteKid('${k.id}')" style="width:100%;padding:10px;background:var(--red);color:#fff;border:0;border-radius:11px;font-weight:900;font-size:13px;cursor:pointer">
+        ${L('Ja, leerling verwijderen','Da, obriši učenika')}
+      </button>
+    </div>
     <!-- Nieuwe ouder koppelen -->
     <div class="card" style="border:1.5px dashed var(--green-mid)">
       <div style="font-weight:900;font-size:14px;margin-bottom:10px">➕ ${L('Ouder koppelen','Poveži roditelja')}</div>
@@ -2009,12 +2991,18 @@ function efDetailHuiswerk(k){
 }
 function topbarEf(){
   const e = state.me;
+  const nav = state.nav || 'home';
   return `<div class="topbar">
     <div class="row">
       <div class="avatar ${colorOf(e.name)}">${initial(e.name)}</div>
       <div><div style="font-weight:900">${e.name}</div><div class="muted" style="font-size:11px">${T('efendija')} • N${e.levels.join(',')}</div></div>
     </div>
     <button onclick="logout()" style="background:var(--red-soft);color:var(--red);padding:7px 13px;border-radius:10px;font-size:12px;font-weight:800">⏻ ${T('logout')}</button>
+  </div>
+  <div class="ef-tabs">
+    <div class="ef-tab ${nav==='home'?'on':''}" onclick="state.nav='home';state.selectedKid=null;render()">${L('Start','Start')}</div>
+    <div class="ef-tab ${(nav==='students'||state.selectedKid)?'on':''}" onclick="state.nav='students';state.selectedKid=null;render()">${L('Klas','Razred')}</div>
+    <div class="ef-tab ${nav==='overzicht'?'on':''}" onclick="state.nav='overzicht';state.selectedKid=null;render()">${L('Overzicht','Pregled')}</div>
   </div>`;
 }
 function efHome(){
@@ -2083,7 +3071,8 @@ function efHome(){
           </div>`).join('')}
       </div>
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
 }
 function efStudents(){
   const e = state.me;
@@ -2151,7 +3140,8 @@ function efStudents(){
         })()}
       `}
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
 }
 function efMessages(){
   // For demo: efendija ziet alle conversaties met ouders (zelfde lijst, andere kant)
@@ -2172,7 +3162,8 @@ function efMessages(){
       }).join('')}
       <button style="width:100%;margin-top:14px;background:var(--green);color:#fff;padding:14px;border-radius:14px;font-weight:800">+ ${state.lang==='nl'?'Nieuw bericht':'Nova poruka'}</button>
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
 }
 function efProfile(){
   return `<div class="topbar">
@@ -2193,7 +3184,8 @@ function efProfile(){
         </div>
       </div>
     </div>
-    ${navBar([['home',T('tabHome')],['students',state.lang==='nl'?'Klas':'Razred']])}`;
+  `;
+// ef-nav-removed
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2747,8 +3739,10 @@ function ouderRegFormHtml(){
   return`<div style="background:${state.darkMode?'#0c2416':'#fff'};border-radius:14px;padding:14px;margin-top:10px;border:1.5px solid var(--green-mid);box-shadow:var(--shadow)">
     <div style="font-weight:900;font-size:13px;margin-bottom:4px">👪 ${L('Kind(eren) aanmelden','Prijava djece')}</div>
     <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:10px">${L('Één PIN voor jou én al je kinderen — gebruik dit om in te loggen.','Jedan PIN za vas i svu vašu djecu — koristite ga za prijavu.')}</div>
-    ${lbl('Jouw naam (ouder)','Vaše ime (roditelj)')}
-    <input type="text" placeholder="${L('Naam ouder','Ime roditelja')}" value="${r.ouderNaam}" oninput="state.regData.ouderNaam=this.value" style="margin-bottom:4px;font-size:14px">
+    ${lbl('Jouw naam (ouder)','Vaše ime (roditelja)')}
+    <input type="text" placeholder="${L('Naam ouder 1','Ime roditelja 1')}" value="${r.ouderNaam}" oninput="state.regData.ouderNaam=this.value" style="margin-bottom:4px;font-size:14px">
+    ${lbl('Naam tweede ouder (optioneel)','Ime drugog roditelja (opcija)')}
+    <input type="text" placeholder="${L('Naam ouder 2 — optioneel','Ime roditelja 2 — opcionalno')}" value="${r.ouderNaam2||''}" oninput="state.regData.ouderNaam2=this.value" style="margin-bottom:4px;font-size:14px;border-color:var(--line)">
     ${lbl('Naam kind(eren)','Ime djece')}
     ${kinderenHtml}
     <button onclick="state.regData.kinderen.push('');render()" style="width:100%;padding:8px;border-radius:10px;border:1.5px dashed var(--green-mid);color:var(--green);font-weight:800;font-size:12px;margin-bottom:4px">
@@ -2771,25 +3765,56 @@ function ouderReg(){
   if(r.ouderPin.trim().length<4){ alert(L('PIN moet 4 cijfers zijn.','PIN mora biti 4 cifre.')); return; }
   const pin=r.ouderPin.trim();
   const ouderNaam=r.ouderNaam.trim();
-  const newKidIds=[];
+  const kidIds=[];
+  const gekoppeld=[], nieuw=[];
+
   kinderenGevuld.forEach(kindNaam=>{
-    const newKidId = crypto.randomUUID ? crypto.randomUUID().slice(0,18) : ('k'+Date.now()+Math.random().toString(36).slice(2,6));
-    const newKid = {id:newKidId, name:kindNaam, level:1, pin, pts:0, streak:0, rank:KIDS.length+1, sinceYear:new Date().getFullYear(), stationData:{}, ilmDoneData:{}};
-    KIDS.push(newKid);
-    ATTENDANCE[newKidId]=WEEKS.map(w=>({date:w,present:false}));
-    state.ilmDone[newKidId]={};
-    newKidIds.push(newKidId);
+    // Eerst zoeken of kind al bestaat (toegevoegd door efendija)
+    const bestaand = KIDS.find(k => normName(k.name) === normName(kindNaam));
+    if(bestaand){
+      // Koppelen aan bestaand kind — GEEN duplicaat aanmaken
+      kidIds.push(bestaand.id);
+      gekoppeld.push(kindNaam);
+    } else {
+      // Nieuw kind aanmaken
+      const newKidId = crypto.randomUUID ? crypto.randomUUID().slice(0,18) : ('k'+Date.now()+Math.random().toString(36).slice(2,6));
+      const newKid = {id:newKidId, name:kindNaam, level:1, pin, pts:0, streak:0, rank:KIDS.length+1, sinceYear:new Date().getFullYear(), stationData:{}, ilmDoneData:{}};
+      KIDS.push(newKid);
+      ATTENDANCE[newKidId]=WEEKS.map(w=>({date:w,present:false}));
+      state.ilmDone[newKidId]={};
+      kidIds.push(newKidId);
+      nieuw.push(kindNaam);
+    }
   });
+
   // Koppel aan bestaande ouder (zelfde naam+PIN) of maak nieuwe ouder aan
   const bestaandeOuder = PARENTS.find(p=>p.name===ouderNaam && p.pin===pin);
-  if(bestaandeOuder){ bestaandeOuder.kidIds.push(...newKidIds); }
-  else { PARENTS.push({id:++_parentIdCounter, name:ouderNaam, pin, kidIds:newKidIds}); }
-  state.regData={ouderNaam:'',ouderPin:'',kinderen:['']};
+  if(bestaandeOuder){
+    kidIds.forEach(id=>{ if(!bestaandeOuder.kidIds.includes(id)) bestaandeOuder.kidIds.push(id); });
+  } else {
+    PARENTS.push({id:++_parentIdCounter, name:ouderNaam, pin, kidIds});
+  }
+  // Tweede ouder aanmaken als ingevuld
+  const ouderNaam2 = (r.ouderNaam2||'').trim();
+  if(ouderNaam2){
+    const bestaandeOuder2 = PARENTS.find(p=>p.name===ouderNaam2 && p.pin===pin);
+    if(bestaandeOuder2){
+      kidIds.forEach(id=>{ if(!bestaandeOuder2.kidIds.includes(id)) bestaandeOuder2.kidIds.push(id); });
+    } else {
+      PARENTS.push({id:++_parentIdCounter, name:ouderNaam2, pin, kidIds:[...kidIds]});
+    }
+  }
+
+  state.regData={ouderNaam:'',ouderPin:'',kinderen:[''],ouderNaam2:''};
   state.showRegForm=false;
   render();
-  newKidIds.forEach(id=>saveKidToDB(id));
+  // Sla alle betrokken kids op (ook bestaande, zodat ouder-koppeling bewaard blijft)
+  kidIds.forEach(id=>saveKidToDB(id));
+
   const namen=kinderenGevuld.join(', ');
-  alert(L(`${namen} ${kinderenGevuld.length===1?'is':'zijn'} aangemeld! Log in als ouder met PIN ${pin}.`,`${namen} ${kinderenGevuld.length===1?'je prijavljen/a':'su prijavljeni'}! Prijavite se kao roditelj s PIN-om ${pin}.`));
+  const gekoppeldMsg = gekoppeld.length ? L(` (${gekoppeld.join(', ')} was al in het systeem en is gekoppeld)`,` (${gekoppeld.join(', ')} je već u sustavu i povezano)`) : '';
+  alert(L(`Aangemeld! ${namen} is nu gekoppeld aan jouw ouderaccount.${gekoppeldMsg} Log in met PIN ${pin}.`,
+          `Prijavljeno! ${namen} je sada povezano s vašim računom.${gekoppeldMsg} Prijavite se s PIN-om ${pin}.`));
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2797,6 +3822,10 @@ function ouderReg(){
 // ═══════════════════════════════════════════════════════════════
 function openBadgeModal(idx){ state.showBadgeModal=idx; render(); }
 function closeBadgeModal(){ state.showBadgeModal=null; render(); }
+const BADGE_COLORS = [
+  '#10b981','#a855f7','#3b82f6','#ec4899','#f59e0b',
+  '#06b6d4','#ef4444','#b45309','#0ea5e9','#94a3b8','#eab308'
+];
 function badgeModalHtml(){
   if(state.showBadgeModal===null) return '';
   const b = BADGES[state.showBadgeModal];
@@ -2804,25 +3833,53 @@ function badgeModalHtml(){
   const name = state.lang==='nl' ? b.name : b.name_bs;
   const desc = state.lang==='nl' ? b.desc : b.desc_bs;
   const how  = state.lang==='nl' ? b.how  : b.how_bs;
+  const col  = BADGE_COLORS[state.showBadgeModal] || '#10b981';
+
+  // ── BEHAALD → dark glow modal ──
+  if(b.got){
+    return `<div onclick="closeBadgeModal()" style="position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;animation:fadeIn .2s ease">
+      <div onclick="event.stopPropagation()" style="width:100%;max-width:360px;background:linear-gradient(160deg,#090f1c,#0b1a12);border:1.5px solid ${col}30;border-radius:28px;padding:32px 22px 26px;text-align:center;animation:popIn .25s ease;position:relative;overflow:hidden">
+        <!-- glow achtergrond -->
+        <div style="position:absolute;top:-40px;left:50%;transform:translateX(-50%);width:200px;height:200px;background:radial-gradient(circle,${col}22 0%,transparent 70%);pointer-events:none"></div>
+        <!-- badge icoon -->
+        <div style="width:90px;height:90px;border-radius:50%;background:radial-gradient(circle at 35% 35%,${col}dd,${col}88);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:42px;box-shadow:0 0 32px ${col}55,0 0 64px ${col}22;position:relative;z-index:1">
+          ${b.icon}
+        </div>
+        <!-- label -->
+        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${col};opacity:.8;margin-bottom:6px;font-family:system-ui">
+          ${L('Badge behaald','Značka osvojena')} ✦
+        </div>
+        <!-- naam -->
+        <div style="font-size:26px;font-weight:900;color:#fff;margin-bottom:16px;text-shadow:0 0 24px ${col}88;letter-spacing:-.3px">
+          ${name}
+        </div>
+        <!-- beschrijving -->
+        <div style="background:rgba(255,255,255,.05);border:1px solid ${col}25;border-radius:16px;padding:14px 16px;margin-bottom:20px">
+          <div style="font-size:14px;color:#ccc;line-height:1.6;font-weight:600">${desc}</div>
+        </div>
+        <!-- sluit knop -->
+        <button onclick="closeBadgeModal()" style="width:100%;padding:14px;background:${col};color:#fff;border:0;border-radius:16px;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 4px 16px ${col}44">
+          ${L('Super! Sluiten','Super! Zatvori')} 🎉
+        </button>
+      </div>
+    </div>`;
+  }
+
+  // ── NOG NIET BEHAALD → lichte bottom sheet ──
   return `<div class="badge-modal-overlay" onclick="closeBadgeModal()">
     <div class="badge-modal-sheet" onclick="event.stopPropagation()">
-      <div class="badge-modal-icon ${b.got?'':'locked'}">${b.icon}</div>
+      <div class="badge-modal-icon locked">${b.icon}</div>
       <div style="text-align:center;margin-bottom:14px">
         <div style="font-weight:900;font-size:19px;letter-spacing:-.3px">${name}</div>
         <div style="margin-top:4px">
-          ${b.got
-            ? `<span style="background:var(--green-soft);color:var(--green);font-size:11px;font-weight:800;padding:3px 10px;border-radius:8px">✅ ${T('badgesEarned')}</span>`
-            : `<span style="background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:800;padding:3px 10px;border-radius:8px">🔒 ${T('badgesNotYet')}</span>`}
+          <span style="background:#f1f5f9;color:var(--muted);font-size:11px;font-weight:800;padding:3px 10px;border-radius:8px">🔒 ${T('badgesNotYet')}</span>
         </div>
       </div>
-      <div style="background:var(--bg);border-radius:16px;padding:14px;margin-bottom:12px">
-        <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.5">${desc}</div>
-      </div>
-      ${!b.got ? `<div style="background:var(--gold-soft);border-radius:16px;padding:12px 14px;margin-bottom:14px">
+      <div style="background:var(--gold-soft);border-radius:16px;padding:12px 14px;margin-bottom:14px">
         <div style="font-size:11px;font-weight:900;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💡 ${L('Hoe behaal je dit?','Kako to osvojiti?')}</div>
         <div style="font-size:13px;font-weight:700;color:var(--ink);line-height:1.5">${how}</div>
-      </div>` : ''}
-      <button onclick="closeBadgeModal()" style="width:100%;padding:14px;background:var(--green);color:#fff;border-radius:16px;font-weight:900;font-size:15px">
+      </div>
+      <button onclick="closeBadgeModal()" style="width:100%;padding:14px;background:var(--green);color:#fff;border-radius:16px;font-weight:900;font-size:15px;border:0;cursor:pointer">
         ${L('Sluiten','Zatvori')}
       </button>
     </div>
@@ -3055,6 +4112,7 @@ async function loadData(){
         sinceYear: row.since_year||2026,
         stationData: row.suras||{},
         ilmDoneData: row.ilmihal||{},
+        notities: row.notities||'',
       };
       KIDS.push(kid);
       state.ilmDone[row.id] = row.ilmihal||{};
@@ -3110,6 +4168,7 @@ async function saveKidToDB(kidId){
       since_year: k.sinceYear||2026,
       huiswerk: HOMEWORK.filter(h=>h.kidId===k.id),
       parent_notifications: PARENT_NOTIFICATIONS[k.id]||{},
+      notities: k.notities||'',
     });
   } catch(e){ console.error('DB fout bij opslaan:', e); }
 }
@@ -3141,7 +4200,9 @@ function saveParentName(parentId){
 try {
   const savedLang = localStorage.getItem('mekteb_lang');
   if(savedLang==='nl' || savedLang==='bs') state.lang = savedLang;
-  if(localStorage.getItem('mekteb_dark')==='1') state.darkMode = true;
+  // darkMode altijd licht — localStorage waarde negeren
+  state.darkMode = false;
+  try{ localStorage.removeItem('mekteb_dark'); }catch(_){}
 } catch(_){}
 
 loadData(); // haalt data op uit Supabase en roept daarna render() aan
