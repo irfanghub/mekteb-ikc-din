@@ -609,12 +609,22 @@ async function registerSW() {
 
 async function subscribePush(kidId, role) {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    alert(L('Push notificaties worden niet ondersteund door jouw browser.','Push notifikacije nisu podržane u vašem pregledaču.'));
+    alert('Push niet ondersteund\nSW='+('serviceWorker' in navigator)+' Push='+('PushManager' in window));
+    return false;
+  }
+  if (Notification.permission === 'denied') {
+    alert(L(
+      'Notificaties zijn geblokkeerd.\n\nGa naar: Instellingen → zoek de app → Notificaties → Zet aan',
+      'Notifikacije su blokirane.\n\nIdi na: Postavke → pronađi app → Obavijesti → Uključi'
+    ));
     return false;
   }
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') {
-    alert(L('Je hebt notificaties geweigerd. Schakel ze in via je browserinstellingen.','Odbili ste notifikacije. Uključite ih u postavkama pregledača.'));
+    alert('Status: ' + perm + '\n\n' + L(
+      'Toestemming geweigerd. Controleer je telefooninstellingen.',
+      'Dozvola odbijena. Provjeri postavke telefona.'
+    ));
     return false;
   }
   try {
