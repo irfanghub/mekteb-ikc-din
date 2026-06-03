@@ -589,6 +589,74 @@ const DB = supabase.createClient(
 );
 
 // ═══════════════════════════════════════════════════════════════
+// PUSH NOTIFICATIES — Service Worker + subscribe
+// ═══════════════════════════════════════════════════════════════
+const VAPID_PUBLIC = 'BE8pYgYmR8WCJ5W3OX7LTjzOJv5F5Z4pYZ_kVjWVj6sW6Mitl8uOctts5S8Vk-1xnzsum178Er4k4PUImsTkcuc';
+
+function urlBase64ToUint8Array(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const base64 = (b64 + pad).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function registerSW() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try {
+    await navigator.serviceWorker.register('/sw.js');
+  } catch(e) { console.warn('SW register failed:', e); }
+}
+
+async function subscribePush(kidId, role) {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert(L('Push notificaties worden niet ondersteund door jouw browser.','Push notifikacije nisu podržane u vašem pregledaču.'));
+    return false;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') {
+    alert(L('Je hebt notificaties geweigerd. Schakel ze in via je browserinstellingen.','Odbili ste notifikacije. Uključite ih u postavkama pregledača.'));
+    return false;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC)
+      });
+    }
+    // Save to Supabase
+    await DB.from('push_subscriptions').upsert({
+      kid_id: kidId,
+      role: role,
+      subscription: sub.toJSON()
+    }, { onConflict: 'kid_id,role,subscription' });
+    return true;
+  } catch(e) {
+    console.error('Push subscribe error:', e);
+    return false;
+  }
+}
+
+async function sendPushNotif(kidId, title, body) {
+  try {
+    await fetch('/api/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kidId, title, body })
+    });
+  } catch(e) { console.warn('Push send failed:', e); }
+}
+
+// Register SW on load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', registerSW);
+} else {
+  registerSW();
+}
+
+// ═══════════════════════════════════════════════════════════════
 // RUNTIME DATA — gevuld vanuit Supabase bij opstarten
 // ═══════════════════════════════════════════════════════════════
 let KIDS    = [];
@@ -2075,6 +2143,16 @@ function kidProfile(){
         <div class="stat"><div class="icon" style="background:var(--purple-soft);color:var(--purple)">🏅</div><div class="num">${BADGES.filter(b=>b.got).length}</div><div class="lbl">badges</div></div>
       </div>
       <div class="section-head" style="margin-top:16px"><div class="h3">${T('allBadgesTtl')}</div></div>
+      <div style="margin:0 14px 16px">
+        <div class="list-row" onclick="enableNotifications('${k.id}','kind','${k.name.replace(/'/g,"\\'")}')" style="border-radius:12px;border:1.5px solid var(--green-mid);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;background:var(--green-soft)">
+          <div style="font-size:22px">🔔</div>
+          <div style="flex:1">
+            <div style="font-weight:900;font-size:13px;color:var(--green)">${L('Notificaties inschakelen','Uključi notifikacije')}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">${L('Krijg een melding als efendija huiswerk of een notitie toevoegt','Primaj obavijest kad efendija doda domaći ili bilješku')}</div>
+          </div>
+          <div style="color:var(--green);font-size:18px">›</div>
+        </div>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
         ${BADGES.map((b,i)=>`<div class="badge ${b.got?'':'locked'}" style="flex:0;cursor:pointer" onclick="openBadgeModal(${i})">
           <div class="b-icon">${b.icon}</div>
@@ -2426,6 +2504,18 @@ function ouderProfile(){
           <div style="flex:1"><div class="name">${L('Pincode wijzigen','Promijeni PIN')}</div><div class="muted" style="font-size:11px">${L('Verander je persoonlijke pincode','Promijeni osobni PIN')}</div></div>
           <div style="color:var(--muted);font-size:16px">›</div>
         </div>
+      </div>
+      <div style="padding:0 14px 4px;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">🔔 ${L('Notificaties','Notifikacije')}</div>
+      <div class="list" style="margin:0 14px 10px">
+        ${kids.map(k=>`
+        <div class="list-row" onclick="enableNotifications('${k.id}','ouder','${k.name.replace(/'/g,"\\'")}')">
+          <div style="font-size:18px">🔔</div>
+          <div style="flex:1">
+            <div class="name">${L('Notificaties inschakelen','Uključi notifikacije')} — ${k.name}</div>
+            <div class="muted" style="font-size:11px">${L('Ontvang melding bij huiswerk of notitie efendija','Primajte obavijest za domaći ili bilješku efendije')}</div>
+          </div>
+          <div style="color:var(--green);font-size:16px">›</div>
+        </div>`).join('')}
       </div>
       <div style="padding:0 14px 4px;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">${L('Mijn kinderen','Moja djeca')}</div>
       <div class="list" style="margin:0 14px 10px">
@@ -2782,8 +2872,17 @@ function efSaveNotitie(kidId){
   const k = KIDS.find(x=>x.id===kidId);
   const ta = document.getElementById('ef-notitie-'+kidId);
   if(!k||!ta) return;
+  const oldNote = k.notities||'';
   k.notities = ta.value;
   saveKidToDB(kidId);
+  // Push alleen als notitie nieuw of gewijzigd is
+  if(ta.value.trim() && ta.value.trim() !== oldNote.trim()){
+    const title = state.lang==='nl'
+      ? `💬 Nieuwe notitie — ${k.name}`
+      : `💬 Nova bilješka — ${k.name}`;
+    const body = ta.value.slice(0, 100) + (ta.value.length > 100 ? '…' : '');
+    sendPushNotif(kidId, title, body);
+  }
   render();
 }
 
@@ -4066,8 +4165,29 @@ function efAddHw(kidId){
   const n=state.newHw;
   if(!n.title.trim())return;
   HOMEWORK.push({id:++_hwIdCtr, kidId, title:n.title, title_bs:n.title, desc:n.desc, desc_bs:n.desc, dueDays:parseInt(n.dueDays)||7, done:false, fromTeacher:state.me?.id||201});
-  state.newHw={title:'',desc:'',dueDays:7}; state.showAddHw=false; render(); saveKidToDB(kidId);
+  state.newHw={title:'',desc:'',dueDays:7}; state.showAddHw=false;
+  saveKidToDB(kidId);
+  // Push notificatie naar ouder + kind
+  const hwKid = KIDS.find(x=>x.id===kidId);
+  if(hwKid){
+    const hwTitle = state.lang==='nl'
+      ? `📝 Nieuw huiswerk — ${hwKid.name}`
+      : `📝 Novi domaći zadatak — ${hwKid.name}`;
+    const hwBody = `"${n.title}"`;
+    sendPushNotif(kidId, hwTitle, hwBody);
+  }
+  render();
 }
+async function enableNotifications(kidId, role, kidName){
+  const ok = await subscribePush(kidId, role);
+  if(ok){
+    const msg = (state.lang==='nl')
+      ? `✅ Notificaties ingeschakeld voor ${kidName}!\nJe krijgt een melding bij nieuw huiswerk of een notitie van de efendija.`
+      : `✅ Notifikacije uključene za ${kidName}!\nPrimat ćete obavijest za novi domaći ili bilješku od efendije.`;
+    alert(msg);
+  }
+}
+
 function setHwField(f,v){state.newHw[f]=v;}
 
 // Efendija koppelt ouder aan kind (nieuw of bestaand op basis van naam+pin)
