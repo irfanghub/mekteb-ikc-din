@@ -1783,9 +1783,9 @@ function tapKey(k){
         state.me = state.selectedPerson;
         state.view = 'app'; state.nav='home'; state.pin='';
         if(state.role==='kind') state.pathLevel = state.me.level;
-        // Notificatie modal tonen als nog geen keuze gemaakt
+        // Notificatie modal tonen als nog niet gesubscribed
         const notifKey = (state.role==='kind' ? 'k_' : 'o_') + state.me.id;
-        if(!localStorage.getItem('ikc_notif_' + notifKey)) state.showNotifModal = true;
+        if(localStorage.getItem('ikc_notif_' + notifKey) !== 'subscribed') state.showNotifModal = true;
         render();
       } else {
         // Fout: dots rood, geen full render
@@ -3918,7 +3918,7 @@ function ouderReg(){
     state.view = 'app';
     state.nav = 'home';
     const notifKey = 'o_' + ingelogdeOuder.id;
-    if(!localStorage.getItem('ikc_notif_' + notifKey)) state.showNotifModal = true;
+    if(localStorage.getItem('ikc_notif_' + notifKey) !== 'subscribed') state.showNotifModal = true;
   }
   render();
   // Sla alle betrokken kids op (ook bestaande, zodat ouder-koppeling bewaard blijft)
@@ -3981,8 +3981,6 @@ async function acceptNotif(){
 }
 
 function declineNotif(){
-  const notifKey = (state.role==='kind' ? 'k_' : 'o_') + state.me.id;
-  localStorage.setItem('ikc_notif_' + notifKey, 'declined');
   state.showNotifModal = false;
   render();
 }
