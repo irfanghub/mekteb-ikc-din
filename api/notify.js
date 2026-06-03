@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
 
   // Fetch subscriptions for this kid
   const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/push_subscriptions?kid_id=eq.${encodeURIComponent(kidId)}&select=subscription`,
+    `${SUPABASE_URL}/rest/v1/push_subscriptions?kid_id=eq.${encodeURIComponent(kidId)}&select=id,subscription`,
     { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
   );
   const subs = await r.json();
@@ -32,17 +32,19 @@ module.exports = async function handler(req, res) {
     ))
   );
 
-  // Clean up expired subscriptions (410 = gone)
-  const expired = [];
-  results.forEach((r, i) => {
-    if (r.status === 'rejected' && r.reason?.statusCode === 410) {
-      expired.push(JSON.stringify(subs[i].subscription));
+  // Clean up expired subscriptions (410 = gone, 404 = not found)
+  const expiredIds = [];
+  results.forEach((result, i) => {
+    if (result.status === 'rejected') {
+      const code = result.reason?.statusCode;
+      if (code === 410 || code === 404) expiredIds.push(subs[i].id);
     }
   });
-  if (expired.length) {
+
+  if (expiredIds.length) {
     await fetch(
-      `${SUPABASE_URL}/rest/v1/push_subscriptions?kid_id=eq.${encodeURIComponent(kidId)}`,
-      { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' } }
+      `${SUPABASE_URL}/rest/v1/push_subscriptions?id=in.(${expiredIds.join(',')})`,
+      { method: 'DELETE', headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
     );
   }
 
