@@ -1085,6 +1085,7 @@ let state = {
   lang: 'nl',
   darkMode: false,
   view: 'splash',     // splash, role, login, app
+  showNotifModal: false,
   role: null,         // 'efendija' | 'bestuur' | 'ouder' | 'kind'
   selectedPerson: null,
   pin: '',
@@ -1178,8 +1179,8 @@ function router(){
   </div>`;
   if(state.view==='splash')   return splashView();
   if(state.view==='login')    return loginView();
-  if(state.me && state.role==='kind')    return kidApp();
-  if(state.me && state.role==='ouder')   return ouderApp();
+  if(state.me && state.role==='kind')    return kidApp()    + notifModalHtml();
+  if(state.me && state.role==='ouder')   return ouderApp()  + notifModalHtml();
   if(state.me && state.role==='efendija')return efApp();
   if(state.me && state.role==='bestuur') return bestuurApp();
   return splashView();
@@ -1782,6 +1783,9 @@ function tapKey(k){
         state.me = state.selectedPerson;
         state.view = 'app'; state.nav='home'; state.pin='';
         if(state.role==='kind') state.pathLevel = state.me.level;
+        // Notificatie modal tonen als nog geen keuze gemaakt
+        const notifKey = (state.role==='kind' ? 'k_' : 'o_') + state.me.id;
+        if(!localStorage.getItem('ikc_notif_' + notifKey)) state.showNotifModal = true;
         render();
       } else {
         // Fout: dots rood, geen full render
@@ -3906,6 +3910,16 @@ function ouderReg(){
 
   state.regData={ouderNaam:'',ouderPin:'',kinderen:[''],ouderNaam2:''};
   state.showRegForm=false;
+  // Log in als ouder en toon notificatie modal
+  const ingelogdeOuder = PARENTS.find(p=>p.name===ouderNaam && p.pin===pin);
+  if(ingelogdeOuder){
+    state.me = ingelogdeOuder;
+    state.role = 'ouder';
+    state.view = 'app';
+    state.nav = 'home';
+    const notifKey = 'o_' + ingelogdeOuder.id;
+    if(!localStorage.getItem('ikc_notif_' + notifKey)) state.showNotifModal = true;
+  }
   render();
   // Sla alle betrokken kids op (ook bestaande, zodat ouder-koppeling bewaard blijft)
   kidIds.forEach(id=>saveKidToDB(id));
@@ -3914,6 +3928,63 @@ function ouderReg(){
   const gekoppeldMsg = gekoppeld.length ? L(` (${gekoppeld.join(', ')} was al in het systeem en is gekoppeld)`,` (${gekoppeld.join(', ')} je već u sustavu i povezano)`) : '';
   alert(L(`Aangemeld! ${namen} is nu gekoppeld aan jouw ouderaccount.${gekoppeldMsg} Log in met PIN ${pin}.`,
           `Prijavljeno! ${namen} je sada povezano s vašim računom.${gekoppeldMsg} Prijavite se s PIN-om ${pin}.`));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NOTIFICATIE MODAL — toont na login als nog geen keuze
+// ═══════════════════════════════════════════════════════════════
+function notifModalHtml(){
+  if(!state.showNotifModal) return '';
+  const kids = state.role==='ouder'
+    ? KIDS.filter(k=>state.me.kidIds.includes(k.id))
+    : [state.me];
+  const names = kids.map(k=>k.name).join(', ');
+  return `<div style="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:24px">
+    <div style="background:var(--card);border-radius:20px;padding:28px 24px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);text-align:center">
+      <div style="font-size:52px;margin-bottom:12px">🔔</div>
+      <div style="font-size:20px;font-weight:900;color:var(--ink);margin-bottom:8px;line-height:1.3">
+        ${L('Notificaties inschakelen?','Uključiti notifikacije?')}
+      </div>
+      <div style="font-size:13px;color:var(--muted);font-weight:700;margin-bottom:6px;line-height:1.5">
+        ${L('Ontvang een melding op je telefoon zodra de efendija huiswerk opgeeft of een bericht achterlaat voor:',
+            'Primajte obavijest na telefon čim efendija zada domaći ili ostavi poruku za:')}
+      </div>
+      <div style="font-size:15px;font-weight:900;color:var(--green);margin-bottom:22px">👦 ${names}</div>
+      <button onclick="acceptNotif()" style="width:100%;padding:15px;background:var(--green);color:#fff;border:0;border-radius:14px;font-size:16px;font-weight:900;cursor:pointer;margin-bottom:10px;font-family:inherit">
+        ✅ ${L('Ja, zet notificaties aan','Da, uključi notifikacije')}
+      </button>
+      <button onclick="declineNotif()" style="width:100%;padding:11px;background:transparent;color:var(--muted);border:0;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:underline">
+        ${L('Nee, later instellen','Ne, postavi kasnije')}
+      </button>
+    </div>
+  </div>`;
+}
+
+async function acceptNotif(){
+  const kids = state.role==='ouder'
+    ? KIDS.filter(k=>state.me.kidIds.includes(k.id))
+    : [state.me];
+  state.showNotifModal = false;
+  render();
+  // Subscribe voor elk kind
+  let allOk = true;
+  for(const k of kids){
+    const ok = await subscribePush(k.id, state.role);
+    if(!ok) allOk = false;
+  }
+  if(allOk){
+    // Sla keuze op in localStorage zodat modal niet meer verschijnt
+    const notifKey = (state.role==='kind' ? 'k_' : 'o_') + state.me.id;
+    localStorage.setItem('ikc_notif_' + notifKey, 'subscribed');
+    render();
+  }
+}
+
+function declineNotif(){
+  const notifKey = (state.role==='kind' ? 'k_' : 'o_') + state.me.id;
+  localStorage.setItem('ikc_notif_' + notifKey, 'declined');
+  state.showNotifModal = false;
+  render();
 }
 
 // ═══════════════════════════════════════════════════════════════
