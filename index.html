@@ -2158,14 +2158,14 @@ function kidProfile(){
       </div>
       <div class="section-head" style="margin-top:16px"><div class="h3">${T('allBadgesTtl')}</div></div>
       <div style="margin:0 14px 16px">
-        <div class="list-row" onclick="enableNotifications('${k.id}','kind','${k.name.replace(/'/g,\"\\'\")}')" style="border-radius:12px;border:1.5px solid var(--green-mid);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;background:var(--green-soft)">
-          ${(()=>{const s=notifStatusLabel(k.id,'kind');return `
-          <div style="font-size:22px">${s.icon}</div>
+        <div class="list-row" onclick="enableNotifications(state.me.id,'kind',state.me.name)" style="border-radius:12px;border:1.5px solid var(--green-mid);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;background:var(--green-soft)">
+          <div style="font-size:22px">${notifStatusLabel(k.id,'kind').icon}</div>
           <div style="flex:1">
-            <div style="font-weight:900;font-size:13px;color:${s.color}">${s.label}</div>
-            <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">${s.sub}</div>
+            <div style="font-weight:900;font-size:13px;color:${notifStatusLabel(k.id,'kind').color}">${notifStatusLabel(k.id,'kind').label}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">${notifStatusLabel(k.id,'kind').sub}</div>
           </div>
-          <div style="color:var(--green);font-size:18px">›</div>`;})()}
+          <div style="color:var(--green);font-size:18px">›</div>
+        </div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
@@ -2524,15 +2524,14 @@ function ouderProfile(){
       <div class="list" style="margin:0 14px 10px">
         ${kids.map(k=>`
         <div class="list-row" onclick="enableNotifications('${k.id}','ouder','${k.name.replace(/'/g,"\\'")}')"> 
-          ${(()=>{const s=notifStatusLabel(k.id,'ouder');return `
-          <div style="font-size:18px">${s.icon}</div>
+        <div class="list-row" onclick="enableNotifications('${k.id}','ouder','${k.name}')">
+          <div style="font-size:18px">${notifStatusLabel(k.id,'ouder').icon}</div>
           <div style="flex:1">
-            <div class="name" style="color:${s.color}">${s.label} — ${k.name}</div>
-            <div class="muted" style="font-size:11px">${s.sub}</div>
+            <div class="name" style="color:${notifStatusLabel(k.id,'ouder').color}">${notifStatusLabel(k.id,'ouder').label} — ${k.name}</div>
+            <div class="muted" style="font-size:11px">${notifStatusLabel(k.id,'ouder').sub}</div>
           </div>
-          <div style="color:var(--green);font-size:16px">›</div>`;})()}
+          <div style="color:var(--green);font-size:16px">›</div>
         </div>`).join('')}
-      </div>
       <div style="padding:0 14px 4px;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">${L('Mijn kinderen','Moja djeca')}</div>
       <div class="list" style="margin:0 14px 10px">
         ${kids.map(k=>`
