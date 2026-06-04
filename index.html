@@ -2158,13 +2158,14 @@ function kidProfile(){
       </div>
       <div class="section-head" style="margin-top:16px"><div class="h3">${T('allBadgesTtl')}</div></div>
       <div style="margin:0 14px 16px">
-        <div class="list-row" onclick="enableNotifications('${k.id}','kind','${k.name.replace(/'/g,"\\'")}')" style="border-radius:12px;border:1.5px solid var(--green-mid);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;background:var(--green-soft)">
-          <div style="font-size:22px">🔔</div>
+        <div class="list-row" onclick="enableNotifications('${k.id}','kind','${k.name.replace(/'/g,\"\\'\")}')" style="border-radius:12px;border:1.5px solid var(--green-mid);padding:12px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;background:var(--green-soft)">
+          ${(()=>{const s=notifStatusLabel(k.id,'kind');return `
+          <div style="font-size:22px">${s.icon}</div>
           <div style="flex:1">
-            <div style="font-weight:900;font-size:13px;color:var(--green)">${L('Notificaties inschakelen','Uključi notifikacije')}</div>
-            <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">${L('Krijg een melding als efendija huiswerk of een notitie toevoegt','Primaj obavijest kad efendija doda domaći ili bilješku')}</div>
+            <div style="font-weight:900;font-size:13px;color:${s.color}">${s.label}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">${s.sub}</div>
           </div>
-          <div style="color:var(--green);font-size:18px">›</div>
+          <div style="color:var(--green);font-size:18px">›</div>`;})()}
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
@@ -2522,13 +2523,14 @@ function ouderProfile(){
       <div style="padding:0 14px 4px;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">🔔 ${L('Notificaties','Notifikacije')}</div>
       <div class="list" style="margin:0 14px 10px">
         ${kids.map(k=>`
-        <div class="list-row" onclick="enableNotifications('${k.id}','ouder','${k.name.replace(/'/g,"\\'")}')">
-          <div style="font-size:18px">🔔</div>
+        <div class="list-row" onclick="enableNotifications('${k.id}','ouder','${k.name.replace(/'/g,"\\'")}')"> 
+          ${(()=>{const s=notifStatusLabel(k.id,'ouder');return `
+          <div style="font-size:18px">${s.icon}</div>
           <div style="flex:1">
-            <div class="name">${L('Notificaties inschakelen','Uključi notifikacije')} — ${k.name}</div>
-            <div class="muted" style="font-size:11px">${L('Ontvang melding bij huiswerk of notitie efendija','Primajte obavijest za domaći ili bilješku efendije')}</div>
+            <div class="name" style="color:${s.color}">${s.label} — ${k.name}</div>
+            <div class="muted" style="font-size:11px">${s.sub}</div>
           </div>
-          <div style="color:var(--green);font-size:16px">›</div>
+          <div style="color:var(--green);font-size:16px">›</div>`;})()}
         </div>`).join('')}
       </div>
       <div style="padding:0 14px 4px;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.6px">${L('Mijn kinderen','Moja djeca')}</div>
@@ -4258,13 +4260,33 @@ function efAddHw(kidId){
   render();
 }
 async function enableNotifications(kidId, role, kidName){
+  // Als al geblokkeerd op systeem niveau: toon duidelijke instructie ipv te proberen
+  if(Notification.permission === 'denied'){
+    const msg = (state.lang==='nl')
+      ? '🔕 Notificaties zijn geblokkeerd.\n\nZet ze aan via:\nInstellingen → zoek \'mekteb\' → Notificaties → Zet aan\n\nHerstart daarna de app.'
+      : '🔕 Notifikacije su blokirane.\n\nUključi ih u:\nPostavke → pronađi \'mekteb\' → Obavijesti → Uključi\n\nNakon toga ponovo pokreni app.';
+    alert(msg);
+    return;
+  }
   const ok = await subscribePush(kidId, role);
   if(ok){
+    const notifKey = (role==='kind' ? 'k_' : 'o_') + kidId;
+    localStorage.setItem('ikc_notif_' + notifKey, 'subscribed');
+    render(); // update knop status
     const msg = (state.lang==='nl')
       ? `✅ Notificaties ingeschakeld voor ${kidName}!\nJe krijgt een melding bij nieuw huiswerk of een notitie van de efendija.`
       : `✅ Notifikacije uključene za ${kidName}!\nPrimat ćete obavijest za novi domaći ili bilješku od efendije.`;
     alert(msg);
   }
+}
+
+function notifStatusLabel(kidId, role){
+  const key = 'ikc_notif_' + (role==='kind' ? 'k_' : 'o_') + kidId;
+  const stored = localStorage.getItem(key);
+  const perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  if(perm === 'denied') return {icon:'🔕', label: L('Geblokkeerd — zie instellingen','Blokirano — vidi postavke'), color:'var(--red)', sub: L('Ga naar Instellingen → zoek mekteb → Notificaties','Idi u Postavke → pronađi mekteb → Obavijesti')};
+  if(stored === 'subscribed' && perm === 'granted') return {icon:'🔔', label: L('Notificaties aan','Notifikacije uključene'), color:'var(--green)', sub: L('Je ontvangt meldingen','Primate obavijesti')};
+  return {icon:'🔔', label: L('Notificaties inschakelen','Uključi notifikacije'), color:'var(--green)', sub: L('Tik om notificaties aan te zetten','Tapni za uključivanje')};
 }
 
 function setHwField(f,v){state.newHw[f]=v;}
