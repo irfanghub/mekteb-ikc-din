@@ -1714,6 +1714,10 @@ function tapKey(k){
         state.me = state.selectedPerson;
         state.view = 'app'; state.nav='home'; state.pin='';
         if(state.role==='kind') state.pathLevel = state.me.level;
+        // Onthoud ouder sessie op dit apparaat
+        if(state.role==='ouder'){
+          try{ localStorage.setItem('ikc_ouder_session', state.me.id); }catch(_){}
+        }
         render();
       } else {
         // Fout: dots rood, geen full render
@@ -3981,7 +3985,10 @@ function setLang(l){ state.lang=l; try{localStorage.setItem('mekteb_lang', l);}c
 function pickRole(r){ state.role=r; state.view='login'; state.searchQuery=''; render(); }
 function pickPerson(id){ state.selectedPerson = pool().find(p=>String(p.id)===String(id)); state.pin=''; render(); }
 function setNav(k){ state.nav=k; state.threadOpen=null; render(); }
-function logout(){ state.me=null; state.selectedPerson=null; state.pin=''; state.role=null; state.view='splash'; state.nav='home'; state.threadOpen=null; render(); }
+function logout(){ 
+  try{ localStorage.removeItem('ikc_ouder_session'); }catch(_){}
+  state.me=null; state.selectedPerson=null; state.pin=''; state.role=null; state.view='splash'; state.nav='home'; state.threadOpen=null; render(); 
+}
 function toggleIlmCat(id){ state.openIlmCat = state.openIlmCat===id ? null : id; render(); }
 // Alleen efendija mag lessen afvinken (kidId verplicht)
 function toggleIlmLes(kidId, lesId){
@@ -4143,7 +4150,9 @@ async function loadData(){
     });
     [...KIDS].sort((a,b)=>b.pts-a.pts).forEach((k,i)=>k.rank=i+1);
   } catch(e){ console.error('DB fout bij laden:', e); }
-  state.loading = false; render();
+  state.loading = false;
+  await restoreOuderSession();
+  if(!state.me) render();
 }
 
 async function saveKidToDB(kidId){
@@ -4204,6 +4213,27 @@ try {
   state.darkMode = false;
   try{ localStorage.removeItem('mekteb_dark'); }catch(_){}
 } catch(_){}
+
+// Herstel ouder sessie na page load
+async function restoreOuderSession(){
+  try {
+    const savedId = localStorage.getItem('ikc_ouder_session');
+    if(!savedId) return;
+    // Wacht tot PARENTS geladen zijn
+    const ouder = PARENTS.find(p => p.id === savedId || String(p.id) === String(savedId));
+    if(ouder){
+      state.me = ouder;
+      state.role = 'ouder';
+      state.selectedPerson = ouder;
+      state.view = 'app';
+      state.nav = 'home';
+      render();
+    } else {
+      // Ouder niet meer gevonden (verwijderd) — wis sessie
+      localStorage.removeItem('ikc_ouder_session');
+    }
+  } catch(_){}
+}
 
 loadData(); // haalt data op uit Supabase en roept daarna render() aan
 </script>
