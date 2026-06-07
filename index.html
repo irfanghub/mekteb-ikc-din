@@ -207,6 +207,7 @@ input,select,textarea{font-family:inherit;font-weight:600}
 .hw .check.done{background:var(--green);border-color:var(--green);color:#fff;font-weight:900;font-size:14px}
 
 /* MESSAGE */
+.ef-color{background:var(--blue)!important;color:#fff}
 .msg-row{background:#fff;border-radius:14px;padding:14px;box-shadow:var(--shadow-sm);margin-bottom:10px;cursor:pointer;display:flex;gap:12px;align-items:start}
 .msg-row.unread{border-left:4px solid var(--green)}
 .msg-row.unread .msg-from{color:var(--green)}
@@ -2392,9 +2393,9 @@ function ouderMessages(){
         }).join('')}
     <button onclick="openNieuwBericht()" style="width:100%;margin-top:14px;background:var(--green);color:#fff;padding:14px;border-radius:14px;font-weight:800;border:0;cursor:pointer;font-size:15px">
       + ${L('Nieuw bericht','Nova poruka')}</button>
-    ${state.berichtCompose ? nieuwBerichtModal() : ''}
   </div>
-  ${navBar([['home',L('Home','Početna')],['msg','💬'],['me','⚙️']])}`;
+  ${navBar([['home',L('Home','Početna')],['msg','💬'],['me','⚙️']])}
+  ${state.berichtCompose ? nieuwBerichtModal() : ''}`;
 }
 
 function nieuwBerichtModal(){
@@ -3137,9 +3138,10 @@ function topbarEf(){
     <button onclick="logout()" style="background:var(--red-soft);color:var(--red);padding:7px 13px;border-radius:10px;font-size:12px;font-weight:800">⏻ ${T('logout')}</button>
   </div>
   <div class="ef-tabs">
-    <div class="ef-tab ${nav==='home'?'on':''}" onclick="state.nav='home';state.selectedKid=null;render()">${L('Start','Start')}</div>
-    <div class="ef-tab ${(nav==='students'||state.selectedKid)?'on':''}" onclick="state.nav='students';state.selectedKid=null;render()">${L('Klas','Razred')}</div>
-    <div class="ef-tab ${nav==='overzicht'?'on':''}" onclick="state.nav='overzicht';state.selectedKid=null;render()">${L('Overzicht','Pregled')}</div>
+    <div class="ef-tab ${nav==='home'?'on':''}" onclick="state.nav='home';state.selectedKid=null;state.threadOpen=null;render()">${L('Start','Start')}</div>
+    <div class="ef-tab ${(nav==='students'||state.selectedKid)?'on':''}" onclick="state.nav='students';state.selectedKid=null;state.threadOpen=null;render()">${L('Klas','Razred')}</div>
+    <div class="ef-tab ${nav==='overzicht'?'on':''}" onclick="state.nav='overzicht';state.selectedKid=null;state.threadOpen=null;render()">${L('Overzicht','Pregled')}</div>
+    <div class="ef-tab ${nav==='msg'?'on':''}" onclick="state.nav='msg';state.selectedKid=null;state.threadOpen=null;render()">💬${(()=>{const u=BERICHTEN.filter(b=>!b.gelezen_ef).length+Object.values(BERICHT_THREADS).flat().filter(r=>r.van==='ouder'&&!r.gelezen).length;return u>0?` <span style="background:var(--red);color:#fff;border-radius:99px;font-size:9px;padding:1px 5px;font-weight:900">${u}</span>`:''})()}</div>
   </div>`;
 }
 function efHome(){
@@ -3280,28 +3282,7 @@ function efStudents(){
   `;
 // ef-nav-removed
 }
-function efMessages(){
-  // For demo: efendija ziet alle conversaties met ouders (zelfde lijst, andere kant)
-  return `${topbarEf()}
-    <div class="screen">
-      <div class="greeting"><h1>${T('messages')}</h1><p>${T('teacherSendsMsg')}</p></div>
-      ${MESSAGES.map(m=>{
-        const k = KIDS.find(x=>x.id===m.kidId);
-        const par = PARENTS.find(p=>p.id===m.parentId);
-        return `<div class="msg-row" onclick="openThread(${m.id})">
-          <div class="avatar sm ${colorOf(par.name)}">${initial(par.name)}</div>
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;justify-content:space-between;gap:8px"><div class="msg-from">${par.name.split('(')[0].trim()}</div><div class="msg-when">${m.thread[m.thread.length-1][state.lang==='nl'?'when':'when_bs']}</div></div>
-            <div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:2px">— ${k.name}</div>
-            <div class="msg-preview">${state.lang==='nl'?m.thread[m.thread.length-1].txt:m.thread[m.thread.length-1].txt_bs}</div>
-          </div>
-        </div>`;
-      }).join('')}
-      <button style="width:100%;margin-top:14px;background:var(--green);color:#fff;padding:14px;border-radius:14px;font-weight:800">+ ${state.lang==='nl'?'Nieuw bericht':'Nova poruka'}</button>
-    </div>
-  `;
-// ef-nav-removed
-}
+
 function efProfile(){
   return `<div class="topbar">
       <button class="back-btn" onclick="setNav('home')">←</button>
