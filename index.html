@@ -2828,6 +2828,7 @@ function efApp(){
   if(state.nav==='home')      return efHome();
   if(state.nav==='students')  return state.selectedKid ? efStudentDetail() : efStudents();
   if(state.nav==='overzicht') return efOverzicht();
+  if(state.nav==='msg')       return efMessages();
   return efHome();
 }
 function efOverzicht(){
