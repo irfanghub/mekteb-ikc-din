@@ -4111,7 +4111,7 @@ function pickRole(r){ state.role=r; state.view='login'; state.searchQuery=''; re
 function pickPerson(id){ state.selectedPerson = pool().find(p=>String(p.id)===String(id)); state.pin=''; render(); }
 function setNav(k){ state.nav=k; state.threadOpen=null; render(); }
 function logout(){ 
-  try{ localStorage.removeItem('ikc_ouder_session'); localStorage.removeItem('ikc_ouder_naam'); }catch(_){}
+  try{ localStorage.removeItem('ikc_ouder_session'); }catch(_){}
   state.me=null; state.selectedPerson=null; state.pin=''; state.role=null; state.view='splash'; state.nav='home'; state.threadOpen=null; render(); 
 }
 function toggleIlmCat(id){ state.openIlmCat = state.openIlmCat===id ? null : id; render(); }
