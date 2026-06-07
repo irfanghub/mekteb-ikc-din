@@ -1409,7 +1409,13 @@ function pool(){
   return [];
 }
 function loginView(){
-  if(state.role==='ouder') return ouderLoginView();
+  if(state.role==='ouder'){
+    // Naam voorinvullen als bekend
+    if(!state.ouderTypedName){
+      try{ const n=localStorage.getItem('ikc_ouder_naam'); if(n) state.ouderTypedName=n; }catch(_){}
+    }
+    return ouderLoginView();
+  }
   if(state.selectedPerson) return pinView();
   // Efendija & bestuur: direct naar PIN
   if(state.role==='efendija' || state.role==='bestuur'){
@@ -1709,9 +1715,12 @@ function tapKey(k){
         state.me = state.selectedPerson;
         state.view = 'app'; state.nav='home'; state.pin='';
         if(state.role==='kind') state.pathLevel = state.me.level;
-        // Onthoud ouder sessie op dit apparaat
+        // Onthoud ouder sessie + naam op dit apparaat
         if(state.role==='ouder'){
-          try{ localStorage.setItem('ikc_ouder_session', state.me.id); }catch(_){}
+          try{
+            localStorage.setItem('ikc_ouder_session', state.me.id);
+            localStorage.setItem('ikc_ouder_naam', state.me.name);
+          }catch(_){}
         }
         render();
       } else {
@@ -4100,7 +4109,7 @@ function pickRole(r){ state.role=r; state.view='login'; state.searchQuery=''; re
 function pickPerson(id){ state.selectedPerson = pool().find(p=>String(p.id)===String(id)); state.pin=''; render(); }
 function setNav(k){ state.nav=k; state.threadOpen=null; render(); }
 function logout(){ 
-  try{ localStorage.removeItem('ikc_ouder_session'); }catch(_){}
+  try{ localStorage.removeItem('ikc_ouder_session'); localStorage.removeItem('ikc_ouder_naam'); }catch(_){}
   state.me=null; state.selectedPerson=null; state.pin=''; state.role=null; state.view='splash'; state.nav='home'; state.threadOpen=null; render(); 
 }
 function toggleIlmCat(id){ state.openIlmCat = state.openIlmCat===id ? null : id; render(); }
