@@ -2419,7 +2419,7 @@ function nieuwBerichtModal(){
         </select>
         <textarea id="bericht-tekst" rows="5" placeholder="${L('Schrijf uw bericht…','Napišite poruku…')}" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--border);font-size:14px;resize:none;box-sizing:border-box"></textarea>
       </div>
-      <div style="padding:0 20px 32px;flex-shrink:0;display:flex;gap:10px;border-top:1px solid var(--border);padding-top:14px">
+      <div style="padding:14px 20px 20px;flex-shrink:0;display:flex;gap:10px;border-top:1px solid var(--border);background:#fff;position:sticky;bottom:0">
         <button onclick="state.berichtCompose=false;render()" style="flex:1;padding:14px;border-radius:12px;border:1.5px solid var(--border);background:#fff;font-weight:800;cursor:pointer;font-size:14px">${L('Annuleren','Otkaži')}</button>
         <button onclick="verstuurBericht()" style="flex:2;padding:14px;border-radius:12px;background:var(--green);color:#fff;border:0;font-weight:900;cursor:pointer;font-size:15px">
           ${state.berichtSending ? '…' : L('Verstuur ↑','Pošalji ↑')}</button>
