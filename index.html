@@ -997,17 +997,9 @@ const WEEKS = (()=>{
   return arr;
 })();
 
-const MESSAGES = [
-  {id:1, kidId:1, parentId:101, fromId:201, fromName:'Efendija', subject:'Amina doet het super!', subject_bs:'Amina ide odlično!',
-   thread:[
-    {who:'them', txt:'Selam, Amina heeft Al-Fatiha en An-Nas perfect afgerond. Volgende week beginnen we Al-Ikhlas — kunt u thuis 5 min per dag oefenen?', txt_bs:'Selam, Amina je odlično završila Al-Fatihu i An-Nas. Sljedeće sedmice počinjemo Al-Ikhlas — možete li kod kuće vježbati 5 min dnevno?', when:'Vandaag 14:32', when_bs:'Danas 14:32'},
-    {who:'me', txt:'Hvala efendija! Inshallah doen we het.', txt_bs:'Hvala efendija! Inshallah ćemo vježbati.', when:'Vandaag 16:10', when_bs:'Danas 16:10'},
-   ], unread:false},
-  {id:2, kidId:1, parentId:101, fromId:201, fromName:'Efendija', subject:'Reminder: les zaterdag', subject_bs:'Podsjetnik: čas u subotu',
-   thread:[
-    {who:'them', txt:'Vergeet niet de notitieboekjes mee te brengen.', txt_bs:'Ne zaboravite ponijeti sveske.', when:'Gisteren', when_bs:'Jučer'},
-   ], unread:true},
-];
+// BERICHTEN — geladen vanuit Supabase (tabel: berichten)
+let BERICHTEN = []; // [{id, ouder_naam, ouder_id, kid_naam, tekst, van, created_at}]
+let BERICHT_THREADS = {}; // {thread_id: [{id, tekst, van, created_at}]}
 
 // ═══════════════════════════════════════════════════════════════
 // STATE & APP
@@ -1025,7 +1017,9 @@ let state = {
   pathTab: 'suras',   // suras | ilmihal | quran
   pathLevel: null,    // for kid: their own level by default
   searchQuery: '',
-  threadOpen: null,   // message id
+  threadOpen: null,   // bericht thread_id
+  berichtCompose: false, // ouder: nieuw bericht modal open
+  berichtSending: false,
   showArchief: false, // toggle: huidige niveau vs alle afgelegde
   ilmDone: {},        // {kidId: {lessonId: true}} — efendija markeert per leerling
   openIlmCat: null,   // welke categorie is open in ilmihal tab
@@ -2204,8 +2198,9 @@ function addKidFormHtml(){
 // OUDER APP
 // ═══════════════════════════════════════════════════════════════
 function ouderApp(){
-  if(state.threadOpen) return msgThread();
+  if(state.threadOpen) return ouderThread();
   if(state.nav==='me')   return ouderProfile();
+  if(state.nav==='msg')  return ouderMessages();
   return ouderHome();
 }
 function topbarOuder(){
@@ -2242,6 +2237,16 @@ function ouderHome(){
   </div>
   <div class="screen">
     <div class="greeting"><h1>${T('salam')}, ${p.name.split('(')[0].split(' ')[0]}!</h1></div>
+    <div style="margin:0 0 14px">
+      <button onclick="setNav('msg')" style="width:100%;background:var(--green-soft);border:1.5px solid var(--green-mid);border-radius:14px;padding:13px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left">
+        <div style="font-size:22px">💬</div>
+        <div style="flex:1">
+          <div style="font-weight:900;font-size:14px;color:var(--green)">${L('Bericht aan efendija','Poruka efendiji')}</div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:2px">${L('Stel een vraag of stuur een berichtje','Postavi pitanje ili pošalji poruku')}</div>
+        </div>
+        <div style="color:var(--green);font-size:18px">›</div>
+      </button>
+    </div>
 
     <!-- KIND(EREN) VOORTGANG -->
     <div class="section-head"><div class="h3">👦 ${T('parentDash')}</div></div>
@@ -2353,31 +2358,158 @@ function ouderHome(){
 
   </div>`;
 }
-function msgThread(){
-  const m = MESSAGES.find(x=>x.id===state.threadOpen);
-  if(!m){ state.threadOpen=null; render(); return ''; }
+// ─── OUDER: berichten scherm ───────────────────────────────────
+function ouderMessages(){
+  const p = state.me;
+  const mijnThreads = BERICHTEN.filter(b => b.ouder_id === String(p.id));
   return `<div class="topbar">
-      <button class="back-btn" onclick="state.threadOpen=null;render()">←</button>
-      <div style="text-align:center;flex:1"><div style="font-weight:900">${m.fromName}</div><div class="muted" style="font-size:12px">${state.lang==='nl'?m.subject:m.subject_bs}</div></div>
-      <div style="width:42px"></div>
-    </div>
-    <div class="screen" style="padding-bottom:160px">
-      <div class="thread">
-        ${m.thread.map(b=>`<div class="bubble ${b.who}">${state.lang==='nl'?b.txt:b.txt_bs}<span class="when">${state.lang==='nl'?b.when:b.when_bs}</span></div>`).join('')}
-      </div>
-    </div>
-    <div class="compose">
-      <textarea placeholder="${T('writeReply')}"></textarea>
-      <button onclick="sendReply()">↑</button>
-    </div>`;
+    <div class="row"><div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
+      <div><div style="font-weight:900">${p.name.split('(')[0].trim()}</div>
+        <div class="muted" style="font-size:11px">${L('Berichten','Poruke')}</div></div></div>
+    <div style="display:flex;gap:8px">
+      <div style="font-size:12px;font-weight:800;background:var(--gold-soft);color:var(--gold);padding:5px 11px;border-radius:10px">IKC DIN</div>
+      <button onclick="logout()" style="background:var(--red-soft);color:var(--red);width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;border:0;cursor:pointer">⏻</button>
+    </div></div>
+  <div class="screen" style="padding-bottom:90px">
+    <div class="greeting"><h1>💬 ${L('Berichten','Poruke')}</h1>
+      <p>${L('Stuur een bericht aan de efendija over uw kind.','Pošaljite poruku efendiji o vašem djetetu.')}</p></div>
+    ${mijnThreads.length === 0
+      ? `<div class="card" style="text-align:center;color:var(--muted);font-weight:700;padding:30px">${L('Nog geen berichten.','Još nema poruka.')}</div>`
+      : mijnThreads.map(b => {
+          const replies = BERICHT_THREADS[b.id] || [];
+          const last = replies.length ? replies[replies.length-1] : b;
+          const lastTxt = (replies.length ? last.tekst : b.tekst).substring(0,60);
+          const lastVan = replies.length ? (last.van === 'efendija' ? '👨‍🏫 Efendija' : L('Jij','Vi')) : L('Jij','Vi');
+          const unread = replies.some(r => r.van === 'efendija' && !r.gelezen);
+          return `<div class="msg-row" onclick="openOuderThread('${b.id}')" style="${unread?'border-left:3px solid var(--green);':''}">
+            <div class="avatar sm ef-color">E</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;gap:8px">
+                <div class="msg-from">Efendija${unread?' 🟢':''}</div>
+                <div class="msg-when">${fmtDate(last.created_at||b.created_at)}</div></div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:1px">${lastVan}: ${lastTxt}${lastTxt.length>=60?'…':''}</div>
+            </div></div>`;
+        }).join('')}
+    <button onclick="openNieuwBericht()" style="width:100%;margin-top:14px;background:var(--green);color:#fff;padding:14px;border-radius:14px;font-weight:800;border:0;cursor:pointer;font-size:15px">
+      + ${L('Nieuw bericht','Nova poruka')}</button>
+    ${state.berichtCompose ? nieuwBerichtModal() : ''}
+  </div>
+  ${navBar([['home',L('Home','Početna')],['msg','💬'],['me','⚙️']])}`;
 }
-function sendReply(){
-  const ta = document.querySelector('.compose textarea');
-  if(!ta || !ta.value.trim()) return;
-  const m = MESSAGES.find(x=>x.id===state.threadOpen);
-  m.thread.push({who:'me', txt:ta.value, txt_bs:ta.value, when:'Net', when_bs:'Sad'});
-  m.unread=false;
-  render();
+
+function nieuwBerichtModal(){
+  const kids = KIDS.filter(k => state.me.kidIds.includes(k.id));
+  return `<div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end">
+    <div style="background:#fff;border-radius:22px 22px 0 0;width:100%;padding:20px;max-height:80vh;overflow-y:auto">
+      <div style="font-weight:900;font-size:17px;margin-bottom:4px">💬 ${L('Bericht aan efendija','Poruka efendiji')}</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:14px">${L('Over welk kind gaat het?','O kom djetetu se radi?')}</div>
+      <select id="bericht-kid" style="width:100%;padding:10px;border-radius:10px;border:1.5px solid var(--border);font-size:14px;font-weight:700;margin-bottom:10px">
+        ${kids.map(k=>`<option value="${k.id}">${k.name}</option>`).join('')}
+      </select>
+      <textarea id="bericht-tekst" rows="4" placeholder="${L('Schrijf uw bericht…','Napišite poruku…')}" style="width:100%;padding:12px;border-radius:12px;border:1.5px solid var(--border);font-size:14px;resize:none;box-sizing:border-box"></textarea>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button onclick="state.berichtCompose=false;render()" style="flex:1;padding:13px;border-radius:12px;border:1.5px solid var(--border);background:#fff;font-weight:800;cursor:pointer">${L('Annuleren','Otkaži')}</button>
+        <button onclick="verstuurBericht()" style="flex:2;padding:13px;border-radius:12px;background:var(--green);color:#fff;border:0;font-weight:900;cursor:pointer;font-size:15px">
+          ${state.berichtSending ? '…' : L('Verstuur','Pošalji')} ↑</button>
+      </div>
+    </div></div>`;
+}
+
+function ouderThread(){
+  const b = BERICHTEN.find(x => x.id === state.threadOpen);
+  if(!b){ state.threadOpen=null; render(); return ''; }
+  const replies = BERICHT_THREADS[b.id] || [];
+  const k = KIDS.find(x=>x.id===b.kid_id);
+  // Markeer efendija replies als gelezen
+  markGelezen(b.id);
+  return `<div class="topbar">
+    <button class="back-btn" onclick="state.threadOpen=null;render()">←</button>
+    <div style="text-align:center;flex:1">
+      <div style="font-weight:900">Efendija</div>
+      <div class="muted" style="font-size:12px">👦 ${k?k.name:''}</div></div>
+    <div style="width:42px"></div></div>
+  <div class="screen" style="padding-bottom:140px">
+    <div class="thread">
+      <div class="bubble them" style="background:var(--green-soft);color:var(--ink)">${b.tekst}
+        <span class="when">${fmtDate(b.created_at)}</span></div>
+      ${replies.map(r => {
+        const isMe = r.van === 'ouder';
+        return `<div class="bubble ${isMe?'me':'them'}" ${!isMe?'style="background:var(--green-soft);color:var(--ink)"':''}>
+          ${r.tekst}<span class="when">${fmtDate(r.created_at)}</span></div>`;
+      }).join('')}
+    </div>
+  </div>
+  <div class="compose">
+    <textarea id="reply-ta" placeholder="${L('Schrijf een reactie…','Napiši odgovor…')}"></textarea>
+    <button onclick="stuurReply('${b.id}','ouder')">↑</button>
+  </div>`;
+}
+
+// ─── EFENDIJA: berichten scherm (echt) ─────────────────────────
+function efMessages(){
+  // Groepeer per ouder
+  const grouped = {};
+  BERICHTEN.forEach(b => {
+    if(!grouped[b.ouder_id]) grouped[b.ouder_id] = {naam:b.ouder_naam, threads:[]};
+    grouped[b.ouder_id].threads.push(b);
+  });
+  const ouderIds = Object.keys(grouped);
+  return `${topbarEf()}
+  <div class="screen" style="padding-bottom:90px">
+    <div class="greeting"><h1>💬 ${L('Berichten','Poruke')}</h1>
+      <p>${L('Inkomende berichten van ouders.','Dolazne poruke od roditelja.')}</p></div>
+    ${ouderIds.length === 0
+      ? `<div class="card" style="text-align:center;color:var(--muted);font-weight:700;padding:30px">${L('Geen berichten.','Nema poruka.')}</div>`
+      : ouderIds.map(oid => {
+          const grp = grouped[oid];
+          // Nieuwste thread bovenaan
+          const sorted = [...grp.threads].sort((a,b)=> new Date(b.created_at)-new Date(a.created_at));
+          const latest = sorted[0];
+          const replies = BERICHT_THREADS[latest.id]||[];
+          const last = replies.length ? replies[replies.length-1] : latest;
+          const unreadCount = BERICHTEN.filter(b=>b.ouder_id===oid)
+            .flatMap(b=>BERICHT_THREADS[b.id]||[])
+            .filter(r=>r.van==='ouder'&&!r.gelezen).length
+            + BERICHTEN.filter(b=>b.ouder_id===oid&&!b.gelezen_ef).length;
+          return `<div class="msg-row" onclick="openEfThread('${latest.id}')">
+            <div class="avatar sm ${colorOf(grp.naam)}">${initial(grp.naam)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;justify-content:space-between;gap:8px">
+                <div class="msg-from">${grp.naam}${unreadCount>0?` <span style="background:var(--green);color:#fff;border-radius:99px;font-size:10px;padding:1px 7px;font-weight:900">${unreadCount}</span>`:''}</div>
+                <div class="msg-when">${fmtDate(last.created_at)}</div></div>
+              <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:1px">${(replies.length?last.tekst:latest.tekst).substring(0,55)}…</div>
+            </div></div>`;
+        }).join('')}
+  </div>`;
+}
+
+function efThread(){
+  const b = BERICHTEN.find(x => x.id === state.threadOpen);
+  if(!b){ state.threadOpen=null; render(); return ''; }
+  const replies = BERICHT_THREADS[b.id] || [];
+  const k = KIDS.find(x=>x.id===b.kid_id);
+  markGelezenEf(b.id);
+  return `<div class="topbar">
+    <button class="back-btn" onclick="state.threadOpen=null;render()">←</button>
+    <div style="text-align:center;flex:1">
+      <div style="font-weight:900">${b.ouder_naam}</div>
+      <div class="muted" style="font-size:12px">👦 ${k?k.name:''}</div></div>
+    <div style="width:42px"></div></div>
+  <div class="screen" style="padding-bottom:140px">
+    <div class="thread">
+      <div class="bubble them" style="background:var(--green-soft);color:var(--ink)">${b.tekst}
+        <span class="when">${fmtDate(b.created_at)}</span></div>
+      ${replies.map(r => {
+        const isMe = r.van === 'efendija';
+        return `<div class="bubble ${isMe?'me':'them'}" ${!isMe?'style="background:var(--green-soft);color:var(--ink)"':''}>
+          ${r.tekst}<span class="when">${fmtDate(r.created_at)}</span></div>`;
+      }).join('')}
+    </div>
+  </div>
+  <div class="compose">
+    <textarea id="reply-ta" placeholder="${L('Schrijf een reactie…','Napiši odgovor…')}"></textarea>
+    <button onclick="stuurReply('${b.id}','efendija')">↑</button>
+  </div>`;
 }
 function ouderHw(){
   const p = state.me;
@@ -2680,6 +2812,7 @@ function enterChildView(id){ /* could deeplink to a child detail page; for proto
 // EFENDIJA APP
 // ═══════════════════════════════════════════════════════════════
 function efApp(){
+  if(state.threadOpen)        return efThread();
   if(state.nav==='home')      return efHome();
   if(state.nav==='students')  return state.selectedKid ? efStudentDetail() : efStudents();
   if(state.nav==='overzicht') return efOverzicht();
@@ -4100,6 +4233,108 @@ function efAddParent(kidId){
   alert(L(`Ouder "${naam}" gekoppeld aan dit kind!`,`Roditelj "${naam}" je povezan s djetetom!`));
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// BERICHTEN — Supabase laden + opslaan
+// ═══════════════════════════════════════════════════════════════
+function fmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = Math.floor((now-d)/60000);
+  if(diff<1) return L('Net','Sad');
+  if(diff<60) return diff+'m';
+  if(diff<1440) return Math.floor(diff/60)+'u';
+  return d.toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'numeric',month:'short'});
+}
+
+async function loadBerichten(){
+  try {
+    const {data:msgs} = await DB.from('berichten').select('*').order('created_at',{ascending:false});
+    if(!msgs) return;
+    BERICHTEN.length = 0;
+    Object.keys(BERICHT_THREADS).forEach(k=>delete BERICHT_THREADS[k]);
+    msgs.forEach(b => {
+      if(!b.parent_id) {
+        BERICHTEN.push({id:b.id, ouder_naam:b.ouder_naam, ouder_id:b.ouder_id, kid_id:b.kid_id, tekst:b.tekst, van:b.van, created_at:b.created_at, gelezen_ef:b.gelezen_ef});
+      } else {
+        if(!BERICHT_THREADS[b.parent_id]) BERICHT_THREADS[b.parent_id] = [];
+        BERICHT_THREADS[b.parent_id].push({id:b.id, tekst:b.tekst, van:b.van, created_at:b.created_at, gelezen:b.gelezen});
+        BERICHT_THREADS[b.parent_id].sort((a,b2)=>new Date(a.created_at)-new Date(b2.created_at));
+      }
+    });
+  } catch(e){ console.warn('Berichten laden mislukt:', e); }
+}
+
+function openNieuwBericht(){ state.berichtCompose=true; render(); }
+function openOuderThread(id){ state.threadOpen=id; render(); }
+function openEfThread(id){ state.threadOpen=id; render(); }
+
+async function verstuurBericht(){
+  if(state.berichtSending) return;
+  const kidId = document.getElementById('bericht-kid')?.value;
+  const tekst = document.getElementById('bericht-tekst')?.value?.trim();
+  if(!tekst){ alert(L('Vul een bericht in.','Unesite poruku.')); return; }
+  state.berichtSending = true; render();
+  try {
+    const {data,error} = await DB.from('berichten').insert({
+      ouder_naam: state.me.name,
+      ouder_id: String(state.me.id),
+      kid_id: kidId,
+      tekst: tekst,
+      van: 'ouder',
+      parent_id: null,
+      gelezen_ef: false,
+    }).select().single();
+    if(error) throw error;
+    await loadBerichten();
+    state.berichtCompose = false;
+    state.berichtSending = false;
+    state.threadOpen = data.id;
+    render();
+  } catch(e){
+    state.berichtSending = false; render();
+    alert(L('Versturen mislukt. Probeer opnieuw.','Slanje nije uspjelo. Pokušajte ponovo.'));
+    console.error(e);
+  }
+}
+
+async function stuurReply(threadId, van){
+  const ta = document.getElementById('reply-ta');
+  if(!ta||!ta.value.trim()) return;
+  const tekst = ta.value.trim();
+  ta.value='';
+  const b = BERICHTEN.find(x=>x.id===threadId);
+  if(!b) return;
+  try {
+    await DB.from('berichten').insert({
+      ouder_naam: b.ouder_naam,
+      ouder_id: b.ouder_id,
+      kid_id: b.kid_id,
+      tekst: tekst,
+      van: van,
+      parent_id: threadId,
+      gelezen: false,
+    });
+    await loadBerichten();
+    state.threadOpen = threadId;
+    render();
+  } catch(e){ alert(L('Versturen mislukt.','Slanje nije uspjelo.')); console.error(e); }
+}
+
+async function markGelezen(threadId){
+  try {
+    await DB.from('berichten').update({gelezen:true}).eq('parent_id',threadId).eq('van','efendija').eq('gelezen',false);
+  } catch(_){}
+}
+
+async function markGelezenEf(threadId){
+  try {
+    await DB.from('berichten').update({gelezen_ef:true}).eq('id',threadId).eq('gelezen_ef',false);
+    await DB.from('berichten').update({gelezen:true}).eq('parent_id',threadId).eq('van','ouder').eq('gelezen',false);
+  } catch(_){}
+}
+
 // ═══════════════════════════════════════════════════════════════
 // SUPABASE DATA — laden en opslaan
 // ═══════════════════════════════════════════════════════════════
@@ -4151,6 +4386,7 @@ async function loadData(){
     [...KIDS].sort((a,b)=>b.pts-a.pts).forEach((k,i)=>k.rank=i+1);
   } catch(e){ console.error('DB fout bij laden:', e); }
   state.loading = false;
+  await loadBerichten();
   await restoreOuderSession();
   if(!state.me) render();
 }
