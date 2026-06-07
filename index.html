@@ -2,7 +2,7 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <title>Mekteb IKC DIN</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -322,7 +322,8 @@ select{font-family:inherit;font-weight:600}
     overflow-y:auto!important;
     overflow-x:hidden!important;
     -webkit-overflow-scrolling:touch;
-    padding-bottom:72px!important;
+    padding-top:env(safe-area-inset-top)!important;
+    padding-bottom:max(72px,calc(env(safe-area-inset-bottom) + 60px))!important;
     -webkit-font-smoothing:antialiased;
   }
   .nav{
@@ -332,6 +333,7 @@ select{font-family:inherit;font-weight:600}
     right:0!important;
     border-radius:0!important;
     z-index:999!important;
+    padding-bottom:env(safe-area-inset-bottom)!important;
   }
   .topbar{
     position:sticky!important;
