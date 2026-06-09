@@ -1502,7 +1502,14 @@ function ouderNamenLijst(){
   const letters = Object.keys(groups).sort();
   return `<div style="margin-top:4px">
     <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:rgba(253,230,138,.5);margin-bottom:8px">${L('Kies jouw naam','Odaberite svoje ime')}</div>
-    <div style="max-height:300px;overflow-y:auto;border-radius:14px;background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.1)">
+    <div style="display:flex;align-items:center;gap:8px;background:rgba(245,158,11,.07);border:1.5px solid rgba(245,158,11,.18);border-radius:13px;padding:0 13px;margin-bottom:10px">
+      <span style="color:rgba(245,158,11,.5);font-size:15px">🔍</span>
+      <input id="ouder-zoek" placeholder="${L('Zoek jouw naam…','Traži svoje ime…')}"
+        oninput="ouderZoekFilter(this.value)"
+        style="border:0;background:none;padding:10px 0;font-size:13px;font-weight:700;width:100%;outline:none;font-family:Nunito,sans-serif;color:#fde68a"
+        autocomplete="off">
+    </div>
+    <div id="ouder-naam-lijst" style="max-height:260px;overflow-y:auto;border-radius:14px;background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.1)">
       ${letters.map((letter, li) => `
         <div>
           <div style="font-size:9px;font-weight:900;color:rgba(245,158,11,.45);text-transform:uppercase;letter-spacing:.8px;padding:8px 12px 3px">${letter}</div>
@@ -1523,6 +1530,33 @@ function ouderNamenLijst(){
         </div>`).join('')}
     </div>
   </div>`;
+}
+
+
+function ouderZoekFilter(q){
+  const f = q.toLowerCase();
+  const sorted = [...PARENTS].sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+  const filtered = sorted.filter(p => !f || p.name.toLowerCase().includes(f));
+  const el = document.getElementById('ouder-naam-lijst');
+  if(!el) return;
+  if(!filtered.length){
+    el.innerHTML = '<div style="text-align:center;color:rgba(253,230,138,.35);font-weight:700;font-size:12px;padding:18px">Geen resultaat</div>';
+    return;
+  }
+  const groups = {};
+  filtered.forEach(p=>{ const l=p.name.trim()[0].toUpperCase(); if(!groups[l])groups[l]=[]; groups[l].push(p); });
+  const letters = Object.keys(groups).sort();
+  el.innerHTML = letters.map((letter,li)=>{
+    const kids_rows = groups[letter].map(p=>{
+      const kids = KIDS.filter(k=>p.kidIds&&p.kidIds.includes(k.id)).map(k=>k.name.split(' ')[0]).join(', ');
+      return '<div onclick="ouderKiesNaam(\'' + p.id + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;cursor:pointer;border-radius:10px" onmouseenter="this.style.background=\'rgba(245,158,11,.08)\'" onmouseleave="this.style.background=\'transparent\'">'
+        + '<div><div style="font-weight:800;font-size:14px;color:#fde68a">' + p.name + '</div>'
+        + (kids ? '<div style="font-size:10px;color:rgba(253,230,138,.4);font-weight:700;margin-top:1px">👦 ' + kids + '</div>' : '')
+        + '</div><div style="color:rgba(245,158,11,.4);font-size:16px">›</div></div>';
+    }).join('');
+    const divider = li < letters.length-1 ? '<div style="height:1px;background:rgba(245,158,11,.07);margin:2px 12px"></div>' : '';
+    return '<div><div style="font-size:9px;font-weight:900;color:rgba(245,158,11,.45);text-transform:uppercase;letter-spacing:.8px;padding:8px 12px 3px">' + letter + '</div>' + kids_rows + divider + '</div>';
+  }).join('');
 }
 
 function ouderKiesNaam(parentId){
