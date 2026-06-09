@@ -1476,41 +1476,63 @@ function ouderLoginView(){
         <div class="login-title" style="color:#fde68a">${L('Ouder login','Prijava roditelja')}</div>
         <div class="login-sub" style="color:#fcd34d">${L('Bekijk de voortgang van je kind','Pratite napredak svog djeteta')}</div>
       </div>
-      <!-- Stap indicator -->
-      <div style="display:flex;align-items:center;margin-bottom:14px">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
-          <div style="width:24px;height:24px;border-radius:50%;background:#f59e0b;color:#0d0a04;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">1</div>
-          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:#f59e0b">${L('Naam','Ime')}</div>
-        </div>
-        <div style="flex:1;height:2px;background:rgba(245,158,11,.18);margin-bottom:12px"></div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
-          <div style="width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.1);color:rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900">2</div>
-          <div style="font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:rgba(255,255,255,.3)">PIN</div>
-        </div>
-      </div>
-      <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:rgba(253,230,138,.6);margin-bottom:5px">${L('Jouw naam','Vaše ime')}</div>
-      <input id="ouder-naam-inp"
-        style="width:100%;background:rgba(245,158,11,.07);border:1.5px solid ${err?'rgba(239,68,68,.5)':'rgba(245,158,11,.2)'};border-radius:13px;padding:12px 14px;font-size:16px;font-family:Nunito,sans-serif;font-weight:700;color:#fde68a;outline:none;margin-bottom:8px"
-        type="text" autocomplete="given-name" placeholder="${L('Typ je voornaam…','Upišite ime…')}"
-        value="${state.ouderTypedName}"
-        oninput="state.ouderTypedName=this.value;ouderNaamInputUpdate()"
-        onkeydown="if(event.key==='Enter')ouderNaamVolgende()">
-      ${err ? `<div style="color:rgba(239,68,68,.9);font-size:12px;font-weight:800;margin-bottom:8px">${err}</div>` : ''}
-
-      <button id="ouder-volgende-btn" onclick="ouderNaamVolgende()"
-        ${state.ouderTypedName.trim().length<1?'disabled':''}
-        style="width:100%;padding:13px;background:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.08)':'linear-gradient(135deg,#f59e0b,#d97706)'};color:${state.ouderTypedName.trim().length<1?'rgba(255,255,255,.3)':'#0d0a04'};font-family:Nunito,sans-serif;font-weight:900;font-size:15px;border:0;border-radius:13px;cursor:pointer;transition:.15s">
-        ${L('Volgende →','Dalje →')}
-      </button>
 
       <!-- Nieuw account aanmaken -->
       <button onclick="state.showRegForm=!state.showRegForm;render()"
-        style="width:100%;padding:12px;margin-top:10px;border-radius:13px;background:rgba(245,158,11,.07);border:1.5px dashed rgba(245,158,11,.3);color:rgba(253,230,138,.8);font-family:Nunito,sans-serif;font-weight:800;font-size:13px;cursor:pointer">
+        style="width:100%;padding:12px;margin-bottom:14px;border-radius:13px;background:rgba(245,158,11,.07);border:1.5px dashed rgba(245,158,11,.3);color:rgba(253,230,138,.8);font-family:Nunito,sans-serif;font-weight:800;font-size:13px;cursor:pointer">
         ➕ ${L('Nog geen account? Kind hier aanmelden →','Nemate nalog? Prijavite dijete ovdje →')}
       </button>
       ${state.showRegForm ? ouderRegFormHtml() : ''}
+
+      <!-- Alfabetische namenlijst -->
+      ${ouderNamenLijst()}
     </div>
   </div>`;
+}
+
+
+function ouderNamenLijst(){
+  const sorted = [...PARENTS].sort((a,b)=>a.name.localeCompare(b.name,'nl'));
+  const groups = {};
+  sorted.forEach(p=>{
+    const l = p.name.trim()[0].toUpperCase();
+    if(!groups[l]) groups[l]=[];
+    groups[l].push(p);
+  });
+  const letters = Object.keys(groups).sort();
+  return `<div style="margin-top:4px">
+    <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:rgba(253,230,138,.5);margin-bottom:8px">${L('Kies jouw naam','Odaberite svoje ime')}</div>
+    <div style="max-height:300px;overflow-y:auto;border-radius:14px;background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.1)">
+      ${letters.map((letter, li) => `
+        <div>
+          <div style="font-size:9px;font-weight:900;color:rgba(245,158,11,.45);text-transform:uppercase;letter-spacing:.8px;padding:8px 12px 3px">${letter}</div>
+          ${groups[letter].map(p => {
+            const kids = KIDS.filter(k => p.kidIds && p.kidIds.includes(k.id)).map(k=>k.name.split(' ')[0]).join(', ');
+            return `<div onclick="ouderKiesNaam('${p.id}')"
+              style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;cursor:pointer;border-radius:10px;transition:background .12s"
+              onmouseenter="this.style.background='rgba(245,158,11,.08)'"
+              onmouseleave="this.style.background='transparent'">
+              <div>
+                <div style="font-weight:800;font-size:14px;color:#fde68a">${p.name}</div>
+                ${kids ? `<div style="font-size:10px;color:rgba(253,230,138,.4);font-weight:700;margin-top:1px">👦 ${kids}</div>` : ''}
+              </div>
+              <div style="color:rgba(245,158,11,.4);font-size:16px">›</div>
+            </div>`;
+          }).join('')}
+          ${li < letters.length-1 ? '<div style="height:1px;background:rgba(245,158,11,.07);margin:2px 12px"></div>' : ''}
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function ouderKiesNaam(parentId){
+  const p = PARENTS.find(x => String(x.id) === String(parentId));
+  if(!p) return;
+  state.selectedPerson = p;
+  state.ouderTypedName = p.name;
+  state.pin = '';
+  state.ouderNameError = null;
+  render();
 }
 
 function ouderNaamInputUpdate(){
