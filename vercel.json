@@ -2,6 +2,15 @@
   "functions": {
     "api/notify.js": {
       "maxDuration": 10
+    },
+    "api/keep-alive.js": {
+      "maxDuration": 10
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/keep-alive",
+      "schedule": "0 6 * * *"
+    }
+  ]
 }
