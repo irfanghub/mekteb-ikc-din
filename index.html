@@ -2056,11 +2056,6 @@ function kidPath(){
         }).join('')}
       </div>`}
     </div>
-    ${cur && cur.status==='current' && cat!=='ilmihal' ? `<div class="now-playing">
-      <div style="font-size:22px">${cur.icon}</div>
-      <div class="np-text"><div class="lbl">${T('nowBusy')}</div><div class="ttl">${cur.label}</div></div>
-      <button>${T('start_')}</button>
-    </div>`:''}
     ${navBar([['home',T('tabHome')],['path',T('tabPath')],['leader',T('tabLeader')]])}`;
 }
 
