@@ -1054,6 +1054,16 @@ let state = {
 };
 
 // Per-kind stations: PATH = label/icon/pts template, kid.stationData = echte status per kind
+// Icoon wordt afgeleid uit de ECHTE status (niet de template-mock), zodat een
+// afgeronde sura nooit een slotje toont en andersom.
+const STATUS_ICONS = ['🔒','🎯','🏆'];
+function stationIcon(status, i, len, templateIcon){
+  if(i===len-1) return '🏆';                    // capstone-sura van het niveau
+  if(status==='locked')  return '🔒';
+  if(status==='current') return '🎯';
+  // done → behoud thematisch icoon uit template, tenzij dat een status-icoon is
+  return (templateIcon && !STATUS_ICONS.includes(templateIcon)) ? templateIcon : '📖';
+}
 function kidStations(k, cat, lvl){
   const template = (PATH[cat]&&PATH[cat][lvl]) || [];
   const saved = k && k.stationData && k.stationData[cat] && k.stationData[cat][lvl];
@@ -1063,12 +1073,13 @@ function kidStations(k, cat, lvl){
       ...s,
       status: i===0 ? 'current' : 'locked',
       tag:    i===0 ? 'NU' : undefined,
-      icon:   i===0 ? '🎯' : (i===template.length-1 ? '🏆' : '🔒'),
+      icon:   stationIcon(i===0?'current':'locked', i, template.length, s.icon),
     }));
   }
   return template.map((s,i)=>{
-    if(saved && saved[i]) return {...s, status:saved[i].status, tag:saved[i].tag||undefined};
-    return {...s};
+    const status = (saved && saved[i]) ? saved[i].status : s.status;
+    const tag    = (saved && saved[i]) ? (saved[i].tag||undefined) : s.tag;
+    return {...s, status, tag, icon: stationIcon(status, i, template.length, s.icon)};
   });
 }
 
@@ -2000,7 +2011,7 @@ function kidPath(){
         <div class="subtab ${cat==='quran'?'on':''}" onclick="state.pathTab='quran';render()">ا ${T('quranRead')}</div>
       </div>
       <div class="level-tabs">
-        ${levels.map(L=>`<button class="level-pill ${state.pathLevel===L.n?'on':''} ${L.status==='done'?'done':''}" onclick="state.pathLevel=${L.n};render()">${niveauCompleted(k.id,L.n)?'🏆 ':''}N${L.n} ${L.status==='done'?'✓':''}</button>`).join('')}
+        ${levels.map(L=>`<button class="level-pill ${state.pathLevel===L.n?'on':''} ${L.status==='done'?'done':''}" onclick="state.pathLevel=${L.n};render()">${trackCompleted(k.id,cat,L.n)?'🏆 ':''}N${L.n} ${L.status==='done'?'✓':''}</button>`).join('')}
       </div>
       ${levelCelebrationBanner(k.id, lvl)}
       ${cat==='ilmihal' ? (()=>{
@@ -2997,6 +3008,19 @@ function niveauCompleted(kidId, lvl){
   const ilm = ilmStats(lvl, kidId);
   const allIlmDone = ilm.totaal>0 && ilm.gedaan===ilm.totaal;
   return allSurasDone && allIlmDone;
+}
+
+// Voltooiing per spoor (suras / ilmihal / quran) voor één niveau.
+// Gebruikt voor het 🏆 op de niveau-pill: elk tabblad toont z'n eigen beloning.
+function trackCompleted(kidId, track, lvl){
+  const k = KIDS.find(x=>x.id===kidId);
+  if(!k) return false;
+  if(track==='ilmihal'){
+    const ilm = ilmStats(lvl, kidId);
+    return ilm.totaal>0 && ilm.gedaan===ilm.totaal;
+  }
+  const st = kidStations(k, track, lvl);
+  return st.length>0 && st.every(s=>s.status==='done');
 }
 
 // Auto-berekend niveau op basis van voltooiing — voor weergave (badges, namen)
