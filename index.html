@@ -964,6 +964,16 @@ function computeBadgesForKid(k){
 }
 
 let HOMEWORK = []; // wordt geladen vanuit Supabase in loadData()
+let OCJENE = []; // [{id, kidId, datum, oblast, ocjena, napomena}] — wordt geladen vanuit Supabase in loadData()
+let _ocjIdCtr = 10;
+const OBLASTI = [
+  {id:'kuran',   nl:'Koran lezen',  bs:"Učenje Kur'ana"},
+  {id:'ilmihal', nl:'Ilmihal',      bs:'Ilmihal'},
+  {id:'hifz',    nl:'Hifz',         bs:'Hifz'},
+  {id:'ostalo',  nl:'Overig',       bs:'Ostalo'},
+];
+function oblastLabel(id){ const o=OBLASTI.find(x=>x.id===id); return o ? (state.lang==='nl'?o.nl:o.bs) : id; }
+function ocjenaColor(v){ return v>=8 ? 'var(--green)' : v>=6 ? 'var(--gold)' : 'var(--red)'; }
 
 // Ouder-aanmeldingen per kind per datum: {kidId: {date: 'yes'|'no'|null}}
 let PARENT_NOTIFICATIONS = {};
@@ -1036,6 +1046,10 @@ let state = {
   efPathLevel: null,  // niveau in leerling-detail
   newHw: {title:'', desc:'', dueDays:7}, // nieuw huiswerk formulier
   showAddHw: false,   // toon add-huiswerk formulier
+  newOcjena: {datum:'', oblast:'kuran', ocjena:'', napomena:''}, // nieuw cijfer formulier
+  showAddOcjena: false, // toon add-cijfer formulier
+  newBcast: {title:'', desc:'', dueDays:7}, // nieuwe gezamenlijke obavijest/huiswerk
+  showAddBcast: false, // toon gezamenlijke-obavijest formulier
   showRegForm: false, // ouder zelf-registratie (beginfase)
   regData: {ouderNaam:'', ouderPin:'', kinderen:[''], ouderNaam2:''},
   ouderTypedName: '',
@@ -1415,7 +1429,7 @@ function normName(s){ return String(s||'').trim().toLowerCase().normalize('NFD')
 // LOGIN — naam + pincode
 // ═══════════════════════════════════════════════════════════════
 function pool(){
-  if(state.role==='kind')     return KIDS;
+  if(state.role==='kind')     return [...KIDS].sort((a,b)=>a.name.localeCompare(b.name,'bs'));
   if(state.role==='ouder')    return PARENTS;
   if(state.role==='efendija') return EFENDIJAS;
   if(state.role==='bestuur')  return BESTUUR;
@@ -2170,7 +2184,7 @@ function hwCard(h, readOnly=true){
   return `<div class="hw">
     <div class="hw-head">
       <div style="flex:1">
-        <div class="hw-due">${due}</div>
+        <div class="hw-due">${due}${h.shared?` • 📢 ${L('voor iedereen','za sve')}`:''}</div>
         <div class="hw-title">${state.lang==='nl'?h.title:h.title_bs}</div>
         <div class="hw-desc">${state.lang==='nl'?h.desc:h.desc_bs}</div>
       </div>
@@ -2375,6 +2389,17 @@ function ouderHome(){
             </div>
             <div style="display:flex;gap:4px;flex-wrap:wrap">${dots}</div>
             <div style="font-size:10px;color:var(--muted);margin-top:4px;font-weight:700">${L('Laatste','Posljednjih')} ${last8.length} ${L('lessen','časova')}</div>
+          </div>`;
+        })()}
+        ${(()=>{
+          const kOcj = OCJENE.filter(o=>o.kidId===k.id).sort((a,b)=>b.datum.localeCompare(a.datum));
+          if(!kOcj.length) return '';
+          const laatste3 = kOcj.slice(0,3);
+          return `<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+            <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px">🎯 ${L('Laatste cijfers','Posljednje ocjene')}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              ${laatste3.map(o=>`<div style="background:${ocjenaColor(parseFloat(o.ocjena))};color:#fff;border-radius:9px;padding:5px 10px;font-size:11px;font-weight:900">${o.ocjena} <span style="font-weight:700;opacity:.9">${oblastLabel(o.oblast)}</span></div>`).join('')}
+            </div>
           </div>`;
         })()}
         ${(()=>{
@@ -2960,6 +2985,7 @@ function efStudentDetail(){
         <div class="subtab ${tab==='voortgang'?'on':''}" onclick="state.efDetailTab='voortgang';render()">📚 ${L('Voortgang','Napredak')}</div>
         <div class="subtab ${tab==='aanwezigheid'?'on':''}" onclick="state.efDetailTab='aanwezigheid';render()">📅 ${L('Aanwezigheid','Prisustvo')}</div>
         <div class="subtab ${tab==='huiswerk'?'on':''}" onclick="state.efDetailTab='huiswerk';render()">✅ ${L('Huiswerk','Zadaća')}</div>
+        <div class="subtab ${tab==='ocjene'?'on':''}" onclick="state.efDetailTab='ocjene';render()">🎯 ${L('Cijfers','Ocjene')}</div>
         <div class="subtab ${tab==='notities'?'on':''}" onclick="state.efDetailTab='notities';render()">📝 ${L('Notities','Bilješke')}</div>
         <div class="subtab ${tab==='bewerken'?'on':''}" onclick="state.efDetailTab='bewerken';render()">✏️ ${L('Bewerken','Uredi')}</div>
       </div>
@@ -2967,6 +2993,7 @@ function efStudentDetail(){
       ${tab==='voortgang' ? efDetailVoortgang(k) : ''}
       ${tab==='aanwezigheid' ? efDetailAanwezigheid(k) : ''}
       ${tab==='huiswerk' ? efDetailHuiswerk(k) : ''}
+      ${tab==='ocjene' ? efDetailOcjene(k) : ''}
       ${tab==='notities' ? efDetailNotities(k) : ''}
       ${tab==='bewerken' ? efDetailBewerken(k) : ''}
     </div>
@@ -2999,6 +3026,79 @@ function efSaveNotitie(kidId){
   k.notities = ta.value;
   saveKidToDB(kidId);
   render();
+}
+
+// EFENDIJA — CIJFERS / DNEVNIK PER LEERLING (Nederlands schoolsysteem 1–10)
+function efDetailOcjene(k){
+  const kOcj = OCJENE.filter(o=>o.kidId===k.id).sort((a,b)=>b.datum.localeCompare(a.datum));
+  // gemiddelde per oblast
+  const perOblast = OBLASTI.map(ob=>{
+    const vals = kOcj.filter(o=>o.oblast===ob.id).map(o=>parseFloat(o.ocjena));
+    const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : null;
+    return {ob, avg, n:vals.length};
+  }).filter(x=>x.n>0);
+  const today = new Date().toISOString().slice(0,10);
+  return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="font-weight:900">${L('Cijfers voor','Ocjene za')} ${k.name}</div>
+    <button onclick="state.newOcjena={datum:'${today}',oblast:'kuran',ocjena:'',napomena:''};state.showAddOcjena=!state.showAddOcjena;render()" style="background:var(--green);color:#fff;padding:7px 12px;border-radius:10px;font-weight:800;font-size:12px">+ ${L('Toevoegen','Dodaj')}</button>
+  </div>
+  ${perOblast.length ? `<div style="display:grid;grid-template-columns:repeat(${perOblast.length},1fr);gap:6px;margin-bottom:14px">
+    ${perOblast.map(x=>`<div class="card" style="padding:9px;text-align:center">
+      <div style="font-size:16px;font-weight:900;color:${ocjenaColor(x.avg)}">${x.avg.toFixed(1)}</div>
+      <div style="font-size:9px;color:var(--muted);font-weight:800">${state.lang==='nl'?x.ob.nl:x.ob.bs}</div>
+    </div>`).join('')}
+  </div>` : ''}
+  ${state.showAddOcjena ? `<div class="card" style="margin-bottom:12px;border:2px solid var(--green-soft)">
+    <div style="font-weight:900;font-size:13px;margin-bottom:8px">🎯 ${L('Nieuw cijfer','Nova ocjena')}</div>
+    <div style="display:flex;gap:8px;margin-bottom:7px">
+      <div style="flex:1">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:3px">${L('Datum','Datum')}</div>
+        <input type="date" value="${state.newOcjena.datum}" max="${today}" oninput="setOcjenaField('datum',this.value)" style="width:100%;font-size:13px;box-sizing:border-box">
+      </div>
+      <div style="width:90px">
+        <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:3px">${L('Cijfer','Ocjena')}</div>
+        <input type="number" placeholder="1–10" min="1" max="10" step="0.5" value="${state.newOcjena.ocjena}" oninput="setOcjenaField('ocjena',this.value)" style="width:100%;font-size:13px;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="margin-bottom:7px">
+      <div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:3px">${L('Oblast','Oblast')}</div>
+      <select onchange="setOcjenaField('oblast',this.value)" style="width:100%;font-size:13px;box-sizing:border-box">
+        ${OBLASTI.map(ob=>`<option value="${ob.id}" ${state.newOcjena.oblast===ob.id?'selected':''}>${state.lang==='nl'?ob.nl:ob.bs}</option>`).join('')}
+      </select>
+    </div>
+    <input type="text" placeholder="${L('Opmerking (optioneel)','Napomena (opcionalno)')}" value="${state.newOcjena.napomena}" oninput="setOcjenaField('napomena',this.value)" style="margin-bottom:10px;font-size:13px">
+    <div style="display:flex;gap:8px">
+      <button onclick="state.showAddOcjena=false;render()" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--line);font-weight:800;font-size:12px">${L('Annuleren','Odustani')}</button>
+      <button onclick="efAddOcjena('${k.id}')" style="flex:1;background:var(--green);color:#fff;padding:10px;border-radius:10px;font-weight:800;font-size:12px">${L('Opslaan','Sačuvaj')}</button>
+    </div>
+  </div>` : ''}
+  ${kOcj.length ? kOcj.map(o=>`<div class="card" style="margin-bottom:8px;display:flex;align-items:center;gap:10px">
+    <div style="width:38px;height:38px;border-radius:10px;background:${ocjenaColor(parseFloat(o.ocjena))};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0">${o.ocjena}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:800;font-size:13px">${oblastLabel(o.oblast)}</div>
+      <div style="font-size:11px;color:var(--muted);font-weight:700">${new Date(o.datum).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'numeric',month:'short',year:'numeric'})}${o.napomena?' • '+o.napomena:''}</div>
+    </div>
+    <button onclick="efDelOcjena(${o.id})" title="${L('Verwijder cijfer','Obriši ocjenu')}" style="background:transparent;color:var(--red);font-size:14px;padding:4px 8px;border-radius:8px;font-weight:900">🗑️</button>
+  </div>`).join('') : `<div class="card" style="text-align:center;color:var(--muted);padding:24px">${L('Nog geen cijfers','Još nema ocjena')}</div>`}`;
+}
+function setOcjenaField(f,v){ state.newOcjena[f]=v; }
+function efAddOcjena(kidId){
+  const n = state.newOcjena;
+  const val = parseFloat(n.ocjena);
+  if(!n.datum || isNaN(val) || val<1 || val>10){ alert(L('Vul een geldige datum en een cijfer tussen 1 en 10 in.','Unesite ispravan datum i ocjenu između 1 i 10.')); return; }
+  OCJENE.push({id:++_ocjIdCtr, kidId, datum:n.datum, oblast:n.oblast, ocjena:val, napomena:(n.napomena||'').trim()});
+  state.showAddOcjena=false;
+  render();
+  saveKidToDB(kidId);
+}
+function efDelOcjena(id){
+  const o = OCJENE.find(x=>x.id===id);
+  if(!o) return;
+  if(!confirm(L('Dit cijfer verwijderen?','Obrisati ovu ocjenu?'))) return;
+  const kidId = o.kidId;
+  OCJENE.splice(OCJENE.indexOf(o), 1);
+  render();
+  saveKidToDB(kidId);
 }
 
 function niveauCompleted(kidId, lvl){
@@ -3235,7 +3335,7 @@ function topbarEf(){
 }
 function efHome(){
   const e = state.me;
-  const myKids = KIDS.filter(k=>e.levels.includes(k.level));
+  const myKids = KIDS.filter(k=>e.levels.includes(k.level)).sort((a,b)=>a.name.localeCompare(b.name,'bs'));
   const nextSun = nextSundayDate();
   const nextSunLbl = new Date(nextSun).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{weekday:'long',day:'numeric',month:'long'});
   // Ouder aanmeldingen voor komende les
@@ -3246,6 +3346,25 @@ function efHome(){
   return `${topbarEf()}
     <div class="screen">
       <div class="greeting"><h1>${T('salam')}, ${e.name}!</h1><p>${state.lang==='nl'?'klaar voor de volgende les?':'spreman za sljedeći čas?'}</p></div>
+
+      <!-- GEZAMENLIJKE OBAVIJEST / ZADAĆA VOOR ALLE LEERLINGEN -->
+      <div class="card" style="margin-bottom:12px;${state.showAddBcast?'border:2px solid var(--green-soft)':''}">
+        <div style="display:flex;justify-content:space-between;align-items:center;${state.showAddBcast?'margin-bottom:10px':''}">
+          <div style="font-weight:900;font-size:13px">📢 ${L('Obavijest voor alle leerlingen','Obavijest za svu djecu')}</div>
+          <button onclick="state.showAddBcast=!state.showAddBcast;render()" style="background:var(--green-soft);color:var(--green);padding:6px 11px;border-radius:9px;font-weight:800;font-size:12px">${state.showAddBcast?L('Sluiten','Zatvori'):'+ '+L('Nieuw','Novo')}</button>
+        </div>
+        ${state.showAddBcast ? `
+          <input type="text" placeholder="${L('Titel (bv. Voor volgende les leren…)','Naslov (npr. Za naredni čas naučiti…)')}" oninput="setBcastField('title',this.value)" style="margin-bottom:7px;font-size:13px">
+          <input type="text" placeholder="${L('Beschrijving (optioneel)','Opis (opcionalno)')}" oninput="setBcastField('desc',this.value)" style="margin-bottom:7px;font-size:13px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+            <div style="font-size:12px;font-weight:800;color:var(--muted)">${L('Deadline over','Rok za')}</div>
+            <input type="number" value="7" min="1" max="30" oninput="setBcastField('dueDays',this.value)" style="width:60px;font-size:13px">
+            <div style="font-size:12px;font-weight:700;color:var(--muted)">${L('dagen','dana')}</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:10px;line-height:1.5">${L('Wordt toegevoegd aan het huiswerk van alle','Biće dodano u zadaću za svu')} ${myKids.length} ${L('leerlingen in jouw niveaus.','djece u tvojim nivoima.')}</div>
+          <button onclick="efAddBcast()" style="width:100%;background:var(--green);color:#fff;padding:11px;border-radius:10px;font-weight:900;font-size:13px">📢 ${L('Verstuur naar alle leerlingen','Pošalji svoj djeci')}</button>
+        ` : `<div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:4px">${L('Schrijf één opdracht of mededeling voor de hele groep — daarnaast blijft per-leerling huiswerk gewoon mogelijk.','Napišite jednu zadaću ili obavijest za cijelu grupu — zadaća po pojedinom djetetu i dalje je moguća.')}</div>`}
+      </div>
 
       <!-- KOMENDE LES + OUDER AANMELDINGEN -->
       <div class="lesson-card" style="margin-bottom:12px">
@@ -3304,7 +3423,7 @@ function efHome(){
 }
 function efStudents(){
   const e = state.me;
-  const myKids = KIDS.filter(k=>e.levels.includes(k.level));
+  const myKids = KIDS.filter(k=>e.levels.includes(k.level)).sort((a,b)=>a.name.localeCompare(b.name,'bs'));
   const tab = state.kidTab;
   return `${topbarEf()}
     <div class="screen">
@@ -4279,6 +4398,20 @@ function efAddHw(kidId){
   state.newHw={title:'',desc:'',dueDays:7}; state.showAddHw=false; render(); saveKidToDB(kidId);
 }
 function setHwField(f,v){state.newHw[f]=v;}
+function setBcastField(f,v){state.newBcast[f]=v;}
+// Gezamenlijke obavijest — zelfde opdracht voor alle leerlingen van deze efendija
+function efAddBcast(){
+  const n = state.newBcast;
+  if(!n.title.trim()) return;
+  const e = state.me;
+  const myKids = KIDS.filter(k=>e.levels.includes(k.level));
+  const groupId = 'bcast_'+Date.now();
+  myKids.forEach(k=>{
+    HOMEWORK.push({id:++_hwIdCtr, kidId:k.id, title:n.title, title_bs:n.title, desc:n.desc, desc_bs:n.desc, dueDays:parseInt(n.dueDays)||7, done:false, fromTeacher:e?.id||201, shared:true, groupId});
+    saveKidToDB(k.id);
+  });
+  state.newBcast={title:'',desc:'',dueDays:7}; state.showAddBcast=false; render();
+}
 
 // Efendija koppelt ouder aan kind (nieuw of bestaand op basis van naam+pin)
 function efAddParent(kidId){
@@ -4413,10 +4546,10 @@ async function loadData(){
   try {
     const {data, error} = await DB.from('leerlingen_v5').select('*').order('rang');
     if(error) throw error;
-    KIDS.length=0; PARENTS.length=0; HOMEWORK.length=0; state.ilmDone={};
+    KIDS.length=0; PARENTS.length=0; HOMEWORK.length=0; OCJENE.length=0; state.ilmDone={};
     Object.keys(PARENT_NOTIFICATIONS).forEach(k=>delete PARENT_NOTIFICATIONS[k]);
     Object.keys(ATTENDANCE).forEach(k=>delete ATTENDANCE[k]);
-    let pIdCtr=1000; _hwIdCtr=10;
+    let pIdCtr=1000; _hwIdCtr=10; _ocjIdCtr=10;
     data.forEach(row=>{
       const kid = {
         id: row.id, name: row.naam, level: row.niveau, pin: row.pin,
@@ -4431,6 +4564,9 @@ async function loadData(){
       // Huiswerk laden per kind
       const hw = Array.isArray(row.huiswerk) ? row.huiswerk : [];
       hw.forEach(h=>{ HOMEWORK.push({...h, kidId:row.id}); if(h.id>_hwIdCtr) _hwIdCtr=h.id; });
+      // Ocjene laden per kind
+      const ocj = Array.isArray(row.ocjene) ? row.ocjene : [];
+      ocj.forEach(o=>{ OCJENE.push({...o, kidId:row.id}); if(o.id>_ocjIdCtr) _ocjIdCtr=o.id; });
       // Aanwezigheid normaliseren naar {date, present}
       const att = Array.isArray(row.aanwezigheid) ? row.aanwezigheid.map(a=>({
         date: a.date||a.datum||'', present: a.present!==undefined ? a.present : (a.aanwezig||false)
@@ -4482,6 +4618,7 @@ async function saveKidToDB(kidId){
       ouders: oudersArr,
       since_year: k.sinceYear||2026,
       huiswerk: HOMEWORK.filter(h=>h.kidId===k.id),
+      ocjene: OCJENE.filter(o=>o.kidId===k.id),
       parent_notifications: PARENT_NOTIFICATIONS[k.id]||{},
       notities: k.notities||'',
     });
