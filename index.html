@@ -1048,7 +1048,8 @@ let state = {
   showAddHw: false,   // toon add-huiswerk formulier
   newOcjena: {datum:'', oblast:'kuran', ocjena:'', napomena:''}, // nieuw cijfer formulier
   showAddOcjena: false, // toon add-cijfer formulier
-  newBcast: {title:'', desc:'', dueDays:7}, // nieuwe gezamenlijke obavijest/huiswerk
+  newBcast: {title:'', desc:'', dueDays:7, bijlage:null}, // nieuwe gezamenlijke obavijest/huiswerk (bijlage: {name,url} na upload)
+  bcastUploading: false, // bezig met bestand uploaden
   showAddBcast: false, // toon gezamenlijke-obavijest formulier
   showRegForm: false, // ouder zelf-registratie (beginfase)
   regData: {ouderNaam:'', ouderPin:'', kinderen:[''], ouderNaam2:''},
@@ -2190,6 +2191,7 @@ function hwCard(h, readOnly=true){
       </div>
       <div class="check ${h.done?'done':''}" ${readOnly?'style="opacity:.5;cursor:default"':('onclick="efToggleHw('+h.id+')"')}>${h.done?'✓':''}</div>
     </div>
+    ${h.bijlage ? `<a href="${h.bijlage.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:8px;padding:6px 10px;margin-bottom:6px;font-size:11px;font-weight:700;color:var(--green);text-decoration:none">📎 ${h.bijlage.name}</a>` : ''}
     <div class="hw-meta" style="display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:11px;color:var(--muted);font-weight:700">— ${EFENDIJAS.find(e=>e.id===h.fromTeacher)?.name||'efendija'}</span>
       ${readOnly?'':`<button onclick="efDelHw(${h.id})" title="${L('Verwijder huiswerk','Obriši zadaću')}" style="background:transparent;color:var(--red);font-size:14px;padding:4px 8px;border-radius:8px;font-weight:900">🗑️</button>`}
@@ -3361,8 +3363,17 @@ function efHome(){
             <input type="number" value="7" min="1" max="30" oninput="setBcastField('dueDays',this.value)" style="width:60px;font-size:13px">
             <div style="font-size:12px;font-weight:700;color:var(--muted)">${L('dagen','dana')}</div>
           </div>
+          <div style="margin-bottom:10px">
+            <input type="file" id="bcast-file-input" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onchange="handleBcastFileSelect(this)" style="display:none">
+            ${state.newBcast.bijlage ? `<div style="display:flex;align-items:center;gap:8px;background:var(--green-soft);border-radius:10px;padding:8px 10px">
+              <span style="font-size:13px">📎</span>
+              <span style="flex:1;font-size:12px;font-weight:700;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${state.newBcast.bijlage.name}</span>
+              <button onclick="state.newBcast.bijlage=null;render()" style="background:transparent;color:var(--red);font-size:13px;font-weight:900;padding:2px 6px">✕</button>
+            </div>` : state.bcastUploading ? `<div style="font-size:12px;color:var(--muted);font-weight:700;padding:8px 0">${L('Bezig met uploaden…','Učitavanje…')}</div>`
+            : `<button onclick="document.getElementById('bcast-file-input').click()" style="width:100%;background:var(--bg);border:1.5px dashed var(--line);color:var(--muted);padding:10px;border-radius:10px;font-weight:700;font-size:12px">📎 ${L('Document toevoegen (optioneel)','Dodaj dokument (opcionalno)')}</button>`}
+          </div>
           <div style="font-size:11px;color:var(--muted);font-weight:700;margin-bottom:10px;line-height:1.5">${L('Wordt toegevoegd aan het huiswerk van alle','Biće dodano u zadaću za svu')} ${myKids.length} ${L('leerlingen in jouw niveaus.','djece u tvojim nivoima.')}</div>
-          <button onclick="efAddBcast()" style="width:100%;background:var(--green);color:#fff;padding:11px;border-radius:10px;font-weight:900;font-size:13px">📢 ${L('Verstuur naar alle leerlingen','Pošalji svoj djeci')}</button>
+          <button onclick="efAddBcast()" ${state.bcastUploading?'disabled':''} style="width:100%;background:var(--green);color:#fff;padding:11px;border-radius:10px;font-weight:900;font-size:13px;opacity:${state.bcastUploading?'.6':'1'}">📢 ${L('Verstuur naar alle leerlingen','Pošalji svoj djeci')}</button>
         ` : `<div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:4px">${L('Schrijf één opdracht of mededeling voor de hele groep — daarnaast blijft per-leerling huiswerk gewoon mogelijk.','Napišite jednu zadaću ili obavijest za cijelu grupu — zadaća po pojedinom djetetu i dalje je moguća.')}</div>`}
       </div>
 
@@ -3671,6 +3682,43 @@ function bestuurHome(){
           <span style="background:var(--purple-soft);color:var(--purple);padding:5px 10px;border-radius:8px;font-size:12px;font-weight:900">N3 · ${lvlCount[2]}</span>
         </div>
       </div>
+
+      <!-- Cijfers overzicht -->
+      ${(()=>{
+        if(!OCJENE.length) return '';
+        const avgAll = OCJENE.reduce((s,o)=>s+parseFloat(o.ocjena),0)/OCJENE.length;
+        const perOblast = OBLASTI.map(ob=>{
+          const vals = OCJENE.filter(o=>o.oblast===ob.id).map(o=>parseFloat(o.ocjena));
+          const avg = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null;
+          return {ob, avg, n:vals.length};
+        }).filter(x=>x.n>0);
+        const recent = [...OCJENE].sort((a,b)=>b.datum.localeCompare(a.datum)).slice(0,5);
+        return `<div class="card" style="margin-bottom:12px;padding:14px">
+          <div style="font-weight:900;font-size:14px;margin-bottom:10px">🎯 ${L('Cijfers overzicht','Pregled ocjena')}</div>
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+            <div style="font-size:32px;font-weight:900;color:${ocjenaColor(avgAll)};line-height:1">${avgAll.toFixed(1)}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700">${L('gemiddeld over','prosjek od')} ${OCJENE.length} ${L('cijfers','ocjena')}</div>
+          </div>
+          ${perOblast.length ? `<div style="display:grid;grid-template-columns:repeat(${perOblast.length},1fr);gap:6px;margin-bottom:12px">
+            ${perOblast.map(x=>`<div style="background:var(--bg);border-radius:10px;padding:8px;text-align:center">
+              <div style="font-size:15px;font-weight:900;color:${ocjenaColor(x.avg)}">${x.avg.toFixed(1)}</div>
+              <div style="font-size:9px;color:var(--muted);font-weight:800">${state.lang==='nl'?x.ob.nl:x.ob.bs}</div>
+            </div>`).join('')}
+          </div>` : ''}
+          <div style="font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">${L('Recent','Nedavno')}</div>
+          ${recent.map(o=>{
+            const k = KIDS.find(kk=>kk.id===o.kidId);
+            if(!k) return '';
+            return `<div onclick="openKid('${k.id}');state.efDetailTab='ocjene';render()" style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--line)">
+              <div style="width:28px;height:28px;border-radius:8px;background:${ocjenaColor(parseFloat(o.ocjena))};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;flex-shrink:0">${o.ocjena}</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:800;font-size:12px">${k.name}</div>
+                <div style="font-size:10px;color:var(--muted);font-weight:700">${oblastLabel(o.oblast)} · ${new Date(o.datum).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'numeric',month:'short'})}</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`;
+      })()}
 
       <!-- KPI: Uitvalrisico + Voortgangspercentage -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
@@ -4399,6 +4447,25 @@ function efAddHw(kidId){
 }
 function setHwField(f,v){state.newHw[f]=v;}
 function setBcastField(f,v){state.newBcast[f]=v;}
+// Bijlage uploaden naar Supabase Storage (bucket: obavijesti)
+async function handleBcastFileSelect(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(file.size > 15*1024*1024){ alert(L('Bestand is te groot (max 15MB).','Fajl je prevelik (maks 15MB).')); input.value=''; return; }
+  state.bcastUploading = true; render();
+  try{
+    const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g,'_');
+    const path = `${Date.now()}_${safeName}`;
+    const { error: upErr } = await DB.storage.from('obavijesti').upload(path, file, { cacheControl:'3600', upsert:false });
+    if(upErr) throw upErr;
+    const { data: pub } = DB.storage.from('obavijesti').getPublicUrl(path);
+    state.newBcast.bijlage = { name: file.name, url: pub.publicUrl };
+  }catch(e){
+    console.error('Upload fout:', e);
+    alert(L('Uploaden mislukt. Probeer opnieuw.','Učitavanje nije uspjelo. Pokušajte ponovo.'));
+  }
+  state.bcastUploading = false; render();
+}
 // Gezamenlijke obavijest — zelfde opdracht voor alle leerlingen van deze efendija
 function efAddBcast(){
   const n = state.newBcast;
@@ -4407,10 +4474,10 @@ function efAddBcast(){
   const myKids = KIDS.filter(k=>e.levels.includes(k.level));
   const groupId = 'bcast_'+Date.now();
   myKids.forEach(k=>{
-    HOMEWORK.push({id:++_hwIdCtr, kidId:k.id, title:n.title, title_bs:n.title, desc:n.desc, desc_bs:n.desc, dueDays:parseInt(n.dueDays)||7, done:false, fromTeacher:e?.id||201, shared:true, groupId});
+    HOMEWORK.push({id:++_hwIdCtr, kidId:k.id, title:n.title, title_bs:n.title, desc:n.desc, desc_bs:n.desc, dueDays:parseInt(n.dueDays)||7, done:false, fromTeacher:e?.id||201, shared:true, groupId, bijlage:n.bijlage||null});
     saveKidToDB(k.id);
   });
-  state.newBcast={title:'',desc:'',dueDays:7}; state.showAddBcast=false; render();
+  state.newBcast={title:'',desc:'',dueDays:7,bijlage:null}; state.showAddBcast=false; render();
 }
 
 // Efendija koppelt ouder aan kind (nieuw of bestaand op basis van naam+pin)
