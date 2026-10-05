@@ -3371,7 +3371,7 @@ function efHome(){
         ${myKids.slice(0,5).map(k=>`
           <div class="list-row" style="cursor:pointer" onclick="openKid('${k.id}')">
             <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-            <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)} • 🔥${k.streak}w</div></div>
+            <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${k.level||1} · B${currentBlok(k)}${kidTestAvg(k)!=null?' · Ø '+fmtDec(kidTestAvg(k)):''}</div></div>
             <div style="font-size:12px;color:var(--green);font-weight:800">${(()=>{const ilm=ilmStats(k.level,k.id);return ilm.pct+'%';})()}</div>
             <div style="font-size:13px;color:var(--muted);margin-left:6px">›</div>
           </div>`).join('')}
@@ -3400,7 +3400,7 @@ function efStudents(){
           ${myKids.map(k=>`
             <div class="list-row" style="cursor:pointer" onclick="openKid('${k.id}')">
               <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-              <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)} • 🔥${k.streak}w</div></div>
+              <div class="name" style="flex:1">${k.name}<div style="font-size:11px;color:var(--muted);font-weight:700">N${k.level||1} · B${currentBlok(k)}${kidTestAvg(k)!=null?' · Ø '+fmtDec(kidTestAvg(k)):''}</div></div>
               <div style="font-size:12px;color:var(--muted);margin-right:8px">›</div>
               <button onclick="event.stopPropagation();removeKid('${k.id}')" style="background:var(--red-soft);color:var(--red);width:34px;height:34px;border-radius:10px;font-size:16px;display:flex;align-items:center;justify-content:center">🗑</button>
             </div>`).join('')}
@@ -4682,6 +4682,369 @@ async function restoreOuderSession(){
       localStorage.removeItem('ikc_ouder_session');
     }
   } catch(_){}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NPP-UI v2 (okt 2026) — NPP-blokken, cijfers en aanwezigheid zijn leidend.
+// Deze functies overschrijven de oudere definities met dezelfde naam (laatste declaratie wint).
+// Uit de UI gehaald: sura-pad met sloten, badges, hafiz-punten, streak-ranking.
+// ═══════════════════════════════════════════════════════════════
+const SURA_SED = {euza:1,hairli:2,kelime:3,subhaneke:4,ihlas:10,fatiha:11,nas:18,ettehijjatu:19,salavati:26,rabbena:27,
+  felek:2,leheb:10,dovajelo:11,nasr:18,kafirun:26, kunut:2,kevser:10,ajetulkursi:11,kurejs:18,namaska:19,maun:26,
+  fil:2,dzenazetska:10,humeze:18,asr:26,dovaezan:27, tekasur:2,kariah:10,elif:18,kulid:26};
+function computedLevel(k){ return (k && k.level) || 1; }
+function blokCats(nivo){ return (ILMIHAL[nivo]||[]).filter(c=>!c.extra); }
+function blokSuras(nivo, blok){ return (PATH.suras[nivo]||[]).map((s,i)=>({...s, idx:i, sed:SURA_SED[s.id]||1})).filter(s=>Math.ceil(s.sed/8)===blok); }
+function suraDone(k, nivo, idx, cat){ const st=kidStations(k, cat||'suras', nivo)[idx]; return !!st && st.status==='done'; }
+function blokStats(k, nivo, blok){
+  const cat = blokCats(nivo)[blok-1]; const done = state.ilmDone[k.id]||{};
+  const les = cat ? cat.lessen : []; const ld = les.filter(l=>done[l.id]).length;
+  const su = blokSuras(nivo, blok); const sd = su.filter(s=>suraDone(k,nivo,s.idx)).length;
+  const tot = les.length + su.length;
+  return {cat, les, ld, su, sd, pct: tot ? Math.round((ld+sd)/tot*100) : 0};
+}
+function currentBlok(k){ const n=k.level||1; for(let b=1;b<=4;b++){ const t=blokTest(k.id,n,b); if(!t || parseFloat(t.ocjena)<6) return b; } return 4; }
+function kidTests(k){ return OCJENE.filter(o=>o.kidId===k.id && o.oblast==='blok'); }
+function kidTestAvg(k){ const t=kidTests(k); return t.length ? t.reduce((s,o)=>s+parseFloat(o.ocjena),0)/t.length : null; }
+function kidAttPct(k){
+  const today=new Date().toISOString().slice(0,10); const held=new Set();
+  KIDS.forEach(x=>(ATTENDANCE[x.id]||[]).forEach(a=>{ if(a.present) held.add(a.date); }));
+  const w=(ATTENDANCE[k.id]||[]).filter(a=>a.date<=today && held.has(a.date));
+  return w.length ? Math.round(w.filter(a=>a.present).length/w.length*100) : null;
+}
+function learnedCounts(k){
+  const done=state.ilmDone[k.id]||{}; let les=0, su=0, qu=0;
+  LEVELS.forEach(n=>{ blokCats(n).forEach(c=>c.lessen.forEach(l=>{ if(done[l.id]) les++; })); kidStations(k,'suras',n).forEach(s=>{ if(s.status==='done') su++; }); });
+  [1,2].forEach(q=>kidStations(k,'quran',q).forEach(s=>{ if(s.status==='done') qu++; }));
+  return {les, su, qu};
+}
+function isNewDate(d){ return !!d && (Date.now()-new Date(d).getTime()) < 8*864e5; }
+function fmtDatum(d){ return d ? new Date(d).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'numeric',month:'short'}) : ''; }
+function sectionTitle(t){ return `<div style="font-size:12px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:16px 2px 8px">${t}</div>`; }
+
+// ─── Gedeelde bouwstenen ───
+function blokTilesHtml(k, nivo){
+  return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">${[1,2,3,4].map(b=>{
+    const t=blokTest(k.id,nivo,b), st=blokStats(k,nivo,b), v=t?parseFloat(t.ocjena):null;
+    const cur = nivo===(k.level||1) && b===currentBlok(k);
+    return `<div style="border-radius:12px;padding:8px 2px;text-align:center;background:${v!=null?(v>=6?'var(--green-soft)':'var(--red-soft)'):'var(--bg)'};border:2px solid ${cur?'var(--green)':'transparent'}">
+      <div style="font-size:10px;font-weight:900;color:var(--muted)">Blok ${b}</div>
+      <div style="font-size:17px;font-weight:900;color:${v!=null?ocjenaColor(v):'var(--muted)'};line-height:1.3">${v!=null?fmtDec(v):'—'}</div>
+      <div style="font-size:9px;font-weight:800;color:var(--muted)">${st.pct}% ${L('geleerd','naučeno')}</div>
+    </div>`;}).join('')}</div>`;
+}
+function ocjenaRowHtml(o){
+  const v=parseFloat(o.ocjena), blok=o.oblast==='blok';
+  return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)">
+    <div style="width:40px;height:40px;border-radius:11px;background:${ocjenaColor(v)};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:${blok?12:15}px;flex-shrink:0">${blok?fmtDec(v):o.ocjena}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:800;font-size:13px">${blok?`📝 ${L('Bloktoets','Blok-test')} N${o.nivo} · Blok ${o.blok}`:oblastLabel(o.oblast)}${isNewDate(o.datum)?` <span style="background:var(--gold-soft);color:var(--gold);font-size:9px;font-weight:900;padding:1px 6px;border-radius:6px">${L('NIEUW','NOVO')}</span>`:''}</div>
+      <div style="font-size:11px;color:var(--muted);font-weight:700">${fmtDatum(o.datum)}${!blok&&o.napomena?' · '+o.napomena:''}${blok?` · ${L('theorie','teorija')} ${o.teorija} · ${L('suras','sure')} ${o.sure} · ${L('aanw.','pris.')} ${o.prisustvo}`:''}</div>
+    </div>
+  </div>`;
+}
+function ocjeneCardHtml(k, max){
+  const list = OCJENE.filter(o=>o.kidId===k.id).sort((a,b)=>b.datum.localeCompare(a.datum)||b.id-a.id);
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="font-weight:900;font-size:14px;margin-bottom:8px">🎯 ${L('Cijfers','Ocjene')} — ${L('Niveau','Nivo')} ${k.level||1}</div>
+    ${blokTilesHtml(k, k.level||1)}
+    <div style="margin-top:8px">${list.length ? list.slice(0,max||5).map(ocjenaRowHtml).join('') : `<div style="font-size:12px;color:var(--muted);font-weight:700;padding:8px 0">${L('Nog geen cijfers.','Još nema ocjena.')}</div>`}</div>
+  </div>`;
+}
+function attCardHtml(k){
+  const today=new Date().toISOString().slice(0,10);
+  const held=new Set(); KIDS.forEach(x=>(ATTENDANCE[x.id]||[]).forEach(a=>{ if(a.present) held.add(a.date); }));
+  const w=(ATTENDANCE[k.id]||[]).filter(a=>a.date<=today && held.has(a.date)).slice(-10);
+  const pct=kidAttPct(k);
+  return `<div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-weight:900;font-size:14px">📅 ${L('Aanwezigheid','Prisustvo')}</div>
+      <div style="font-weight:900;color:${pct==null?'var(--muted)':pct>=75?'var(--green)':pct>=50?'var(--gold)':'var(--red)'}">${pct==null?'—':pct+'%'}</div>
+    </div>
+    ${w.length?`<div style="display:flex;gap:5px;flex-wrap:wrap">${w.map(a=>`<div title="${a.date}" style="padding:4px 7px;border-radius:8px;font-size:10px;font-weight:900;background:${a.present?'var(--green-soft)':'var(--red-soft)'};color:${a.present?'var(--green)':'var(--red)'}">${a.present?'✓':'✗'} ${fmtDatum(a.date)}</div>`).join('')}</div>`:`<div style="font-size:12px;color:var(--muted);font-weight:700">${L('Nog geen lessen geregistreerd.','Još nema evidentiranih časova.')}</div>`}
+    <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:6px">${L('Telt mee voor 20% in de bloktoets.','Računa se 20% u blok-testu.')}</div>
+  </div>`;
+}
+// Blokken met lessen + sure/dove; editable = efendija mag afvinken
+function learnedHtml(k, nivo, editable){
+  const done = state.ilmDone[k.id]||{};
+  const cats = blokCats(nivo);
+  const extra = (ILMIHAL[nivo]||[]).find(c=>c.extra);
+  const row = (isDone, label, onclick, tag) => `<div class="ilm-lesson ${isDone?'done':''}" ${editable?`onclick="${onclick}" style="cursor:pointer"`:''}>
+      <div class="ilm-check">${isDone?'✓':''}</div>
+      <div class="ilm-lesson-name">${label}</div>${tag?`<div class="ilm-lesson-pts">${tag}</div>`:''}
+    </div>`;
+  const blokHtml = cats.map((cat,i)=>{
+    const b=i+1, st=blokStats(k,nivo,b), isOpen=state.openIlmCat===cat.id;
+    const cur = nivo===(k.level||1) && b===currentBlok(k);
+    return `<div class="ilm-cat ${isOpen?'open':''}" style="${cur?'border:2px solid var(--green)':''}">
+      <div class="ilm-cat-head" onclick="toggleIlmCat('${cat.id}')">
+        <div class="ilm-cat-icon" style="background:${cat.bg}">${cat.icon}</div>
+        <div class="ilm-cat-info">
+          <div class="ilm-cat-name">${L(cat.name,cat.name_bs)}${blokBadge(k.id,nivo,b)}</div>
+          <div class="ilm-cat-prog">${cur?`<b style="color:var(--green)">${L('nu bezig','trenutno')}</b> · `:''}${L('lessen','lekcije')} ${st.ld}/${st.les.length} · ${L('suras/dua’s','sure/dove')} ${st.sd}/${st.su.length}</div>
+          <div class="ilm-cat-bar"><div class="ilm-cat-fill" style="width:${st.pct}%;background:${cat.color}"></div></div>
+        </div>
+        <div class="ilm-chevron">›</div>
+      </div>
+      <div class="ilm-lessons">
+        ${editable?`<button onclick="openBlokForm('${k.id}',${nivo},${b})" style="width:100%;margin:2px 0 8px;padding:9px;border-radius:10px;background:var(--blue-soft);color:var(--blue);font-weight:900;font-size:12px">📝 ${L('Bloktoets invoeren','Unesi blok-test')} — Blok ${b}</button>`:''}
+        ${st.les.map(les=>row(!!done[les.id], `<span style="color:var(--muted);font-weight:800">S${les.sed} · </span>${L(les.naam,les.naam_bs)}`, `toggleIlmLes('${k.id}','${les.id}')`)).join('')}
+        ${st.su.map(s=>row(suraDone(k,nivo,s.idx), `📖 ${s.label} <span style="color:var(--muted);font-weight:700">· ${s.sub}</span>`, `efToggleSuraDone('${k.id}',${nivo},${s.idx},'suras')`, 'S'+s.sed)).join('')}
+      </div>
+    </div>`;}).join('');
+  const extraHtml = extra ? (()=>{ const isOpen=state.openIlmCat===extra.id; const d=extra.lessen.filter(l=>done[l.id]).length;
+    return `<div class="ilm-cat ${isOpen?'open':''}"><div class="ilm-cat-head" onclick="toggleIlmCat('${extra.id}')">
+      <div class="ilm-cat-icon" style="background:${extra.bg}">${extra.icon}</div>
+      <div class="ilm-cat-info"><div class="ilm-cat-name">${L(extra.name,extra.name_bs)}</div><div class="ilm-cat-prog">${d}/${extra.lessen.length}</div></div><div class="ilm-chevron">›</div></div>
+      <div class="ilm-lessons">${extra.lessen.map(les=>row(!!done[les.id], L(les.naam,les.naam_bs), `toggleIlmLes('${k.id}','${les.id}')`)).join('')}</div></div>`; })() : '';
+  return blokHtml + extraHtml;
+}
+function quranHtml(k, editable){
+  return [1,2].map(q=>{
+    const st=kidStations(k,'quran',q), d=st.filter(s=>s.status==='done').length, id='quran'+q, isOpen=state.openIlmCat===id;
+    return `<div class="ilm-cat ${isOpen?'open':''}"><div class="ilm-cat-head" onclick="toggleIlmCat('${id}')">
+      <div class="ilm-cat-icon" style="background:var(--gold-soft)">${q===1?'ا':'📿'}</div>
+      <div class="ilm-cat-info"><div class="ilm-cat-name">${q===1?'Sufara':'Tedžvid'}</div><div class="ilm-cat-prog">${d}/${st.length}</div>
+        <div class="ilm-cat-bar"><div class="ilm-cat-fill" style="width:${st.length?Math.round(d/st.length*100):0}%;background:var(--gold)"></div></div></div><div class="ilm-chevron">›</div></div>
+      <div class="ilm-lessons">${st.map((s,i)=>`<div class="ilm-lesson ${s.status==='done'?'done':''}" ${editable?`onclick="efToggleSuraDone('${k.id}',${q},${i},'quran')" style="cursor:pointer"`:''}>
+        <div class="ilm-check">${s.status==='done'?'✓':''}</div><div class="ilm-lesson-name">${s.label}</div><div class="ilm-lesson-pts">${i+1}</div></div>`).join('')}</div></div>`;
+  }).join('');
+}
+function nivoChipsHtml(sel, onclickFn){
+  return `<div style="display:flex;gap:6px;margin-bottom:12px">${LEVELS.map(n=>`<button onclick="${onclickFn}(${n})" style="flex:1;padding:8px 0;border-radius:10px;font-weight:900;font-size:12px;border:1.5px solid ${n===sel?'var(--green)':'var(--line)'};background:${n===sel?'var(--green-soft)':'transparent'};color:${n===sel?'var(--green)':'var(--muted)'}">N${n}</button>`).join('')}</div>`;
+}
+function setPathLevel(n){ state.pathLevel=n; render(); }
+function setEfPathLevel(n){ state.efPathLevel=n; render(); }
+// Sura/dova/sufara/tedžvid afvinken: gewoon klaar ↔ niet klaar (geen sloten meer)
+function efToggleSuraDone(kidId, nivo, idx, cat){
+  if(state.role!=='efendija') return;
+  const k=KIDS.find(x=>x.id===kidId); if(!k) return;
+  if(!k.stationData) k.stationData={_v2:true};
+  if(!k.stationData[cat]) k.stationData[cat]={};
+  if(!k.stationData[cat][nivo]) k.stationData[cat][nivo]=kidStations(k,cat,nivo).map(s=>({status:s.status==='done'?'done':'locked', tag:null}));
+  const s=k.stationData[cat][nivo][idx]; if(!s) return;
+  s.status = s.status==='done' ? 'locked' : 'done'; s.tag=null;
+  if(cat==='suras') k.pts = surasPts(k);
+  render(); saveKidToDB(kidId);
+}
+function toggleIlmLes(kidId, lesId){
+  if(state.role!=='efendija') return;
+  if(!state.ilmDone[kidId]) state.ilmDone[kidId]={};
+  state.ilmDone[kidId][lesId]=!state.ilmDone[kidId][lesId];
+  render(); saveKidToDB(kidId);
+}
+function openBlokForm(kidId, nivo, blok){
+  const k = KIDS.find(x=>x.id===kidId); if(!k) return;
+  nivo = nivo || k.level || 1;
+  if(!blok){ blok=1; for(let b=1;b<=4;b++){ if(!blokTest(kidId,nivo,b)){ blok=b; break; } } }
+  const today = new Date().toISOString().slice(0,10);
+  const pr = blokPrisustvo(kidId, today);
+  state.newBlok = {nivo, blok, datum:today, teorija:'', sure:'', prisustvo: pr.ocjena!=null ? String(pr.ocjena) : ''};
+  state.showAddBlok = true; state.showAddOcjena = false;
+  render();
+  try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(_){}
+}
+
+// ─── KIND ───
+function kidNav(){ return navBar([['home',L('Start','Početna')],['path',L('Geleerd','Naučeno')],['leader','Ranking']]); }
+function kidApp(){
+  if(state.nav==='path')   return kidLearned();
+  if(state.nav==='leader') return kidRanking();
+  return kidHome();
+}
+function topbarKid(){
+  const k=state.me, pct=kidAttPct(k);
+  return `<div class="topbar">
+    <div class="row">
+      <div class="avatar ${colorOf(k.name)}">${initial(k.name)}</div>
+      <div><div style="font-weight:900">${k.name}</div>
+        <div class="muted" style="font-size:12px">${L('Niveau','Nivo')} ${k.level||1} · Blok ${currentBlok(k)}</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="streak-chip">📅 ${pct==null?'—':pct+'%'}</div>
+      <button onclick="logout()" style="background:var(--red-soft);color:var(--red);width:36px;height:36px;border-radius:11px;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center" title="${T('logout')}">⏻</button>
+    </div>
+  </div>`;
+}
+function kidHome(){
+  const k=state.me, nivo=k.level||1, b=currentBlok(k), st=blokStats(k,nivo,b);
+  const myHw = HOMEWORK.filter(h=>h.kidId===k.id && !h.done);
+  const today=new Date().toISOString().slice(0,10);
+  const past=(ATTENDANCE[k.id]||[]).filter(a=>a.date<today), last=past[past.length-1];
+  const held=new Set(); KIDS.forEach(x=>(ATTENDANCE[x.id]||[]).forEach(a=>{ if(a.present) held.add(a.date); }));
+  const wasAbsent = last && !last.present && held.has(last.date);
+  const next = st.les.find(l=>!(state.ilmDone[k.id]||{})[l.id]);
+  return `${topbarKid()}
+  <div class="screen">
+    <div class="greeting"><h1>${T('salam')}, ${k.name.split(' ')[0]}!</h1></div>
+    ${wasAbsent?`<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:16px;padding:12px 14px;margin-bottom:12px;font-size:13px;font-weight:700;color:#92400e">🤍 ${L('We hebben je gemist bij de laatste mekteb. Tot zondag!','Nedostajao/la si nam na posljednjem mektebu. Vidimo se u nedjelju!')}</div>`:''}
+    <div class="hero" onclick="state.openIlmCat='${st.cat?st.cat.id:''}';state.pathLevel=${nivo};setNav('path')">
+      <div class="hero-label">📘 ${L('Niveau','Nivo')} ${nivo} · ${L('nu bezig met','trenutno')} Blok ${b}</div>
+      <div class="hero-title">${st.cat?L(st.cat.name,st.cat.name_bs).replace(/^Blok \d · /,''):''}</div>
+      <div style="font-size:12px;font-weight:800;opacity:.9;margin:4px 0 8px">${L('Lessen','Lekcije')} ${st.ld}/${st.les.length} · ${L('Suras/dua’s','Sure/dove')} ${st.sd}/${st.su.length}${next?` · ${L('volgende','sljedeće')}: ${L(next.naam,next.naam_bs)}`:''}</div>
+      <button class="hero-cta">${L('Wat leer ik?','Šta učim?')} →</button>
+    </div>
+    ${ocjeneCardHtml(k,5)}
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-weight:900;font-size:14px;margin-bottom:8px">📢 ${L('Mededelingen & huiswerk','Obavijesti i zadaće')}</div>
+      ${myHw.length ? myHw.map(h=>hwCard(h,true)).join('') : `<div style="font-size:12px;color:var(--muted);font-weight:700">${T('noHw')}</div>`}
+    </div>
+    ${attCardHtml(k)}
+  </div>
+  ${kidNav()}`;
+}
+function kidLearned(){
+  const k=state.me, lvl=state.pathLevel||k.level||1, c=learnedCounts(k);
+  return `<div class="topbar">
+      <button class="back-btn" onclick="setNav('home')">←</button>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">${L('Wat ik geleerd heb','Šta sam naučio/la')}</div><div class="muted" style="font-size:12px">NPP IZBN 2026/27</div></div>
+      <div style="width:42px"></div>
+    </div>
+    <div class="screen" style="padding-bottom:120px">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
+        <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--green)">${c.les}</div><div style="font-size:10px;font-weight:800;color:var(--muted)">${L('lessen','lekcija')}</div></div>
+        <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--blue)">${c.su}</div><div style="font-size:10px;font-weight:800;color:var(--muted)">${L('suras/dua’s','sura/dova')}</div></div>
+        <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--gold)">${c.qu}</div><div style="font-size:10px;font-weight:800;color:var(--muted)">Sufara/Tedžvid</div></div>
+      </div>
+      ${nivoChipsHtml(lvl,'setPathLevel')}
+      ${learnedHtml(k, lvl, false)}
+      ${sectionTitle(L('Koran lezen','Učenje Kur’ana'))}
+      ${quranHtml(k,false)}
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:700;margin-top:10px">🏫 ${L('Efendija vinkt af wat je beheerst.','Efendija označava šta si savladao/la.')}</div>
+    </div>
+    ${kidNav()}`;
+}
+function setRankMode(m){ state.rankMode=m; render(); }
+function kidRanking(){
+  const k=state.me, nivo=k.level||1, mode=state.rankMode||'avg';
+  const score = x => { if(mode==='avg') return kidTestAvg(x); const t=blokTest(x.id,nivo,mode); return t?parseFloat(t.ocjena):null; };
+  const ranked = KIDS.filter(x=>(x.level||1)===nivo).map(x=>({x, s:score(x), a:kidAttPct(x)||0}))
+    .filter(r=>r.s!=null).sort((p,q)=>q.s-p.s || q.a-p.a).map((r,i)=>({...r, rank:i+1}));
+  const me = ranked.find(r=>r.x.id===k.id);
+  const top = ranked.slice(0,10);
+  const pod = ranked.slice(0,3), order = pod.length>=3 ? [pod[1],pod[0],pod[2]] : pod;
+  const rowHtml = r => `<div class="list-row ${r.x.id===k.id?'me':''}">
+      <div class="rank ${r.rank<=3?'r'+r.rank:''}">${r.rank}</div>
+      <div class="avatar sm ${colorOf(r.x.name)}">${initial(r.x.name)}</div>
+      <div class="name">${r.x.name}</div>
+      <div class="pts" style="color:${ocjenaColor(r.s)}">${fmtDec(r.s)}</div>
+    </div>`;
+  return `<div class="topbar">
+      <button class="back-btn" onclick="setNav('home')">←</button>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">Ranking · ${L('Niveau','Nivo')} ${nivo}</div><div class="muted" style="font-size:12px">${L('op basis van bloktoetsen','na osnovu blok-testova')}</div></div>
+      <div style="width:42px"></div>
+    </div>
+    <div class="screen">
+      <div class="subtabs">
+        <div class="subtab ${mode==='avg'?'on':''}" onclick="setRankMode('avg')">Ø ${L('Gemiddeld','Prosjek')}</div>
+        ${[1,2,3,4].map(b=>`<div class="subtab ${mode===b?'on':''}" onclick="setRankMode(${b})">B${b}</div>`).join('')}
+      </div>
+      ${!ranked.length ? `<div class="card" style="text-align:center;padding:26px;color:var(--muted);font-weight:700">📝 ${L('Nog geen bloktoetsen. De ranking vult zich na de eerste toets — insha’Allah!','Još nema blok-testova. Ranking se puni nakon prvog testa — inša’Allah!')}</div>` : `
+      ${pod.length>=2?`<div class="podium">${order.map(r=>`<div class="pod ${r.rank===1?'pod-1':''}">${r.rank===1?'<div class="crown">👑</div>':''}
+        <div class="pod-avatar ${colorOf(r.x.name)}">${initial(r.x.name)}</div><div class="pod-name">${r.x.name.split(' ')[0]}</div><div class="pod-pts">${fmtDec(r.s)}</div></div>`).join('')}</div>`:''}
+      <div class="list">${top.map(rowHtml).join('')}${me && me.rank>10 ? `<div style="text-align:center;color:var(--muted);font-weight:900">⋯</div>`+rowHtml(me) : ''}</div>
+      ${!me?`<div style="text-align:center;font-size:12px;color:var(--muted);font-weight:700;margin-top:10px">${L('Jij staat erin zodra je eerste bloktoets is ingevoerd.','Bit ćeš na listi čim se unese tvoj prvi blok-test.')}</div>`:''}`}
+      <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:700;margin-top:12px">${L('Cijfer = theorie 40% · suras/dua’s 40% · aanwezigheid 20%','Ocjena = teorija 40% · sure/dove 40% · prisustvo 20%')}</div>
+    </div>
+    ${kidNav()}`;
+}
+
+// ─── OUDER ───
+function toggleOuderLearn(kidId){ state.ouderLearn = state.ouderLearn||{}; state.ouderLearn[kidId]=!state.ouderLearn[kidId]; render(); }
+function ouderHome(){
+  const p=state.me, kids=KIDS.filter(k=>p.kidIds.includes(k.id));
+  const allHw=HOMEWORK.filter(h=>p.kidIds.includes(h.kidId) && !h.done);
+  const nextSun=nextSundayDate();
+  const nextSunLbl=new Date(nextSun).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{weekday:'long',day:'numeric',month:'long'});
+  return `<div class="topbar">
+    <div class="row" style="cursor:pointer" onclick="setNav('me')">
+      <div class="avatar ${colorOf(p.name)}">${initial(p.name)}</div>
+      <div><div style="font-weight:900">${p.name.split('(')[0].trim()}</div><div class="muted" style="font-size:11px">${T('ouder')}</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="setNav('msg')" style="background:var(--green-soft);color:var(--green);width:36px;height:36px;border-radius:11px;font-size:17px;border:0">💬</button>
+      <button onclick="logout()" style="background:var(--red-soft);color:var(--red);width:36px;height:36px;border-radius:11px;font-size:16px;border:0">⏻</button>
+    </div>
+  </div>
+  <div class="screen">
+    <div class="greeting"><h1>${T('salam')}, ${p.name.split('(')[0].split(' ')[0]}!</h1></div>
+    ${kids.map(k=>{
+      const nivo=k.level||1, b=currentBlok(k), st=blokStats(k,nivo,b), c=learnedCounts(k);
+      const notif=PARENT_NOTIFICATIONS[k.id]?.[nextSun] ?? null;
+      const open=(state.ouderLearn||{})[k.id];
+      return `<div style="margin-bottom:18px">
+        <div class="row" style="margin:6px 2px 10px">
+          <div class="avatar ${colorOf(k.name)}" style="width:44px;height:44px;font-size:18px">${initial(k.name)}</div>
+          <div style="flex:1"><div style="font-weight:900;font-size:16px">${k.name}</div>
+            <div class="muted" style="font-size:12px;font-weight:700">${L('Niveau','Nivo')} ${nivo} · Blok ${b}: ${st.cat?L(st.cat.name,st.cat.name_bs).replace(/^Blok \d · /,''):''}</div></div>
+        </div>
+        ${ocjeneCardHtml(k,5)}
+        ${attCardHtml(k)}
+        <div class="card" style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="toggleOuderLearn('${k.id}')">
+            <div style="font-weight:900;font-size:14px">✅ ${L('Geleerd','Naučeno')}</div>
+            <div style="font-size:12px;font-weight:800;color:var(--muted)">${c.les} ${L('lessen','lekcija')} · ${c.su} ${L('suras/dua’s','sura/dova')} ${open?'▲':'▼'}</div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px">${L('Deze blok','Ovaj blok')}: ${L('lessen','lekcije')} ${st.ld}/${st.les.length} · ${L('suras/dua’s','sure/dove')} ${st.sd}/${st.su.length}</div>
+          ${open?`<div style="margin-top:10px">${learnedHtml(k,nivo,false)}${quranHtml(k,false)}</div>`:''}
+        </div>
+        ${(k.notities||'').trim()?`<div class="card" style="margin-bottom:12px"><div style="font-weight:900;font-size:13px;margin-bottom:5px">💬 ${L('Notitie efendija','Bilješka efendije')}</div><div style="font-size:13px;white-space:pre-wrap">${k.notities}</div></div>`:''}
+        <div class="card" style="margin-bottom:12px;border-left:4px solid ${notif==='yes'?'var(--green)':notif==='no'?'var(--red)':'var(--gold)'}">
+          <div style="font-weight:900;font-size:13px">📅 ${L('Aanstaande les','Sljedeći čas')} — <span style="text-transform:capitalize">${nextSunLbl}</span></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button onclick="parentConfirmAttendance('${k.id}','yes')" style="flex:1;padding:10px;border-radius:12px;font-weight:900;font-size:13px;background:${notif==='yes'?'var(--green)':'var(--green-soft)'};color:${notif==='yes'?'#fff':'var(--green)'}">✅ ${L('Komt','Dolazi')}</button>
+            <button onclick="parentConfirmAttendance('${k.id}','no')" style="flex:1;padding:10px;border-radius:12px;font-weight:900;font-size:13px;background:${notif==='no'?'var(--red)':'var(--red-soft)'};color:${notif==='no'?'#fff':'var(--red)'}">❌ ${L('Afwezig','Odsutan/na')}</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-weight:900;font-size:14px;margin-bottom:8px">📢 ${L('Mededelingen & huiswerk','Obavijesti i zadaće')}</div>
+      ${allHw.length ? allHw.map(h=>{ const hk=KIDS.find(x=>x.id===h.kidId); return (kids.length>1?`<div style="font-size:11px;font-weight:800;color:var(--muted);padding:4px 2px 2px">👦 ${hk?.name||''}</div>`:'')+hwCard(h,true); }).join('') : `<div style="font-size:12px;color:var(--muted);font-weight:700">${T('noHw')}</div>`}
+    </div>
+  </div>`;
+}
+
+// ─── EFENDIJA: leerling-detail ───
+function efStudentDetail(){
+  const k = KIDS.find(x=>x.id===state.selectedKid);
+  if(!k) return efStudents();
+  let tab = state.efDetailTab; if(tab==='voortgang') tab = state.efDetailTab = 'npp';
+  const pct=kidAttPct(k), avg=kidTestAvg(k), c=learnedCounts(k);
+  const tabs=[['npp','📘 NPP'],['ocjene','🎯 '+L('Cijfers','Ocjene')],['aanwezigheid','📅 '+L('Aanwezig','Prisustvo')],['huiswerk','✅ '+L('Huiswerk','Zadaća')],['notities','📝 '+L('Notities','Bilješke')],['bewerken','✏️ '+L('Bewerken','Uredi')]];
+  const stat=(v,l,col)=>`<div class="card" style="padding:9px;text-align:center"><div style="font-size:16px;font-weight:900;color:${col}">${v}</div><div style="font-size:9px;color:var(--muted);font-weight:800">${l}</div></div>`;
+  return `<div class="topbar">
+      <button class="back-btn" onclick="closeKid()">←</button>
+      <div style="text-align:center;flex:1"><div style="font-weight:900">${k.name}</div><div class="muted" style="font-size:12px">${L('Niveau','Nivo')} ${k.level||1} · Blok ${currentBlok(k)}</div></div>
+      <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
+    </div>
+    <div class="screen" style="padding-top:8px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px">
+        ${stat(pct==null?'—':pct+'%',L('Aanw.','Pris.'),'var(--green)')}
+        ${stat('B'+currentBlok(k),'Blok','var(--blue)')}
+        ${stat(avg==null?'—':fmtDec(avg),'Ø test',avg==null?'var(--muted)':ocjenaColor(avg))}
+        ${stat(c.les,L('lessen','lekcija'),'var(--purple)')}
+      </div>
+      <div class="subtabs" style="margin-bottom:14px;flex-wrap:wrap;gap:4px">
+        ${tabs.map(([id,l])=>`<div class="subtab ${tab===id?'on':''}" onclick="state.efDetailTab='${id}';state.showAddBlok=false;render()">${l}</div>`).join('')}
+      </div>
+      ${tab==='npp' ? efDetailNPP(k) : ''}
+      ${tab==='aanwezigheid' ? efDetailAanwezigheid(k) : ''}
+      ${tab==='huiswerk' ? efDetailHuiswerk(k) : ''}
+      ${tab==='ocjene' ? efDetailOcjene(k) : ''}
+      ${tab==='notities' ? efDetailNotities(k) : ''}
+      ${tab==='bewerken' ? efDetailBewerken(k) : ''}
+    </div>`;
+}
+function efDetailNPP(k){
+  const lvl = state.efPathLevel || k.level || 1;
+  return `${state.showAddBlok ? blokFormHtml(k) : ''}
+    ${nivoChipsHtml(lvl,'setEfPathLevel')}
+    <div style="background:var(--blue-soft);color:var(--blue);border-radius:10px;padding:8px 11px;font-size:11px;font-weight:800;margin-bottom:10px">📘 ${L('Tik op een les of sura om af te vinken. Bloktoets per blok invoeren.','Dodirni lekciju ili suru da označiš. Blok-test unosiš po bloku.')}</div>
+    ${learnedHtml(k, lvl, true)}
+    ${sectionTitle(L('Koran lezen','Učenje Kur’ana'))}
+    ${quranHtml(k, true)}`;
 }
 
 loadData(); // haalt data op uit Supabase en roept daarna render() aan
