@@ -5047,6 +5047,24 @@ function efDetailNPP(k){
     ${quranHtml(k, true)}`;
 }
 
+// Bosnische datums: browsers zonder bs-locale-data tonen "M10 4, Sun" → zelf formatteren
+(function(){
+  const orig = Date.prototype.toLocaleDateString;
+  const M=['januar','februar','mart','april','maj','juni','juli','august','septembar','oktobar','novembar','decembar'];
+  const MS=['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+  const D=['nedjelja','ponedjeljak','utorak','srijeda','četvrtak','petak','subota'];
+  const DS=['ned','pon','uto','sri','čet','pet','sub'];
+  Date.prototype.toLocaleDateString = function(loc, o){
+    if(!(typeof loc==='string' && loc.toLowerCase().startsWith('bs'))) return orig.call(this, loc, o);
+    o = o||{}; const p=[];
+    if(!o.weekday && !o.day && !o.month && !o.year) return `${this.getDate()}.${this.getMonth()+1}.${this.getFullYear()}.`;
+    if(o.weekday) p.push((o.weekday==='long'?D:DS)[this.getDay()]+',');
+    if(o.day) p.push(this.getDate()+'.');
+    if(o.month) p.push(o.month==='long'?M[this.getMonth()]:o.month==='short'?MS[this.getMonth()]:(this.getMonth()+1)+'.');
+    if(o.year) p.push(this.getFullYear()+'.');
+    return p.join(' ').replace(/,$/,'');
+  };
+})();
 loadData(); // haalt data op uit Supabase en roept daarna render() aan
 </script>
 </body>
