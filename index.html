@@ -1412,7 +1412,7 @@ function loginView(){
           placeholder="${T('searchName')}" value="${state.searchQuery}"
           oninput="state.searchQuery=this.value;render()">
       </div>
-      <div class="kid-grid" style="flex:1;overflow-y:auto">
+      <div class="kid-grid" style="flex:1;overflow-y:auto;align-content:start;align-items:start">
         ${items.map(p=>`
           <button class="kid-card" onclick="pickPerson('${p.id}')"
             style="background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.14);border-radius:14px">
