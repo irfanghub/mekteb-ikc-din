@@ -341,8 +341,12 @@ select{font-family:inherit;font-weight:600}
     z-index:50!important;
   }
 
-  body{height:100vh;height:100dvh;overflow:hidden;background:#020c06!important}
-  html{height:100%;background:#020c06}
+  /* Mobiel: vaste, schermvullende laag — de pagina zelf kan nooit scrollen, alleen .app.
+     (Eerder maakten .frame-padding + .app min-height:760px de pagina hoger dan het Safari-venster,
+      waardoor je de pagina kon wegscrollen en de bovenbalk/uitlog-knop onzichtbaar werd.) */
+  html,body{position:fixed;inset:0;width:100%;height:100%;overflow:hidden;background:#020c06!important}
+  .frame{position:fixed!important;inset:0!important;padding:0!important;display:block!important}
+  .app{position:absolute!important;inset:0!important;height:auto!important;min-height:0!important}
 
 }
 
@@ -1139,10 +1143,9 @@ function splashView(){
       </div>
 
       <!-- Draaiend medaillon -->
-      <div style="flex:1;display:flex;justify-content:center;align-items:center;margin:4px -22px 0;overflow:hidden;position:relative;min-height:160px;pointer-events:none">
+      <div style="flex:1;display:flex;justify-content:center;align-items:center;margin:4px -22px 0;overflow:hidden;position:relative;min-height:160px;pointer-events:none;-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 34px);mask-image:linear-gradient(180deg,transparent 0,#000 34px)">
         <div style="position:absolute;left:0;top:0;bottom:0;width:50px;background:linear-gradient(90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
         <div style="position:absolute;right:0;top:0;bottom:0;width:50px;background:linear-gradient(-90deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
-        <div style="position:absolute;top:0;left:0;right:0;height:28px;background:linear-gradient(180deg,#020c06,transparent);z-index:2;pointer-events:none"></div>
         <svg style="animation:splashSpin 80s linear infinite;transform-origin:center" width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="eg" x1="0" y1="0" x2=".5" y2="1">
@@ -1369,6 +1372,53 @@ function normName(s){ return String(s||'').trim().toLowerCase().normalize('NFD')
 
 // LOGIN — naam + pincode
 // ═══════════════════════════════════════════════════════════════
+// ── Laatst ingelogd onthouden (per apparaat) ─────────────────────
+// Ouder-id's worden bij elke load opnieuw genummerd, dus we bewaren naam + een kind-id (stabiel).
+function parentRef(p){ return {name:p.name, kid:(p.kidIds||[])[0]||null}; }
+function findParentByRef(ref){
+  if(!ref || !ref.name) return null;
+  const c = PARENTS.filter(p=>normName(p.name)===normName(ref.name));
+  if(c.length===1) return c[0];
+  return c.find(p=>ref.kid && (p.kidIds||[]).includes(ref.kid)) || null;
+}
+function rememberLastLogin(){
+  try{
+    const cur = JSON.parse(localStorage.getItem('mekteb_last_login')||'{}') || {};
+    if(state.role==='kind')  cur.kind  = {id: state.me.id};
+    if(state.role==='ouder') cur.ouder = parentRef(state.me);
+    localStorage.setItem('mekteb_last_login', JSON.stringify(cur));
+  }catch(_){}
+}
+function lastLoginPerson(role){
+  try{
+    const cur = JSON.parse(localStorage.getItem('mekteb_last_login')||'{}') || {};
+    if(role==='kind' && cur.kind) return KIDS.find(k=>String(k.id)===String(cur.kind.id)) || null;
+    if(role==='ouder'){
+      if(cur.ouder) return findParentByRef(cur.ouder);
+      const n = localStorage.getItem('ikc_ouder_naam');   // oudere installaties: alleen de naam
+      if(n) return findParentByRef({name:n});
+    }
+  }catch(_){}
+  return null;
+}
+function lastLoginCardHtml(role){
+  const p = lastLoginPerson(role);
+  if(!p) return '';
+  const o = role==='ouder';
+  const acc = o ? '245,158,11' : '16,185,129';
+  const txt = o ? '#fde68a' : '#e0fdf4';
+  const sub = o ? 'rgba(253,230,138,.6)' : 'rgba(110,231,183,.7)';
+  const act = o ? `ouderKiesNaam('${p.id}')` : `pickPerson('${p.id}')`;
+  return `<button onclick="${act}" style="width:100%;display:flex;align-items:center;gap:12px;text-align:left;margin-bottom:14px;padding:12px 14px;border-radius:16px;background:rgba(${acc},.14);border:1.5px solid rgba(${acc},.45);cursor:pointer;font-family:Nunito,sans-serif">
+    <div class="avatar ${colorOf(p.name)}" style="flex-shrink:0">${initial(p.name)}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px;color:${sub}">${L('Laatst ingelogd','Posljednja prijava')}</div>
+      <div style="font-weight:900;font-size:15px;color:${txt};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.name}</div>
+    </div>
+    <div style="font-size:12px;font-weight:900;color:${txt};flex-shrink:0">${L('Doorgaan','Nastavi')} ›</div>
+  </button>`;
+}
+
 function pool(){
   if(state.role==='kind')     return [...KIDS].sort((a,b)=>a.name.localeCompare(b.name,'bs'));
   if(state.role==='ouder')    return PARENTS;
@@ -1405,6 +1455,7 @@ function loginView(){
         <div class="login-title" style="color:#fde68a">${T('whoAreYou')}</div>
         <div class="login-sub" style="color:#6ee7b7">Kies je naam, avonturier</div>
       </div>
+      ${lastLoginCardHtml('kind')}
       <div class="search-box" style="position:relative;margin-bottom:10px;background:transparent;box-shadow:none;padding:0">
         <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:15px;opacity:.5">🔍</span>
         <input type="search"
@@ -1442,6 +1493,8 @@ function ouderLoginView(){
         <div class="login-title" style="color:#fde68a">${L('Ouder login','Prijava roditelja')}</div>
         <div class="login-sub" style="color:#fcd34d">${L('Bekijk de voortgang van je kind','Pratite napredak svog djeteta')}</div>
       </div>
+
+      ${lastLoginCardHtml('ouder')}
 
       <!-- Nieuw account aanmaken -->
       <button onclick="state.showRegForm=!state.showRegForm;render()"
@@ -1739,13 +1792,14 @@ function tapKey(k){
         state.me = state.selectedPerson;
         state.view = 'app'; state.nav='home'; state.pin='';
         if(state.role==='kind') state.pathLevel = state.me.level;
-        // Onthoud ouder sessie + naam op dit apparaat
+        // Onthoud sessie (ouder) + laatst ingelogde naam (kind/ouder) op dit apparaat
         if(state.role==='ouder'){
           try{
-            localStorage.setItem('ikc_ouder_session', state.me.id);
+            localStorage.setItem('ikc_ouder_session', JSON.stringify(parentRef(state.me)));
             localStorage.setItem('ikc_ouder_naam', state.me.name);
           }catch(_){}
         }
+        rememberLastLogin();
         render();
       } else {
         // Fout: dots rood, geen full render
@@ -4666,10 +4720,13 @@ try {
 // Herstel ouder sessie na page load
 async function restoreOuderSession(){
   try {
-    const savedId = localStorage.getItem('ikc_ouder_session');
-    if(!savedId) return;
-    // Wacht tot PARENTS geladen zijn
-    const ouder = PARENTS.find(p => p.id === savedId || String(p.id) === String(savedId));
+    const raw = localStorage.getItem('ikc_ouder_session');
+    if(!raw) return;
+    // Sessie = {name, kid}. Het oude formaat (alleen een nummer) is onbetrouwbaar: ouder-id's worden bij elke
+    // load opnieuw genummerd en kunnen naar een andere familie wijzen — dat formaat wissen we.
+    let ref = null; try{ ref = JSON.parse(raw); }catch(_){}
+    if(!ref || typeof ref!=='object' || !ref.name){ localStorage.removeItem('ikc_ouder_session'); return; }
+    const ouder = findParentByRef(ref);
     if(ouder){
       state.me = ouder;
       state.role = 'ouder';
