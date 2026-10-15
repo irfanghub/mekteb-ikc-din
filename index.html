@@ -952,6 +952,158 @@ const WEEKS = (()=>{
   return arr;
 })();
 
+
+// ═══ OPKOMST-MODEL (okt 2026) — één definitie voor bestuur én efendija ═══
+// Gehouden les = zondag ≥ MEKTEB_START, niet in de toekomst, met ≥ ATT_MIN_LES kinderen aanwezig geregistreerd.
+// Zo tellen vakanties, niet-geregistreerde zondagen en testklikken NIET als 0%.
+const ATT_DOEL = 70;      // afgesproken doelnorm opkomst (%)
+const ATT_MIN_LES = 3;    // minimaal aantal aanwezigen om een zondag als gehouden les te tellen
+function attToday(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function attIsPresent(kidId, date){ return !!(ATTENDANCE[kidId]||[]).find(a=>a.date===date && a.present); }
+function mektebDates(){
+  const today = attToday(), cnt = {};
+  KIDS.forEach(k=>(ATTENDANCE[k.id]||[]).forEach(a=>{ if(a.present && a.date>=MEKTEB_START && a.date<=today) cnt[a.date]=(cnt[a.date]||0)+1; }));
+  return Object.keys(cnt).filter(d=>cnt[d]>=ATT_MIN_LES).sort();
+}
+function attModel(kids){
+  const dates = mektebDates();
+  const n = kids.length;
+  const perLes = dates.map(d=>{ const pres=kids.filter(k=>attIsPresent(k.id,d)).length; return {date:d, pres, n, pct:n?Math.round(pres/n*100):0}; });
+  const avg = a => a.length ? Math.round(a.reduce((s,r)=>s+r.pct,0)/a.length) : null;
+  const avg4 = avg(perLes.slice(-4)), prev4 = avg(perLes.slice(-8,-4));
+  const win = dates.slice(-6);
+  const perKid = kids.map(k=>{
+    const pres = win.filter(d=>attIsPresent(k.id,d)).length;
+    let reeks = 0; for(let i=dates.length-1;i>=0;i--){ if(attIsPresent(k.id,dates[i])) break; reeks++; }
+    return {k, pres, tot:win.length, pct: win.length?Math.round(pres/win.length*100):null, reeks, strip: dates.slice(-8).map(d=>attIsPresent(k.id,d))};
+  });
+  const slapend = perKid.filter(r=>r.tot>=3 && r.pres===0);
+  const slapIds = new Set(slapend.map(r=>r.k.id));
+  const actieven = perKid.filter(r=>!slapIds.has(r.k.id));
+  const bands = { g:actieven.filter(r=>r.pct!=null&&r.pct>=75).length, o:actieven.filter(r=>r.pct!=null&&r.pct>=50&&r.pct<75).length, r:actieven.filter(r=>r.pct!=null&&r.pct<50).length };
+  const aandacht = actieven.filter(r=>r.reeks>=2).sort((a,b)=>b.reeks-a.reeks || a.k.name.localeCompare(b.k.name,'bs'));
+  const last = perLes[perLes.length-1] || null;
+  return {dates, n, perLes, last, avg4, prev4, win, perKid, slapend, actiefN: n-slapend.length, bands, aandacht};
+}
+function attColor(p){ return p==null?'var(--muted)':p>=ATT_DOEL?'var(--green-mid)':p>=50?'#f4a020':'var(--red)'; }
+function attDatum(d, opt){ return new Date(d).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA', opt||{day:'numeric',month:'short'}); }
+function attStripHtml(strip){
+  return `<div style="display:flex;gap:3px">${strip.map(p=>`<span style="width:9px;height:9px;border-radius:50%;background:${p?'var(--green-mid)':'var(--line)'};display:inline-block"></span>`).join('')}</div>`;
+}
+function attBarsHtml(perLes){
+  const rows = perLes.slice(-12);
+  if(!rows.length) return '';
+  return `<div style="position:relative;height:120px;display:flex;align-items:flex-end;gap:6px;padding-top:14px">
+    <div style="position:absolute;left:0;right:0;bottom:${18 + ATT_DOEL/100*86}px;border-top:2px dashed var(--gold-bright, #e5b84a);z-index:1"></div>
+    <div style="position:absolute;right:0;bottom:${20 + ATT_DOEL/100*86}px;font-size:9px;font-weight:900;color:var(--gold, #b8860b);z-index:2">${L('doel','cilj')} ${ATT_DOEL}%</div>
+    ${rows.map(r=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0">
+      <div style="font-size:10px;font-weight:900;color:${attColor(r.pct)}">${r.pct}%</div>
+      <div style="width:100%;max-width:34px;height:${Math.max(3, r.pct/100*86)}px;background:${attColor(r.pct)};border-radius:6px 6px 2px 2px"></div>
+      <div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:4px;white-space:nowrap">${attDatum(r.date,{day:'numeric',month:'numeric'})}</div>
+    </div>`).join('')}
+  </div>`;
+}
+// Opkomst-sectie — bovenaan Overzicht (bestuur: aantallen; efendija: met namen)
+function attSectionHtml(){
+  const m = attModel(KIDS);
+  const metNamen = state.role !== 'bestuur';
+  if(!m.last) return `<div class="card" style="margin-bottom:12px;padding:16px">
+      <div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px">${L('Opkomst','Prisustvo')}</div>
+      <div style="font-weight:900;font-size:16px;margin-top:4px">${L('Nog geen geregistreerde les dit schooljaar','Još nema evidentiranog časa ove godine')}</div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px">${L('Een les telt mee zodra de efendija minstens','Čas se računa čim efendija evidentira najmanje')} ${ATT_MIN_LES} ${L('aanwezigen registreert.','prisutnih.')}</div>
+    </div>`;
+  const delta = (m.avg4!=null && m.prev4!=null) ? m.avg4 - m.prev4 : null;
+  const lvlRows = LEVELS.map(lv=>{ const ks=KIDS.filter(k=>k.level===lv); if(!ks.length) return null; const mm=attModel(ks); return {lv, n:ks.length, last:mm.last, avg4:mm.avg4}; }).filter(Boolean);
+  const bandTot = m.bands.g + m.bands.o + m.bands.r;
+  const bw = v => bandTot ? (v/bandTot*100) : 0;
+  return `
+    <!-- OPKOMST HERO -->
+    <div class="card" style="margin-bottom:12px;padding:16px;border:2px solid ${attColor(m.last.pct)}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px">📅 ${L('Opkomst laatste les','Prisustvo zadnji čas')} · ${attDatum(m.last.date,{weekday:'short',day:'numeric',month:'short'})}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;margin-top:8px">
+        ${donutSvg(m.last.pct, 92, attColor(m.last.pct))}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:34px;font-weight:900;line-height:1;letter-spacing:-1px">${m.last.pres}<span style="font-size:18px;color:var(--muted)"> / ${m.last.n}</span></div>
+          <div style="font-size:12px;color:var(--muted);font-weight:800;margin-top:3px">${L('kinderen aanwezig','djece prisutno')}</div>
+          <div style="font-size:12px;font-weight:800;margin-top:6px;color:${m.last.pct>=ATT_DOEL?'var(--green-mid)':'var(--red)'}">${m.last.pct>=ATT_DOEL?'✓ '+L('Boven doel','Iznad cilja'):L('Onder doel','Ispod cilja')+' ('+ATT_DOEL+'%)'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px">
+        <div style="background:var(--bg);border-radius:10px;padding:8px;text-align:center">
+          <div style="font-size:17px;font-weight:900;color:${attColor(m.avg4)}">${m.avg4}%</div>
+          <div style="font-size:9px;color:var(--muted);font-weight:800">${L('gem. laatste','pros. zadnja')} ${Math.min(4,m.perLes.length)}</div>
+        </div>
+        <div style="background:var(--bg);border-radius:10px;padding:8px;text-align:center">
+          <div style="font-size:17px;font-weight:900;color:${delta==null?'var(--muted)':delta>=0?'var(--green-mid)':'var(--red)'}">${delta==null?'—':(delta>=0?'+':'')+delta+'%'}</div>
+          <div style="font-size:9px;color:var(--muted);font-weight:800">${L('vs 4 lessen ervoor','vs 4 časa prije')}</div>
+        </div>
+        <div style="background:var(--bg);border-radius:10px;padding:8px;text-align:center">
+          <div style="font-size:17px;font-weight:900">${m.perLes.length}</div>
+          <div style="font-size:9px;color:var(--muted);font-weight:800">${L('lessen gehouden','održanih časova')}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPKOMST PER LES -->
+    <div class="card" style="margin-bottom:12px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <div style="font-weight:900;font-size:14px">📈 ${L('Opkomst per les','Prisustvo po času')}</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700">${L('schooljaar','školska godina')} 2026/27</div>
+      </div>
+      ${attBarsHtml(m.perLes)}
+      <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:8px;line-height:1.45">${L('Alleen gehouden lessen tellen mee (≥','Računaju se samo održani časovi (≥')}${ATT_MIN_LES} ${L('aanwezigen geregistreerd). Vakanties en niet-ingevulde zondagen tellen niet als 0%.','evidentirana prisutna). Raspust i neevidentirane nedjelje se ne računaju kao 0%.')}</div>
+    </div>
+
+    <!-- LEERLINGEN NAAR OPKOMST -->
+    <div class="card" style="margin-bottom:12px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">
+        <div style="font-weight:900;font-size:14px">👥 ${L('Leerlingen naar opkomst','Učenici po prisustvu')}</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:700">${L('laatste','zadnjih')} ${m.win.length} ${L('lessen','časova')}</div>
+      </div>
+      <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line);margin-bottom:10px">
+        <div style="width:${bw(m.bands.g)}%;background:var(--green-mid)"></div>
+        <div style="width:${bw(m.bands.o)}%;background:#f4a020"></div>
+        <div style="width:${bw(m.bands.r)}%;background:var(--red)"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center">
+        <div><div style="font-size:20px;font-weight:900;color:var(--green-mid)">${m.bands.g}</div><div style="font-size:9px;color:var(--muted);font-weight:800">≥75%</div></div>
+        <div><div style="font-size:20px;font-weight:900;color:#f4a020">${m.bands.o}</div><div style="font-size:9px;color:var(--muted);font-weight:800">50–74%</div></div>
+        <div><div style="font-size:20px;font-weight:900;color:var(--red)">${m.bands.r}</div><div style="font-size:9px;color:var(--muted);font-weight:800">&lt;50%</div></div>
+        <div><div style="font-size:20px;font-weight:900;color:var(--muted)">${m.slapend.length}</div><div style="font-size:9px;color:var(--muted);font-weight:800">${L('niet gezien','nisu dolazili')}</div></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:10px;line-height:1.45">${m.n} ${L('ingeschreven in de app','upisanih u aplikaciji')} · ${m.actiefN} ${L('actief','aktivnih')}. ${L('"Niet gezien" = 0× aanwezig in de laatste','"Nisu dolazili" = 0× prisutni u zadnjih')} ${m.win.length} ${L('lessen (vanaf 3 lessen).','časova (od 3 časa).')}${m.perLes.length<4?' '+L('Nog weinig lessen — percentages stabiliseren na 4–6 weken.','Još malo časova — procenti se stabiliziraju nakon 4–6 sedmica.'):''}</div>
+    </div>
+
+    <!-- AANDACHT NODIG -->
+    <div class="card" style="margin-bottom:12px;padding:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${metNamen&&m.aandacht.length?'8px':'0'}">
+        <div style="font-weight:900;font-size:14px">⚠️ ${L('Aandacht nodig','Potrebna pažnja')}</div>
+        <div style="background:${m.aandacht.length?'var(--red-soft)':'var(--green-soft)'};color:${m.aandacht.length?'var(--red)':'var(--green)'};padding:4px 10px;border-radius:8px;font-size:12px;font-weight:900">${m.aandacht.length}</div>
+      </div>
+      ${!m.aandacht.length ? `<div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px">${L('Geen leerlingen die 2+ lessen op rij misten ✓','Nema učenika koji su propustili 2+ časa zaredom ✓')}</div>`
+        : metNamen ? m.aandacht.map(r=>`<div onclick="openKid('${r.k.id}');state.efDetailTab='aanwezigheid';render()" style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);cursor:pointer">
+            <div class="avatar ${colorOf(r.k.name)}" style="width:30px;height:30px;font-size:12px">${initial(r.k.name)}</div>
+            <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:13px">${r.k.name}</div><div style="margin-top:3px">${attStripHtml(r.strip)}</div></div>
+            <div style="background:var(--red-soft);color:var(--red);padding:4px 8px;border-radius:8px;font-size:11px;font-weight:900;white-space:nowrap">${r.reeks}× ${L('op rij','zaredom')}</div>
+          </div>`).join('') + `<div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:8px">${L('Tip: neem deze week contact op met de ouders.','Savjet: ove sedmice kontaktirajte roditelje.')}</div>`
+        : `<div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px;line-height:1.45">${m.aandacht.length} ${L('leerlingen misten 2 of meer lessen op rij. De efendija ziet de namen en volgt op met de ouders.','učenika propustilo je 2 ili više časova zaredom. Efendija vidi imena i kontaktira roditelje.')}</div>`}
+    </div>
+
+    <!-- OPKOMST PER NIVEAU -->
+    <div class="card" style="margin-bottom:12px;padding:14px">
+      <div style="font-weight:900;font-size:14px;margin-bottom:8px">📊 ${L('Opkomst per niveau','Prisustvo po nivou')}</div>
+      ${lvlRows.map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)">
+        <span style="background:${lvlBg(r.lv)};color:${lvlColor(r.lv)};padding:4px 9px;border-radius:8px;font-size:12px;font-weight:900;min-width:34px;text-align:center">N${r.lv}</span>
+        <div style="flex:1;font-size:12px;font-weight:700;color:var(--muted)">${r.n} ${L('leerl.','učen.')}</div>
+        <div style="font-size:12px;font-weight:800">${r.last?r.last.pres+'/'+r.n:'—'}</div>
+        <div style="font-size:13px;font-weight:900;color:${attColor(r.avg4)};min-width:44px;text-align:right">${r.avg4!=null?r.avg4+'%':'—'}</div>
+      </div>`).join('')}
+      <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:6px">${L('laatste les · gemiddelde laatste 4','zadnji čas · prosjek zadnja 4')}</div>
+    </div>`;
+}
+
 // BERICHTEN — geladen vanuit Supabase (tabel: berichten)
 let BERICHTEN = []; // [{id, ouder_naam, ouder_id, kid_naam, tekst, van, created_at}]
 let BERICHT_THREADS = {}; // {thread_id: [{id, tekst, van, created_at}]}
@@ -3350,6 +3502,7 @@ function efHome(){
   return `${topbarEf()}
     <div class="screen">
       <div class="greeting"><h1>${T('salam')}, ${e.name}!</h1><p>${state.lang==='nl'?'klaar voor de volgende les?':'spreman za sljedeći čas?'}</p></div>
+      ${efAttCardHtml(myKids)}
 
       <!-- GEZAMENLIJKE OBAVIJEST / ZADAĆA VOOR ALLE LEERLINGEN -->
       <div class="card" style="margin-bottom:12px;${state.showAddBcast?'border:2px solid var(--green-soft)':''}">
@@ -3418,7 +3571,7 @@ function efHome(){
 
       <div class="metric-grid">
         <div class="metric"><div class="m-lbl">${T('students')}</div><div class="m-num">${myKids.length}</div></div>
-        <div class="metric"><div class="m-lbl">${T('avgAttend')}</div><div class="m-num">${Math.round(myKids.reduce((s,k)=>{const a=ATTENDANCE[k.id]||[];return s+(a.length?a.filter(w=>w.present).length/a.length:0);},0)/Math.max(1,myKids.length)*100)}%</div></div>
+        <div class="metric"><div class="m-lbl">${T('avgAttend')}</div><div class="m-num">${(()=>{const a=attModel(myKids).avg4;return a==null?'—':a+'%';})()}</div></div>
       </div>
       <div class="section-head"><div class="h3">${T('students')}</div><a onclick="setNav('students')">${state.lang==='nl'?'alle':'svi'} →</a></div>
       <div class="list">
@@ -3433,6 +3586,33 @@ function efHome(){
     </div>
   `;
 // ef-nav-removed
+}
+
+// Efendija startscherm — opkomstkaart met wie opvolging nodig heeft
+function efAttCardHtml(myKids){
+  const m = attModel(myKids);
+  const todayStr = attToday();
+  const isZondag = new Date().getDay()===0;
+  const vandaagPres = myKids.filter(k=>attIsPresent(k.id,todayStr)).length;
+  return `<div class="card" style="margin-bottom:12px;padding:14px;border:2px solid ${m.last?attColor(m.last.pct):'var(--line)'}">
+    <div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px">📅 ${L('Opkomst','Prisustvo')}</div>
+    ${isZondag ? `<div style="background:var(--green-soft);border-radius:10px;padding:10px;margin:8px 0;display:flex;align-items:center;gap:10px">
+        <div style="flex:1;font-weight:900;font-size:14px;color:var(--green)">${L('Vandaag','Danas')}: ${vandaagPres} / ${myKids.length} ${L('geregistreerd','evidentirano')}</div>
+        <button onclick="state.nav='students';state.kidTab='attendance';state.efAttWeekIdx=${WEEKS.length-1};render()" style="background:var(--green);color:#fff;padding:7px 12px;border-radius:9px;font-weight:900;font-size:12px">${L('Registreren','Evidentiraj')} →</button>
+      </div>` : ''}
+    ${m.last ? `<div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+        ${donutSvg(m.last.pct, 70, attColor(m.last.pct))}
+        <div style="flex:1">
+          <div style="font-weight:900;font-size:20px">${m.last.pres} / ${m.last.n} <span style="font-size:12px;color:var(--muted);font-weight:800">${L('op','dana')} ${attDatum(m.last.date)}</span></div>
+          <div style="font-size:12px;font-weight:800;color:var(--muted);margin-top:2px">${L('Gem. laatste','Pros. zadnja')} ${Math.min(4,m.perLes.length)}: <span style="color:${attColor(m.avg4)}">${m.avg4}%</span> · ${L('doel','cilj')} ${ATT_DOEL}%</div>
+        </div>
+      </div>` : `<div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px">${L('Nog geen les geregistreerd dit schooljaar.','Još nema evidentiranog časa ove godine.')}</div>`}
+    ${m.aandacht.length ? `<div style="margin-top:12px;font-weight:900;font-size:13px;color:var(--red)">⚠️ ${m.aandacht.length} ${L('kinderen misten 2+ lessen op rij','djece propustilo 2+ časa zaredom')}</div>
+      ${m.aandacht.slice(0,6).map(r=>`<div onclick="openKid('${r.k.id}');state.efDetailTab='aanwezigheid';render()" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer">
+        <div style="flex:1;font-weight:800;font-size:13px">${r.k.name}</div>${attStripHtml(r.strip)}
+        <span style="font-size:11px;font-weight:900;color:var(--red);min-width:28px;text-align:right">${r.reeks}×</span></div>`).join('')}
+      ${m.aandacht.length>6?`<div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:6px">+${m.aandacht.length-6} ${L('meer — zie Overzicht','više — vidi Pregled')}</div>`:''}` : (m.last?`<div style="font-size:12px;color:var(--green);font-weight:800;margin-top:10px">✓ ${L('Niemand mist 2+ lessen op rij','Niko nije propustio 2+ časa zaredom')}</div>`:'')}
+  </div>`;
 }
 function efStudents(){
   const e = state.me;
@@ -3464,20 +3644,25 @@ function efStudents(){
           const wi = state.efAttWeekIdx ?? WEEKS.length - 1;
           const weekDate = WEEKS[wi] || WEEKS[WEEKS.length-1];
           const d = new Date(weekDate);
-          const isUpcoming = wi === WEEKS.length - 1;
+          const isUpcoming = weekDate === attToday();
+          const regPres = myKids.filter(k=>attIsPresent(k.id,weekDate)).length;
           const dagLabel = d.toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{weekday:'long',day:'numeric',month:'long'});
           return `
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
             <button onclick="state.efAttWeekIdx=Math.max(0,(state.efAttWeekIdx??${WEEKS.length-1})-1);render()" style="width:38px;height:38px;border-radius:12px;border:1.5px solid var(--line);font-size:18px;font-weight:900;background:#fff" ${wi===0?'disabled':''}>‹</button>
             <div style="flex:1;text-align:center">
-              <div style="font-weight:900;font-size:14px">${isUpcoming?`📅 ${L('Komende les','Sljedeći čas')}`:''} ${dagLabel}</div>
+              <div style="font-weight:900;font-size:14px">${isUpcoming?`📅 ${L('Vandaag','Danas')} ·`:''} ${dagLabel}</div>
               <div style="font-size:11px;color:var(--muted);font-weight:700">${wi+1} / ${WEEKS.length} ${L('weken','sedmica')}</div>
             </div>
             <button onclick="state.efAttWeekIdx=Math.min(${WEEKS.length-1},(state.efAttWeekIdx??${WEEKS.length-1})+1);render()" style="width:38px;height:38px;border-radius:12px;border:1.5px solid var(--line);font-size:18px;font-weight:900;background:#fff" ${wi===WEEKS.length-1?'disabled':''}>›</button>
           </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;background:var(--green-soft);border-radius:12px;padding:10px 12px;margin-bottom:10px">
+            <div style="font-weight:900;font-size:15px;color:var(--green)">${regPres} / ${myKids.length} ${L('aanwezig','prisutno')}</div>
+            <div style="font-weight:900;font-size:15px;color:${attColor(myKids.length?Math.round(regPres/myKids.length*100):0)}">${myKids.length?Math.round(regPres/myKids.length*100):0}%</div>
+          </div>
           <div class="aw-list">
             ${myKids.map(k=>{
-              const isPresent = ATTENDANCE[k.id]?.[wi]?.present || false;
+              const isPresent = attIsPresent(k.id, WEEKS[wi]);
               // Parent notification for this week date
               const weekDate = WEEKS[wi];
               const parentNotif = PARENT_NOTIFICATIONS[k.id]?.[weekDate] ?? null;
@@ -3658,30 +3843,7 @@ function bestuurHome(){
         <div style="font-weight:900;font-size:19px;letter-spacing:-.3px">IKC DIN — ${L('overzicht','pregled')}</div>
       </div>
 
-      <!-- Mekteb-gezondheid donut -->
-      <div class="card" style="margin-bottom:12px;padding:14px;display:flex;gap:14px;align-items:center">
-        ${donutSvg(gezondheid, 86, gezondColor, L('gezond','zdravo'))}
-        <div style="flex:1;min-width:0">
-          <div style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px">${L('Mekteb-status','Status mekteba')}</div>
-          <div style="font-weight:900;font-size:18px;color:${gezondColor};margin:2px 0 4px;letter-spacing:-.3px;line-height:1.15">${gezondLabel}</div>
-          <div style="font-size:12px;color:var(--muted);font-weight:700">${last4Dates.length? `${new Date(last4Dates[last4Dates.length-1]).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'numeric',month:'short'})} · ${last4[last4.length-1].pres}/${last4[last4.length-1].meten} ${L('aanwezig','prisutni')}` : L('Nog geen mekteb-data','Još nema podataka')}</div>
-          ${last7.length >= 2 ? `<div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-            ${sparkSvg(last7, 78, 26, 'var(--green-mid)')}
-            <div style="font-size:12px;font-weight:900;color:${trendDelta>=0?'var(--green-mid)':'var(--red)'};white-space:nowrap">${trendDelta>=0?'+':''}${trendDelta}% ${trendDelta>=0?'↑':'↓'}</div>
-          </div>` : ''}
-        </div>
-      </div>
-
-      <!-- Leerlingen — brede kaart -->
-      <div class="card" style="margin-bottom:12px;padding:14px;display:flex;align-items:center;gap:14px">
-        <div style="flex:1">
-          <div style="font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${L('Leerlingen','Učenici')}</div>
-          <div style="font-size:32px;font-weight:900;line-height:1">${totalKids}</div>
-        </div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          ${LEVELS.map((L,i)=>`<span style="background:${lvlBg(L)};color:${lvlColor(L)};padding:5px 10px;border-radius:8px;font-size:12px;font-weight:900">N${L} · ${lvlCount[i]}</span>`).join('')}
-        </div>
-      </div>
+      ${attSectionHtml()}
 
       <!-- Cijfers overzicht -->
       ${(()=>{
@@ -3720,90 +3882,6 @@ function bestuurHome(){
         </div>`;
       })()}
 
-      <!-- KPI: Uitvalrisico + Voortgangspercentage -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-        <div class="card" style="padding:12px">
-          <div style="font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">⚠️ ${L('Uitvalrisico','Rizik ispadanja')}</div>
-          <div style="font-size:28px;font-weight:900;line-height:1;color:${uitvalKids.length>0?'var(--red)':'var(--green-mid)'}">${uitvalKids.length}</div>
-          <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:6px">${uitvalKids.length===0 ? L('Geen risico ✓','Nema rizika ✓') : `${uitvalPct}% · ${L('3+ afw. + laag niveau','3+ ods. + nizak nivo')}`}</div>
-        </div>
-        <div class="card" style="padding:12px">
-          <div style="font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🚀 ${L('Actief lerend','Aktivno uče')}</div>
-          <div style="font-size:28px;font-weight:900;line-height:1;color:${actiefPct>=70?'var(--green-mid)':actiefPct>=40?'#f4c430':'var(--orange)'}">${actiefPct}%</div>
-          <div style="font-size:11px;color:var(--muted);font-weight:700;margin-top:6px">${actiefLerend} ${L('van','od')} ${totalKids} · ${L('streak ≥ 2 weken','streak ≥ 2 nedjelje')}</div>
-        </div>
-      </div>
-
-      <!-- Aanwezigheid laatste 4 mektebs (bar chart) -->
-      ${last4.length ? `<div class="card" style="margin-bottom:12px;padding:14px">
-        <div style="font-weight:900;font-size:14px;margin-bottom:10px">📈 ${L('Aanwezigheid laatste 4 mektebs','Prisutnost zadnja 4 mekteba')}</div>
-        <div style="display:flex;align-items:flex-end;gap:8px;height:90px;margin-bottom:8px">
-          ${last4.map(r => `
-            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-              <div style="font-size:11px;font-weight:900;color:var(--green)">${r.pct}%</div>
-              <div style="width:100%;background:var(--line);border-radius:6px 6px 0 0;overflow:hidden;display:flex;align-items:flex-end;height:65px">
-                <div style="width:100%;background:linear-gradient(180deg,var(--green-mid),var(--green));height:${r.pct}%;border-radius:6px 6px 0 0"></div>
-              </div>
-              <div style="font-size:9px;color:var(--muted);font-weight:700">${new Date(r.date).toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{day:'2-digit',month:'short'})}</div>
-            </div>`).join('')}
-        </div>
-      </div>` : ''}
-
-      <!-- Aanwezigheid per niveau -->
-      <div class="card" style="margin-bottom:12px;padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-weight:900;font-size:14px">📊 ${L('Aanwezigheid per niveau','Prisutnost po nivou')}</div>
-          <div style="font-size:10px;color:var(--muted);font-weight:700">${L('laatste 4 mektebs','zadnja 4 mekteba')}</div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:8px">
-          ${lvlAtt.map(r => `
-            <div style="text-align:center">
-              ${r.count===0 ? `<div style="width:64px;height:64px;border-radius:50%;background:var(--line);margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);font-weight:800">—</div>`
-                            : donutSvg(r.pct||0, 64, r.pct>=80?'var(--green-mid)':r.pct>=60?'#f4c430':'var(--red)')}
-              <div style="font-size:12px;font-weight:800;margin-top:6px">${L('Niveau','Nivo')} ${r.lvl}</div>
-              <div style="font-size:10px;color:var(--muted);font-weight:700">${r.count} ${L('leerl.','učen.')}</div>
-            </div>`).join('')}
-        </div>
-      </div>
-
-      <!-- Aandacht nodig -->
-      ${aandachtKids.length ? `<div class="card" style="margin-bottom:12px;padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="display:flex;align-items:center;gap:6px">
-            <div style="background:var(--red-soft);color:var(--red);width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px">⚠️</div>
-            <div style="font-weight:900;font-size:14px">${L('Aandacht nodig','Potrebna pažnja')}</div>
-          </div>
-          <button onclick="setNav('students')" style="font-size:11px;color:var(--green);font-weight:800">${aandachtKids.length} ${L('leerlingen','učenika')} ›</button>
-        </div>
-        ${aandachtKids.slice(0,3).map(r => `
-          <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line)">
-            <div class="avatar ${colorOf(r.k.name)}" style="width:32px;height:32px;font-size:13px">${initial(r.k.name)}</div>
-            <div style="flex:1">
-              <div style="font-weight:800;font-size:13px">${r.k.name}</div>
-              <div style="font-size:10px;color:var(--muted);font-weight:700">N${r.k.level}</div>
-            </div>
-            <div style="background:var(--red-soft);color:var(--red);padding:4px 8px;border-radius:8px;font-size:11px;font-weight:900">${r.afw}× ${L('afw.','odsut.')}</div>
-          </div>`).join('')}
-      </div>` : ''}
-
-      <!-- Hafiz van de maand -->
-      ${hafiz ? `<div class="card" style="margin-bottom:12px;padding:14px;background:linear-gradient(135deg, var(--gold-soft) 0%, #fff 100%);border:1.5px solid var(--gold-bright)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div style="font-weight:900;font-size:14px">🏆 ${L('Hafiz van de maand','Hafiz mjeseca')}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="avatar ${colorOf(hafiz.k.name)}" style="width:48px;height:48px;font-size:18px">${initial(hafiz.k.name)}</div>
-          <div style="flex:1">
-            <div style="font-weight:900;font-size:15px">${hafiz.k.name}</div>
-            <div style="font-size:11px;color:var(--muted);font-weight:700">${L('Niveau','Nivo')} ${hafiz.k.level} · ${Math.round(hafiz.pct*100)}% ${L('aanwezig','prisutan')}</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-weight:900;color:var(--gold);font-size:15px">⭐ ${hafiz.pts}</div>
-            <div style="font-size:10px;color:var(--muted);font-weight:700">${L('punten','poena')}</div>
-          </div>
-        </div>
-      </div>` : ''}
-
       <!-- Eerstvolgende zondag -->
       <div class="card" style="margin-bottom:12px;padding:14px">
         <div style="font-weight:900;font-size:14px;margin-bottom:8px">📅 ${L('Eerstvolgende mekteb','Sljedeći mekteb')}</div>
@@ -3814,7 +3892,7 @@ function bestuurHome(){
           </div>
           <div style="flex:1">
             <div style="font-weight:800;font-size:13px">${L('Komende zondag','Nedjelja')}</div>
-            <div style="font-size:11px;color:var(--muted);font-weight:700">${totalKids} ${L('leerlingen verwacht','učenika očekivano')}</div>
+            <div style="font-size:11px;color:var(--muted);font-weight:700">${(()=>{const y=KIDS.filter(k=>(PARENT_NOTIFICATIONS[k.id]||{})[nextSun]==='yes').length, n=KIDS.filter(k=>(PARENT_NOTIFICATIONS[k.id]||{})[nextSun]==='no').length; return `${L('Ouders','Roditelji')}: ✅ ${y} ${L('aangemeld','najavljeno')} · ❌ ${n} ${L('afgemeld','odjavljeno')} · ❓ ${KIDS.length-y-n}`;})()}</div>
           </div>
         </div>
       </div>
@@ -3825,22 +3903,14 @@ function bestuurProgress(){
   // ─── DATA: voor Voortgang ─────────────────────────────────────────
   const allDates = [...new Set(KIDS.flatMap(k => (ATTENDANCE[k.id]||[]).map(a=>a.date)))].sort();
 
-  // Aanwezigheid per maand 2026 (alleen maanden met data)
+  // Opkomst per maand — gemiddelde van GEHOUDEN lessen; maanden zonder les (vakantie) vallen weg
+  const _am = attModel(KIDS);
   const byMonth = {};
-  allDates.forEach(d => {
-    if(!d.startsWith('2026')) return;
-    const m = d.slice(0,7);
-    if(!byMonth[m]) byMonth[m] = { pres:0, meten:0 };
-  });
-  KIDS.forEach(k => (ATTENDANCE[k.id]||[]).forEach(a => {
-    if(!a.date.startsWith('2026')) return;
-    const m = a.date.slice(0,7);
-    if(byMonth[m]){ byMonth[m].meten++; if(a.present) byMonth[m].pres++; }
-  }));
+  _am.perLes.forEach(r=>{ const m=r.date.slice(0,7); (byMonth[m]=byMonth[m]||[]).push(r.pct); });
   const months = Object.keys(byMonth).sort();
   const monthPoints = months.map(m => ({
     label: new Date(m+'-01').toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{month:'short'}),
-    pct: byMonth[m].meten? Math.round(byMonth[m].pres/byMonth[m].meten*100) : 0
+    pct: Math.round(byMonth[m].reduce((a,b)=>a+b,0)/byMonth[m].length)
   }));
 
   // Curriculum-voortgang per niveau (geaggregeerd over leerlingen)
@@ -3905,7 +3975,7 @@ function bestuurProgress(){
 
       <!-- Aanwezigheid per maand -->
       <div class="card" style="margin-bottom:12px;padding:14px">
-        <div style="font-weight:900;font-size:14px;margin-bottom:10px">📈 ${L('Aanwezigheid per maand','Prisutnost po mjesecu')} <span style="font-weight:700;color:var(--muted);font-size:11px">2026</span></div>
+        <div style="font-weight:900;font-size:14px;margin-bottom:10px">📈 ${L('Opkomst per maand','Prisustvo po mjesecu')} <span style="font-weight:700;color:var(--muted);font-size:11px">${L('alleen gehouden lessen','samo održani časovi')}</span></div>
         ${monthPoints.length ? lineChartSvg(monthPoints, 320, 110) : `<div style="color:var(--muted);font-size:12px;font-weight:700;padding:20px 0;text-align:center">${L('Nog geen data','Još nema podataka')}</div>`}
       </div>
 
@@ -4394,8 +4464,12 @@ function efToggleSura(kidId, levelId, idx, cat){
 }
 // Attendance direct zetten (aan/uit) door efendija — vanuit het hoofdscherm
 function efSetAttendance(kidId, weekIdx, present){
-  if(!ATTENDANCE[kidId]) ATTENDANCE[kidId]=WEEKS.map(w=>({date:w,present:false}));
-  ATTENDANCE[kidId][weekIdx].present = present;
+  // Op DATUM zoeken, niet op index (oude seizoensdata verschuift de index)
+  const date = WEEKS[weekIdx];
+  if(!ATTENDANCE[kidId]) ATTENDANCE[kidId]=[];
+  let rec = ATTENDANCE[kidId].find(a=>a.date===date);
+  if(!rec){ rec={date, present:false}; ATTENDANCE[kidId].push(rec); ATTENDANCE[kidId].sort((a,b)=>a.date.localeCompare(b.date)); }
+  rec.present = present;
   const k=KIDS.find(x=>x.id===kidId);
   if(k) k.streak=ATTENDANCE[kidId].filter(w=>w.present).length;
   render();
