@@ -990,17 +990,31 @@ function attDatum(d, opt){ return new Date(d).toLocaleDateString(state.lang==='n
 function attStripHtml(strip){
   return `<div style="display:flex;gap:3px">${strip.map(p=>`<span style="width:9px;height:9px;border-radius:50%;background:${p?'var(--green-mid)':'var(--line)'};display:inline-block"></span>`).join('')}</div>`;
 }
-function attBarsHtml(perLes){
-  const rows = perLes.slice(-12);
-  if(!rows.length) return '';
-  return `<div style="position:relative;height:120px;display:flex;align-items:flex-end;gap:6px;padding-top:14px">
-    <div style="position:absolute;left:0;right:0;bottom:${18 + ATT_DOEL/100*86}px;border-top:2px dashed var(--gold-bright, #e5b84a);z-index:1"></div>
-    <div style="position:absolute;right:0;bottom:${20 + ATT_DOEL/100*86}px;font-size:9px;font-weight:900;color:var(--gold, #b8860b);z-index:2">${L('doel','cilj')} ${ATT_DOEL}%</div>
-    ${rows.map(r=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0">
-      <div style="font-size:10px;font-weight:900;color:${attColor(r.pct)}">${r.pct}%</div>
-      <div style="width:100%;max-width:34px;height:${Math.max(3, r.pct/100*86)}px;background:${attColor(r.pct)};border-radius:6px 6px 2px 2px"></div>
-      <div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:4px;white-space:nowrap">${attDatum(r.date,{day:'numeric',month:'numeric'})}</div>
-    </div>`).join('')}
+function attBarsHtml(perLes, max){
+  const rows = max ? perLes.slice(-max) : perLes;
+  if(!rows.length) return `<div style="color:var(--muted);font-size:12px;font-weight:700;padding:20px 0;text-align:center">${L('Nog geen gehouden les','Još nema održanog časa')}</div>`;
+  const H = 130;               // hoogte balkgebied (px) = 100%
+  const doelY = ATT_DOEL/100*H;
+  return `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:8px">
+   <div style="position:relative;min-width:${rows.length*46}px;padding:0 4px">
+    <div style="position:relative;height:${H+64}px;display:flex;align-items:flex-end;gap:8px;padding-bottom:22px">
+      <div style="position:absolute;left:0;right:0;bottom:${22+doelY}px;border-top:2px dashed #d4a017;z-index:1"></div>
+      ${rows.map(r=>`<div style="flex:1;min-width:38px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative">
+        <div style="position:relative;z-index:2;background:var(--card);border-radius:5px;padding:1px 3px;text-align:center;margin-bottom:3px">
+          <div style="font-size:12px;font-weight:900;color:${attColor(r.pct)};line-height:1.1">${r.pct}%</div>
+          <div style="font-size:10px;font-weight:800;color:var(--muted)">${r.pres}/${r.n}</div>
+        </div>
+        <div style="width:100%;max-width:36px;height:${Math.max(3, r.pct/100*H)}px;background:${attColor(r.pct)};border-radius:6px 6px 2px 2px"></div>
+        <div style="position:absolute;bottom:-20px;font-size:10px;color:var(--muted);font-weight:800;white-space:nowrap">${attDatum(r.date,{day:'numeric',month:'numeric'})}</div>
+      </div>`).join('')}
+    </div>
+   </div>
+  </div>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:10px;font-weight:800;color:var(--muted);margin-top:4px">
+    <span style="color:#b8860b"><span style="display:inline-block;width:14px;border-top:2px dashed #d4a017;vertical-align:middle"></span> ${L('doel','cilj')} ${ATT_DOEL}%</span>
+    <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--green-mid)"></span> ≥ ${ATT_DOEL}%</span>
+    <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:#f4a020"></span> 50–${ATT_DOEL-1}%</span>
+    <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--red)"></span> &lt; 50%</span>
   </div>`;
 }
 // Opkomst-sectie — bovenaan Overzicht (bestuur: aantallen; efendija: met namen)
@@ -1052,7 +1066,7 @@ function attSectionHtml(){
         <div style="font-weight:900;font-size:14px">📈 ${L('Opkomst per les','Prisustvo po času')}</div>
         <div style="font-size:10px;color:var(--muted);font-weight:700">${L('schooljaar','školska godina')} 2026/27</div>
       </div>
-      ${attBarsHtml(m.perLes)}
+      ${attBarsHtml(m.perLes, 8)}
       <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:8px;line-height:1.45">${L('Alleen gehouden lessen tellen mee (≥','Računaju se samo održani časovi (≥')}${ATT_MIN_LES} ${L('aanwezigen geregistreerd). Vakanties en niet-ingevulde zondagen tellen niet als 0%.','evidentirana prisutna). Raspust i neevidentirane nedjelje se ne računaju kao 0%.')}</div>
     </div>
 
@@ -3973,10 +3987,25 @@ function bestuurProgress(){
         <div style="font-weight:900;font-size:19px;letter-spacing:-.3px">${L('Lange-termijn inzichten','Dugoročni uvidi')}</div>
       </div>
 
-      <!-- Aanwezigheid per maand -->
+      <!-- Opkomst per les (heel schooljaar) + per maand -->
       <div class="card" style="margin-bottom:12px;padding:14px">
-        <div style="font-weight:900;font-size:14px;margin-bottom:10px">📈 ${L('Opkomst per maand','Prisustvo po mjesecu')} <span style="font-weight:700;color:var(--muted);font-size:11px">${L('alleen gehouden lessen','samo održani časovi')}</span></div>
-        ${monthPoints.length ? lineChartSvg(monthPoints, 320, 110) : `<div style="color:var(--muted);font-size:12px;font-weight:700;padding:20px 0;text-align:center">${L('Nog geen data','Još nema podataka')}</div>`}
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <div style="font-weight:900;font-size:14px">📈 ${L('Opkomst per les','Prisustvo po času')}</div>
+          <div style="font-size:10px;color:var(--muted);font-weight:700">${_am.perLes.length} ${L('lessen','časova')} · ${_am.n} ${L('ingeschreven','upisanih')}</div>
+        </div>
+        ${attBarsHtml(_am.perLes)}
+        ${months.length ? `<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
+          <div style="display:grid;grid-template-columns:1.2fr .8fr 1.2fr .8fr;font-size:10px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;padding-bottom:6px">
+            <div>${L('Maand','Mjesec')}</div><div style="text-align:center">${L('Lessen','Časova')}</div><div style="text-align:center">${L('Gem. aanwezig','Pros. prisutno')}</div><div style="text-align:right">%</div>
+          </div>
+          ${months.map((m,ix)=>{ const ls=_am.perLes.filter(r=>r.date.startsWith(m)); const gp=Math.round(ls.reduce((a,r)=>a+r.pres,0)/ls.length); const pct=monthPoints[ix].pct;
+            return `<div style="display:grid;grid-template-columns:1.2fr .8fr 1.2fr .8fr;font-size:13px;font-weight:800;padding:6px 0;border-top:1px solid var(--line)">
+              <div style="text-transform:capitalize">${new Date(m+'-01').toLocaleDateString(state.lang==='nl'?'nl-NL':'bs-BA',{month:'long'})}</div>
+              <div style="text-align:center">${ls.length}</div>
+              <div style="text-align:center">${gp} / ${_am.n}</div>
+              <div style="text-align:right;font-weight:900;color:${attColor(pct)}">${pct}%</div>
+            </div>`;}).join('')}
+        </div>` : ''}
       </div>
 
       <!-- Curriculum-voortgang per niveau door tijd -->
