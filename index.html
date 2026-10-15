@@ -1017,6 +1017,111 @@ function attBarsHtml(perLes, max){
     <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--red)"></span> &lt; 50%</span>
   </div>`;
 }
+
+// ═══ KUR'AN-FASES & SURE-OVERZICHT (okt 2026) ═══
+// Kur'an-spoor staat los van NPP-nivo: Sufara (20) → Tedžvid (16). Groepen = praktische leesgroepen in de les.
+const KURAN_GROEPEN = [
+  {id:'s1', nl:'Sufara 1–5',   bs:'Sufara 1–5',   from:1,  to:5,  color:'#3b82f6'},
+  {id:'s2', nl:'Sufara 6–10',  bs:'Sufara 6–10',  from:6,  to:10, color:'#8b5cf6'},
+  {id:'s3', nl:'Sufara 11–15', bs:'Sufara 11–15', from:11, to:15, color:'#f97316'},
+  {id:'s4', nl:'Sufara 16–20', bs:'Sufara 16–20', from:16, to:20, color:'#d4a017'},
+  {id:'td', nl:'Tedžvid',      bs:'Tedžvid',      tedz:true,      color:'#1d8a4a'},
+];
+function kuranStand(k){
+  const suf = kidStations(k,'quran',1), ted = kidStations(k,'quran',2);
+  const sd = suf.filter(x=>x.status==='done').length, td = ted.filter(x=>x.status==='done').length;
+  if(td>0 || (suf.length && sd>=suf.length)){
+    return {fase:'td', track:2, done:td, tot:ted.length, les:Math.min(td+1,ted.length), label:`Tedžvid · ${L('les','lekcija')} ${Math.min(td+1,ted.length)}`};
+  }
+  const les = Math.min(sd+1, suf.length||20);
+  const g = KURAN_GROEPEN.find(g=>!g.tedz && les>=g.from && les<=g.to) || KURAN_GROEPEN[0];
+  return {fase:g.id, track:1, done:sd, tot:suf.length, les, label:`Sufara · ${L('les','lekcija')} ${les}`};
+}
+// Volgende Kur'an-les afvinken (eerste niet-afgeronde in huidig spoor)
+function efKuranVolgende(kidId){
+  const k=KIDS.find(x=>x.id===kidId); if(!k) return;
+  const st=kuranStand(k); const arr=kidStations(k,'quran',st.track);
+  const idx=arr.findIndex(x=>x.status!=='done'); if(idx<0) return;
+  efToggleSuraDone(kidId, st.track, idx, 'quran');
+}
+function efKuranHtml(myKids){
+  const per = KURAN_GROEPEN.map(g=>({g, kids: myKids.map(k=>({k, st:kuranStand(k)})).filter(r=>r.st.fase===g.id).sort((a,b)=>b.st.done-a.st.done || a.k.name.localeCompare(b.k.name,'bs'))}));
+  return `<div style="background:var(--gold-soft);color:#8a6d0b;border-radius:10px;padding:9px 11px;font-size:11px;font-weight:800;margin-bottom:12px;line-height:1.45">📿 ${L('Leesgroepen op basis van waar elk kind staat in Sufara/Tedžvid. Los van N1/N2. Tik ✓ als het kind zijn volgende les beheerst.','Grupe čitanja prema tome gdje je svako dijete u Sufari/Tedžvidu. Neovisno o nivou. Dodirni ✓ kad dijete savlada sljedeću lekciju.')}</div>
+  <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--line);margin-bottom:14px">
+    ${per.map(x=>`<div style="width:${myKids.length?x.kids.length/myKids.length*100:0}%;background:${x.g.color}"></div>`).join('')}
+  </div>
+  ${per.map(x=>`<div class="card" style="margin-bottom:10px;padding:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${x.kids.length?'6px':'0'}">
+      <div style="font-weight:900;font-size:14px;display:flex;align-items:center;gap:7px"><span style="width:10px;height:10px;border-radius:3px;background:${x.g.color};display:inline-block"></span>${L(x.g.nl,x.g.bs)}</div>
+      <div style="font-weight:900;font-size:13px;color:var(--muted)">${x.kids.length}</div>
+    </div>
+    ${x.kids.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line)">
+      <div onclick="openKid('${r.k.id}')" style="flex:1;min-width:0;cursor:pointer">
+        <div style="font-weight:800;font-size:13px">${r.k.name} <span style="font-size:10px;color:var(--muted);font-weight:800">N${r.k.level||1}</span></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
+          <div style="flex:1;height:5px;border-radius:3px;background:var(--line);overflow:hidden"><div style="height:100%;width:${r.st.tot?r.st.done/r.st.tot*100:0}%;background:${x.g.color}"></div></div>
+          <div style="font-size:10px;font-weight:800;color:var(--muted);white-space:nowrap">${r.st.label}</div>
+        </div>
+      </div>
+      <button onclick="efKuranVolgende('${r.k.id}')" title="${L('Volgende les klaar','Sljedeća lekcija gotova')}" style="background:var(--green-soft);color:var(--green);width:34px;height:34px;border-radius:10px;font-weight:900;font-size:15px;flex-shrink:0">✓</button>
+    </div>`).join('')}
+  </div>`).join('')}`;
+}
+// Sure-matrix: kinderen × sure/dove van gekozen NPP-nivo, tik = afvinken
+function efSureMatrixHtml(myKids){
+  const counts = {}; myKids.forEach(k=>counts[k.level||1]=(counts[k.level||1]||0)+1);
+  const defNivo = +Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0] || 1;
+  const nivo = state.sureNivo || defNivo;
+  const cols = PATH.suras[nivo] || [];
+  const kids = [...myKids].sort((a,b)=>(b.level===nivo)-(a.level===nivo) || a.name.localeCompare(b.name,'bs'));
+  const done = (k,i)=> (kidStations(k,'suras',nivo)[i]||{}).status==='done';
+  return `${nivoChipsHtml(nivo,'setSureNivo')}
+  <div style="background:var(--blue-soft);color:var(--blue);border-radius:10px;padding:8px 11px;font-size:11px;font-weight:800;margin-bottom:10px">📖 ${L('Sure en dove van','Sure i dove nivoa')} N${nivo} ${L('volgens NPP. Tik een vakje om af te vinken. Kinderen van dit niveau staan bovenaan.','prema NPP. Dodirni polje da označiš. Djeca ovog nivoa su na vrhu.')}</div>
+  <div class="card" style="padding:0;overflow:hidden">
+   <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <table style="border-collapse:separate;border-spacing:0;font-size:12px;min-width:100%">
+      <thead><tr>
+        <th style="position:sticky;left:0;background:var(--card);z-index:2;text-align:left;padding:8px 10px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--line);min-width:110px">${L('Kind','Dijete')}</th>
+        ${cols.map(c=>`<th style="padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:bottom;height:96px"><div style="writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;font-weight:800;white-space:nowrap;margin:0 auto">${c.label}</div></th>`).join('')}
+      </tr></thead>
+      <tbody>
+        ${kids.map(k=>`<tr>
+          <td onclick="openKid('${k.id}')" style="position:sticky;left:0;background:var(--card);z-index:1;padding:7px 10px;border-bottom:1px solid var(--line);font-weight:800;white-space:nowrap;cursor:pointer;${k.level!==nivo?'color:var(--muted)':''}">${k.name.split(' ')[0]} ${(k.name.split(' ')[1]||'').slice(0,1)}${k.name.split(' ')[1]?'.':''} <span style="font-size:9px;color:var(--muted)">N${k.level||1}</span></td>
+          ${cols.map((c,i)=>{const d=done(k,i);return `<td onclick="efToggleSuraDone('${k.id}',${nivo},${i},'suras')" style="text-align:center;border-bottom:1px solid var(--line);padding:4px;cursor:pointer"><div style="width:28px;height:28px;margin:0 auto;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;${d?'background:var(--green-mid);color:#fff':'background:var(--bg);color:transparent;border:1.5px solid var(--line)'}">✓</div></td>`;}).join('')}
+        </tr>`).join('')}
+        <tr>
+          <td style="position:sticky;left:0;background:var(--bg);z-index:1;padding:8px 10px;font-weight:900;font-size:11px;color:var(--muted)">${L('Beheerst','Savladalo')}</td>
+          ${cols.map((c,i)=>{const n=kids.filter(k=>done(k,i)).length;return `<td style="text-align:center;background:var(--bg);padding:8px 2px;font-weight:900;font-size:11px">${n}</td>`;}).join('')}
+        </tr>
+      </tbody>
+    </table>
+   </div>
+  </div>`;
+}
+function setSureNivo(n){ state.sureNivo=n; render(); }
+// Bestuur — Kur'an-fases en sure-dekking (geaggregeerd, geen namen)
+function bestuurKuranSureHtml(){
+  const n = KIDS.length;
+  const per = KURAN_GROEPEN.map(g=>({g, c:KIDS.filter(k=>kuranStand(k).fase===g.id).length}));
+  const lvls = LEVELS.filter(lv=>KIDS.filter(k=>k.level===lv).length>=3);
+  const bar = (lbl,c,tot,color)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0">
+      <div style="width:92px;font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lbl}</div>
+      <div style="flex:1;height:10px;border-radius:5px;background:var(--line);overflow:hidden"><div style="height:100%;width:${tot?c/tot*100:0}%;background:${color}"></div></div>
+      <div style="width:54px;text-align:right;font-size:11px;font-weight:900">${c}/${tot} <span style="color:var(--muted)">${tot?Math.round(c/tot*100):0}%</span></div>
+    </div>`;
+  return `<div class="card" style="margin-bottom:12px;padding:14px">
+      <div style="font-weight:900;font-size:14px;margin-bottom:8px">📿 ${L("Kur'an-fases","Faze učenja Kur'ana")}</div>
+      ${per.map(x=>bar(L(x.g.nl,x.g.bs), x.c, n, x.g.color)).join('')}
+    </div>
+    ${lvls.map(lv=>{ const kids=KIDS.filter(k=>k.level===lv); const cols=PATH.suras[lv]||[];
+      return `<div class="card" style="margin-bottom:12px;padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <div style="font-weight:900;font-size:14px">📖 ${L('Sure & dove','Sure i dove')} N${lv}</div>
+          <div style="font-size:10px;color:var(--muted);font-weight:700">${kids.length} ${L('kinderen','djece')}</div>
+        </div>
+        ${cols.map((c,i)=>bar(c.label, kids.filter(k=>(kidStations(k,'suras',lv)[i]||{}).status==='done').length, kids.length, 'var(--green-mid)')).join('')}
+      </div>`;}).join('')}`;
+}
 // Opkomst-sectie — bovenaan Overzicht (bestuur: aantallen; efendija: met namen)
 function attSectionHtml(){
   const m = attModel(KIDS);
@@ -1027,7 +1132,7 @@ function attSectionHtml(){
       <div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px">${L('Een les telt mee zodra de efendija minstens','Čas se računa čim efendija evidentira najmanje')} ${ATT_MIN_LES} ${L('aanwezigen registreert.','prisutnih.')}</div>
     </div>`;
   const delta = (m.avg4!=null && m.prev4!=null) ? m.avg4 - m.prev4 : null;
-  const lvlRows = LEVELS.map(lv=>{ const ks=KIDS.filter(k=>k.level===lv); if(!ks.length) return null; const mm=attModel(ks); return {lv, n:ks.length, last:mm.last, avg4:mm.avg4}; }).filter(Boolean);
+  const lvlRows = LEVELS.map(lv=>{ const ks=KIDS.filter(k=>k.level===lv); if(ks.length<3) return null; const mm=attModel(ks); return {lv, n:ks.length, last:mm.last, avg4:mm.avg4}; }).filter(Boolean);
   const bandTot = m.bands.g + m.bands.o + m.bands.r;
   const bw = v => bandTot ? (v/bandTot*100) : 0;
   return `
@@ -1105,7 +1210,7 @@ function attSectionHtml(){
         : `<div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px;line-height:1.45">${m.aandacht.length} ${L('leerlingen misten 2 of meer lessen op rij. De efendija ziet de namen en volgt op met de ouders.','učenika propustilo je 2 ili više časova zaredom. Efendija vidi imena i kontaktira roditelje.')}</div>`}
     </div>
 
-    <!-- OPKOMST PER NIVEAU -->
+    ${lvlRows.length<2 ? '' : `<!-- OPKOMST PER NIVEAU -->
     <div class="card" style="margin-bottom:12px;padding:14px">
       <div style="font-weight:900;font-size:14px;margin-bottom:8px">📊 ${L('Opkomst per niveau','Prisustvo po nivou')}</div>
       ${lvlRows.map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)">
@@ -1115,7 +1220,7 @@ function attSectionHtml(){
         <div style="font-size:13px;font-weight:900;color:${attColor(r.avg4)};min-width:44px;text-align:right">${r.avg4!=null?r.avg4+'%':'—'}</div>
       </div>`).join('')}
       <div style="font-size:10px;color:var(--muted);font-weight:700;margin-top:6px">${L('laatste les · gemiddelde laatste 4','zadnji čas · prosjek zadnja 4')}</div>
-    </div>`;
+    </div>`}`;
 }
 
 // BERICHTEN — geladen vanuit Supabase (tabel: berichten)
@@ -3635,10 +3740,12 @@ function efStudents(){
   return `${topbarEf()}
     <div class="screen">
       <div class="subtabs" style="margin-bottom:14px">
-        <div class="subtab ${tab==='list'?'on':''}" onclick="state.kidTab='list';render()">${L('👥 Leerlingen','👥 Učenici')}</div>
-        <div class="subtab ${tab==='attendance'?'on':''}" onclick="state.kidTab='attendance';render()">${L('✅ Aanwezigheid','✅ Prisustvo')}</div>
+        <div class="subtab ${tab==='list'?'on':''}" onclick="state.kidTab='list';render()">👥</div>
+        <div class="subtab ${tab==='attendance'?'on':''}" onclick="state.kidTab='attendance';render()">✅ ${L('Aanw.','Pris.')}</div>
+        <div class="subtab ${tab==='kuran'?'on':''}" onclick="state.kidTab='kuran';render()">📿 Kur'an</div>
+        <div class="subtab ${tab==='sure'?'on':''}" onclick="state.kidTab='sure';render()">📖 Sure</div>
       </div>
-      ${tab==='list' ? `
+      ${tab==='kuran' ? efKuranHtml(myKids) : tab==='sure' ? efSureMatrixHtml(myKids) : tab==='list' ? `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
           <div style="font-weight:900;font-size:16px">${myKids.length} ${L('leerlingen','učenika')}</div>
           <button onclick="state.showAddKid=!state.showAddKid;render()" style="background:var(--green);color:#fff;padding:8px 14px;border-radius:12px;font-weight:800;font-size:13px">+ ${L('Toevoegen','Dodaj')}</button>
@@ -4007,6 +4114,8 @@ function bestuurProgress(){
             </div>`;}).join('')}
         </div>` : ''}
       </div>
+
+      ${bestuurKuranSureHtml()}
 
       <!-- Curriculum-voortgang per niveau door tijd -->
       <div class="card" style="margin-bottom:12px;padding:14px">
