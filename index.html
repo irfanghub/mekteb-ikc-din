@@ -3777,6 +3777,7 @@ function efStudents(){
             </div>
             <button onclick="state.efAttWeekIdx=Math.min(${WEEKS.length-1},(state.efAttWeekIdx??${WEEKS.length-1})+1);render()" style="width:38px;height:38px;border-radius:12px;border:1.5px solid var(--line);font-size:18px;font-weight:900;background:#fff" ${wi===WEEKS.length-1?'disabled':''}>›</button>
           </div>
+          ${lesVanDagCardHtml(weekDate, myKids)}
           <div style="display:flex;align-items:center;justify-content:space-between;background:var(--green-soft);border-radius:12px;padding:10px 12px;margin-bottom:10px">
             <div style="font-weight:900;font-size:15px;color:var(--green)">${regPres} / ${myKids.length} ${L('aanwezig','prisutno')}</div>
             <div style="font-weight:900;font-size:15px;color:${attColor(myKids.length?Math.round(regPres/myKids.length*100):0)}">${myKids.length?Math.round(regPres/myKids.length*100):0}%</div>
@@ -3794,7 +3795,7 @@ function efStudents(){
                 : '';
               return `<div class="aw-row">
                 <div class="avatar sm ${colorOf(k.name)}">${initial(k.name)}</div>
-                <div style="flex:1"><div style="font-weight:800;font-size:14px">${k.name}${parentChip}</div><div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)}${parentNotif ? ' · '+L('ouder gemeld','roditelj najavio') : ''}</div></div>
+                <div style="flex:1"><div style="font-weight:800;font-size:14px">${k.name}${parentChip}${(()=>{const g=kidGemist(k).length;return g?`<span title="${L('gemiste lessen','propušteni časovi')}" style="font-size:10px;font-weight:900;color:#c2410c;background:#fff3e0;border-radius:6px;padding:2px 6px;margin-left:4px">↩ ${g}</span>`:'';})()}</div><div style="font-size:11px;color:var(--muted);font-weight:700">N${computedLevel(k)}${parentNotif ? ' · '+L('ouder gemeld','roditelj najavio') : ''}</div></div>
                 <div class="aw-toggle">
                   <button class="${isPresent?'aw':''}" onclick="efSetAttendance('${k.id}',${wi},true)">${T('pres')}</button>
                   <button class="${!isPresent?'az':''}" onclick="efSetAttendance('${k.id}',${wi},false)">${T('abs')}</button>
@@ -4864,6 +4865,7 @@ async function loadData(){
     [...KIDS].sort((a,b)=>b.pts-a.pts).forEach((k,i)=>k.rank=i+1);
   } catch(e){ console.error('DB fout bij laden:', e); }
   state.loading = false;
+  await loadLessen();
   await loadBerichten();
   await restoreOuderSession();
   if(!state.me) render();
@@ -5057,8 +5059,7 @@ function learnedHtml(k, nivo, editable){
       </div>
       <div class="ilm-lessons">
         ${editable?`<button onclick="openBlokForm('${k.id}',${nivo},${b})" style="width:100%;margin:2px 0 8px;padding:9px;border-radius:10px;background:var(--blue-soft);color:var(--blue);font-weight:900;font-size:12px">📝 ${L('Bloktoets invoeren','Unesi blok-test')} — Blok ${b}</button>`:''}
-        ${st.les.map(les=>row(!!done[les.id], `<span style="color:var(--muted);font-weight:800">S${les.sed} · </span>${L(les.naam,les.naam_bs)}`, `toggleIlmLes('${k.id}','${les.id}')`)).join('')}
-        ${st.su.map(s=>row(suraDone(k,nivo,s.idx), `📖 ${s.label} <span style="color:var(--muted);font-weight:700">· ${s.sub}</span>`, `efToggleSuraDone('${k.id}',${nivo},${s.idx},'suras')`, 'S'+s.sed)).join('')}
+        ${weekTijdlijnHtml(k, nivo, b, editable)}
       </div>
     </div>`;}).join('');
   const extraHtml = extra ? (()=>{ const isOpen=state.openIlmCat===extra.id; const d=extra.lessen.filter(l=>done[l.id]).length;
@@ -5116,6 +5117,136 @@ function openBlokForm(kidId, nivo, blok){
 
 // ─── KIND ───
 
+
+// ═══ LESWEEK-MODEL (okt 2026) — NPP-week als ruggengraat ═══
+// Elke zondag kiest de efendija welke NPP-week (1–32) hij per nivo gaf. Volgende zondag = volgende les.
+// Per kind: beheerst (efendija-vinkje) · gehad (aanwezig bij die les) · gemist (les gegeven, kind afwezig) · open.
+let LESSEN = []; // {datum:'YYYY-MM-DD', nivo, sed, herhaling}
+async function loadLessen(){ try{ const r=await DB.from('mekteb_lessen').select('*'); if(!r.error) LESSEN=(r.data||[]).map(x=>({datum:x.datum,nivo:+x.nivo,sed:+x.sed,herhaling:!!x.herhaling})); }catch(_){} }
+function nppWeek(nivo, sed){
+  const blok = Math.ceil(sed/8);
+  const les = blokCats(nivo).flatMap(c=>c.lessen).find(l=>l.sed===sed) || null;
+  const sure = (PATH.suras[nivo]||[]).map((x,i)=>({...x, idx:i})).filter(x=>(SURA_SED[x.id]||0)===sed);
+  return {sed, blok, les, sure, type: les ? 'les' : (sed%8===0 ? 'test' : 'utv')};
+}
+function nppWeekTitel(nivo, sed){
+  const w = nppWeek(nivo, sed);
+  if(w.les) return L(w.les.naam, w.les.naam_bs);
+  return w.type==='test' ? `📝 ${L('Bloktoets','Blok-test')} ${w.blok}` : `🔁 ${L('Herhalen & inhalen','Utvrđivanje i nadoknada')}`;
+}
+function lessenNivo(nivo){ return LESSEN.filter(l=>l.nivo===nivo).sort((a,b)=>a.datum.localeCompare(b.datum)); }
+function laatsteLes(nivo, voorDatum){ const r=lessenNivo(nivo).filter(l=>!voorDatum || l.datum<voorDatum); return r[r.length-1]||null; }
+function weekStatus(k, nivo, sed){
+  const w = nppWeek(nivo, sed);
+  const done = state.ilmDone[k.id]||{};
+  if(w.les && done[w.les.id]) return 'beheerst';
+  const keer = LESSEN.filter(l=>l.nivo===nivo && l.sed===sed);
+  if(!keer.length) return 'open';
+  return keer.some(l=>attIsPresent(k.id, l.datum)) ? 'gehad' : 'gemist';
+}
+function kidGemist(k, nivo){
+  const n = nivo || k.level || 1;
+  const seds = [...new Set(lessenNivo(n).map(l=>l.sed))].sort((a,b)=>a-b);
+  return seds.filter(sed=>nppWeek(n,sed).type==='les' && weekStatus(k,n,sed)==='gemist');
+}
+function statusChip(st){
+  const m = {beheerst:['✓ '+L('beheerst','savladano'),'var(--green-soft)','var(--green)'], gehad:[L('gehad','obrađeno'),'var(--blue-soft)','var(--blue)'], gemist:[L('gemist','propušteno'),'#fff3e0','#c2410c']};
+  const x = m[st]; if(!x) return '';
+  return `<span style="background:${x[1]};color:${x[2]};padding:2px 7px;border-radius:7px;font-size:10px;font-weight:900;white-space:nowrap">${x[0]}</span>`;
+}
+async function saveLesVanDag(datum, nivo, sed){
+  const prev = laatsteLes(nivo, datum);
+  const rec = {datum, nivo, sed, herhaling: !!(prev && sed<=prev.sed)};
+  LESSEN = LESSEN.filter(l=>!(l.datum===datum && l.nivo===nivo)); LESSEN.push(rec);
+  state.lesPick = false; render();
+  try{ const r = await DB.from('mekteb_lessen').upsert({...rec, updated_at:new Date().toISOString()}, {onConflict:'datum,nivo'}); if(r && r.error) throw r.error; }
+  catch(e){ console.error(e); alert(L('Opslaan van de les mislukt. Probeer opnieuw.','Spremanje časa nije uspjelo. Pokušaj ponovo.')); }
+}
+function setLesNivo(n){ state.lesNivo=n; state.lesPick=false; render(); }
+// Efendija: kaart "Les van vandaag" boven de aanwezigheidslijst
+function lesVanDagCardHtml(datum, myKids){
+  const cnt={}; myKids.forEach(k=>cnt[k.level||1]=(cnt[k.level||1]||0)+1);
+  const nivos = Object.keys(cnt).map(Number).sort((a,b)=>cnt[b]-cnt[a]);
+  if(!nivos.length) return '';
+  const nivo = (state.lesNivo && cnt[state.lesNivo]) ? state.lesNivo : nivos[0];
+  const gegeven = LESSEN.find(l=>l.datum===datum && l.nivo===nivo);
+  const prev = laatsteLes(nivo, datum);
+  const sugg = prev ? Math.min(32, prev.sed+1) : 1;
+  const weekRegel = (sed)=>{ const w=nppWeek(nivo,sed); return `<div style="font-weight:900;font-size:14px;line-height:1.3">${nppWeekTitel(nivo,sed)}</div>
+      <div style="font-size:11px;font-weight:800;color:var(--muted);margin-top:2px">N${nivo} · ${L('week','sedmica')} ${sed} · Blok ${w.blok}${w.sure.length?` · 📖 ${w.sure.map(x=>x.label).join(', ')}`:(w.type==='les'?` · 📖 ${L('herhaling sure/dove','ponavljanje sura/dova')}`:'')}</div>`; };
+  const chips = nivos.length>1 ? `<div style="display:flex;gap:6px;margin-bottom:8px">${nivos.map(n=>`<button onclick="setLesNivo(${n})" style="padding:5px 10px;border-radius:8px;font-weight:900;font-size:11px;border:1.5px solid ${n===nivo?'var(--green)':'var(--line)'};background:${n===nivo?'var(--green-soft)':'transparent'}">N${n} · ${cnt[n]}</button>`).join('')}</div>` : '';
+  const picker = state.lesPick ? `<div style="max-height:260px;overflow-y:auto;margin-top:8px;border-top:1px solid var(--line);padding-top:6px">
+      ${Array.from({length:32},(_,i)=>i+1).map(sed=>`<div onclick="saveLesVanDag('${datum}',${nivo},${sed})" style="padding:7px 4px;border-bottom:1px solid var(--line);cursor:pointer;display:flex;gap:8px;align-items:baseline;${sed===sugg?'background:var(--green-soft);border-radius:8px':''}">
+        <span style="font-size:10px;font-weight:900;color:var(--muted);min-width:26px">W${sed}</span><span style="font-size:12px;font-weight:800">${nppWeekTitel(nivo,sed)}</span></div>`).join('')}
+    </div>` : '';
+  return `<div class="card" style="margin-bottom:10px;padding:12px;border-left:4px solid var(--blue)">
+    <div style="font-size:10px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">📘 ${L('Les van deze zondag','Čas ove nedjelje')}</div>
+    ${chips}
+    ${gegeven ? `<div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="flex:1">${weekRegel(gegeven.sed)}${gegeven.herhaling?`<div style="font-size:10px;font-weight:900;color:#c2410c;margin-top:3px">↺ ${L('herhaling','ponavljanje')}</div>`:''}</div>
+        <button onclick="state.lesPick=!state.lesPick;render()" style="background:var(--bg);padding:6px 10px;border-radius:8px;font-weight:900;font-size:11px">${L('Wijzig','Promijeni')}</button>
+      </div>`
+    : `<div style="font-size:11px;font-weight:800;color:var(--muted);margin-bottom:6px">${prev?`${L('Vorige les','Prošli čas')}: W${prev.sed} · ${nppWeekTitel(nivo,prev.sed)}`:L('Nog geen les vastgelegd voor dit niveau.','Još nijedan čas nije zabilježen za ovaj nivo.')}</div>
+      <div style="background:var(--green-soft);border-radius:10px;padding:10px;margin-bottom:8px">${weekRegel(sugg)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button onclick="saveLesVanDag('${datum}',${nivo},${sugg})" style="flex:1;min-width:120px;background:var(--green);color:#fff;padding:9px;border-radius:10px;font-weight:900;font-size:12px">✓ ${L('Deze les gegeven','Ovaj čas održan')}</button>
+        ${prev?`<button onclick="saveLesVanDag('${datum}',${nivo},${prev.sed})" style="flex:1;min-width:120px;background:#fff3e0;color:#c2410c;padding:9px;border-radius:10px;font-weight:900;font-size:12px">↺ ${L('Herhaling W','Ponavljanje S')}${prev.sed}</button>`:''}
+        <button onclick="state.lesPick=!state.lesPick;render()" style="background:var(--bg);padding:9px 12px;border-radius:10px;font-weight:900;font-size:12px">${L('Andere week…','Druga sedmica…')}</button>
+      </div>`}
+    ${picker}
+  </div>`;
+}
+// Kind/ouder/efendija: week-tijdlijn per blok (ilmihal-onderwerp + bijbehorende sura/dova)
+function weekTijdlijnHtml(k, nivo, blok, editable){
+  const done = state.ilmDone[k.id]||{};
+  const last = laatsteLes(nivo);
+  const rows = [];
+  for(let sed=(blok-1)*8+1; sed<=blok*8; sed++){
+    const w = nppWeek(nivo, sed), st = weekStatus(k, nivo, sed), isLast = last && last.sed===sed;
+    if(w.type!=='les'){
+      rows.push(`<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-top:1px dashed var(--line);color:var(--muted)">
+        <span style="font-size:10px;font-weight:900;min-width:26px">W${sed}</span><span style="flex:1;font-size:12px;font-weight:800">${nppWeekTitel(nivo,sed)}</span>${w.type==='test'?blokBadge(k.id,nivo,blok):''}</div>`);
+      continue;
+    }
+    const isDone = !!done[w.les.id];
+    rows.push(`<div style="padding:8px 2px;border-top:1px solid var(--line);${isLast?'background:var(--blue-soft);border-radius:10px;padding:8px 6px':''}">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <span style="font-size:10px;font-weight:900;color:var(--muted);min-width:26px;padding-top:2px">W${sed}</span>
+        <div ${editable?`onclick="toggleIlmLes('${k.id}','${w.les.id}')" style="flex:1;cursor:pointer"`:'style="flex:1"'}>
+          <div style="font-size:13px;font-weight:800;line-height:1.3">📘 ${L(w.les.naam,w.les.naam_bs)}</div>
+          ${isLast?`<div style="font-size:10px;font-weight:900;color:var(--blue);margin-top:2px">${L('laatste les','zadnji čas')} · ${attDatum(last.datum)}</div>`:''}
+        </div>
+        ${statusChip(st)}
+      </div>
+      ${w.sure.map(x=>{ const sd=suraDone(k,nivo,x.idx); return `<div ${editable?`onclick="efToggleSuraDone('${k.id}',${nivo},${x.idx},'suras')" style="cursor:pointer;`:'style="'}display:flex;align-items:center;gap:8px;margin:5px 0 0 34px">
+        <span style="width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;${sd?'background:var(--green-mid);color:#fff':'border:1.5px solid var(--line);color:transparent'}">✓</span>
+        <span style="font-size:12px;font-weight:800">${isDova(x)?'🤲':'📖'} ${x.label}</span><span style="font-size:10px;color:var(--muted);font-weight:700">${x.sub==='dova'?'':x.sub}</span></div>`; }).join('')}
+    </div>`);
+  }
+  return rows.join('');
+}
+// Inhaal-blok (gemiste lessen) voor kind/ouder/efendija
+function inhalenHtml(k, kidView){
+  const n = k.level||1, g = kidGemist(k, n);
+  if(!g.length) return '';
+  return `<div class="card" style="margin-bottom:12px;padding:12px;border-left:4px solid #f97316">
+    <div style="font-weight:900;font-size:13px;color:#c2410c;margin-bottom:4px">↩ ${kidView?L('Gemist — nog even inhalen','Propušteno — nadoknadi'):L('Inhalen','Nadoknada')} (${g.length})</div>
+    ${kidView?`<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">${L('Deze lessen had je gemist. Vraag de efendija of oefen thuis met je ouders.','Ove časove si propustio/la. Pitaj efendiju ili vježbaj kod kuće s roditeljima.')}</div>`:''}
+    ${g.map(sed=>{ const w=nppWeek(n,sed); return `<div style="padding:6px 0;border-top:1px solid var(--line)"><div style="font-size:12px;font-weight:800"><span style="color:var(--muted)">W${sed}</span> · 📘 ${L(w.les.naam,w.les.naam_bs)}</div>${w.sure.length?`<div style="font-size:11px;font-weight:700;color:var(--muted);margin-top:2px">📖 ${w.sure.map(x=>x.label).join(', ')}</div>`:''}</div>`; }).join('')}
+  </div>`;
+}
+// Kind: laatste les-kaart
+function laatsteLesKaartHtml(k){
+  const n=k.level||1, l=laatsteLes(n); if(!l) return '';
+  const w=nppWeek(n,l.sed), was=attIsPresent(k.id,l.datum);
+  return `<div class="card" style="margin-bottom:12px;padding:12px;border-left:4px solid var(--blue)">
+    <div style="font-size:10px;font-weight:900;color:var(--blue);text-transform:uppercase;letter-spacing:.5px">📘 ${L('Laatste les','Zadnji čas')} · ${attDatum(l.datum,{weekday:'short',day:'numeric',month:'short'})}</div>
+    <div style="font-weight:900;font-size:15px;margin-top:4px">${nppWeekTitel(n,l.sed)}</div>
+    ${w.sure.length?`<div style="font-size:12px;font-weight:800;color:var(--muted);margin-top:2px">${w.sure.map(x=>(isDova(x)?'🤲 ':'📖 ')+x.label).join(' · ')}</div>`:''}
+    <div style="margin-top:8px;font-size:12px;font-weight:900;color:${was?'var(--green)':'#c2410c'}">${was?'✓ '+L('Jij was erbij','Bio/la si prisutan/na'):'✗ '+L('Gemist — vraag de efendija wat je moet inhalen','Propušteno — pitaj efendiju šta trebaš nadoknaditi')}</div>
+  </div>`;
+}
+
 // ═══ GELEERD-OVERZICHT: sure · dove · Kur'an-stand (okt 2026) ═══
 const isDova = x => x.sub==='dova';
 function learnedItems(k, type){ // type: 'sura' | 'dova'
@@ -5132,7 +5263,10 @@ function learnedSummaryHtml(k){
       <div style="font-size:9px;font-weight:800;color:var(--muted);margin-top:2px">${sub}</div>
       <div style="position:absolute;top:7px;right:9px;font-size:12px;color:${col};opacity:.6;font-weight:900">›</div>
     </div>`;
-  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+  const ilm = blokCats(k.level||1).flatMap(c=>c.lessen); const doneI = state.ilmDone[k.id]||{};
+  const ib = ilm.filter(l=>doneI[l.id]).length, ig = ilm.filter(l=>!doneI[l.id] && weekStatus(k,k.level||1,l.sed)==='gehad').length;
+  return `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
+    ${tile('ilmihal','📘',ib,'Ilmihal',`${L('beheerst','savladano')} · ${ig} ${L('gehad','obrađeno')}`,'#0f766e','#ecfdf5')}
     ${tile('sura','📖',sd,L('Sure','Sure'),L('geleerd','naučeno'),'#2563eb','#eff6ff')}
     ${tile('dova','🤲',dd,L('Dua’s','Dove'),L('geleerd','naučeno'),'#7c3aed','#f5f3ff')}
     ${tile('quran',ks.track===1?'ا':'📿',ks.track===1?'Sufara':'Tedžvid',L('les','lekcija')+' '+ks.les,`${ks.done}/${ks.tot} ${L('klaar','gotovo')}`,'#a16207','#fefce8').replace(/font-size:26px/,'font-size:17px;padding:5px 0 2px')}
@@ -5144,7 +5278,15 @@ function learnSheetHtml(){
   const ls=state.learnSheet; if(!ls) return '';
   const k=KIDS.find(x=>x.id===ls.kidId) || state.me; if(!k) return '';
   let head='', body='';
-  if(ls.type==='quran'){
+  if(ls.type==='ilmihal'){
+    const n=k.level||1; const lessen=blokCats(n).flatMap(c=>c.lessen);
+    const per = st => lessen.filter(l=>weekStatus(k,n,l.sed)===st);
+    head=`<div style="font-size:30px">📘</div><div style="font-weight:900;font-size:19px">Ilmihal · N${n}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--muted)">${per('beheerst').length} ${L('beheerst','savladano')} · ${per('gehad').length} ${L('gehad','obrađeno')} · ${per('gemist').length} ${L('gemist','propušteno')}</div>`;
+    const sec=(st,titel,col)=>{ const r=per(st); if(!r.length) return ''; return `<div style="font-size:11px;font-weight:900;color:${col};text-transform:uppercase;letter-spacing:.5px;margin:12px 2px 8px">${titel}</div>${r.map(l=>{const w=nppWeek(n,l.sed); return `<div style="padding:10px 12px;border-radius:14px;margin-bottom:7px;background:var(--bg)"><div style="display:flex;gap:8px;align-items:flex-start"><div style="flex:1;font-weight:900;font-size:13px">📘 ${L(l.naam,l.naam_bs)}</div>${statusChip(st)}</div><div style="font-size:11px;font-weight:700;color:var(--muted);margin-top:3px">${L('week','sedmica')} ${l.sed} · Blok ${w.blok}${w.sure.length?' · '+w.sure.map(x=>(isDova(x)?'🤲 ':'📖 ')+x.label).join(', '):''}</div></div>`;}).join('')}`; };
+    body = laatsteLesKaartHtml(k) + sec('gemist','↩ '+L('Inhalen','Nadoknaditi'),'#c2410c') + sec('gehad','📗 '+L('Gehad in de les','Obrađeno na času'),'var(--blue)') + sec('beheerst','✨ '+L('Beheerst','Savladano'),'var(--green)')
+      + (!per('gemist').length && !per('gehad').length && !per('beheerst').length ? `<div style="text-align:center;padding:18px;color:var(--muted);font-weight:800;font-size:13px">${L('Nog geen lessen vastgelegd.','Još nema zabilježenih časova.')}</div>`:'');
+  } else if(ls.type==='quran'){
     const ks=kuranStand(k);
     head=`<div style="font-size:30px">📿</div><div style="font-weight:900;font-size:19px">${L('Kur’an lezen','Učenje Kur’ana')}</div>
       <div style="font-size:12px;font-weight:800;color:var(--muted)">${L('Nu bij','Trenutno')}: ${ks.track===1?'Sufara':'Tedžvid'} · ${L('les','lekcija')} ${ks.les}</div>`;
@@ -5234,6 +5376,8 @@ function kidLearned(){
     </div>
     <div class="screen" style="padding-bottom:120px">
       ${learnedSummaryHtml(k)}
+      ${laatsteLesKaartHtml(k)}
+      ${inhalenHtml(k,true)}
       ${nivoChipsHtml(lvl,'setPathLevel')}
       ${learnedHtml(k, lvl, false)}
       ${sectionTitle(L('Koran lezen','Učenje Kur’ana'))}
@@ -5368,8 +5512,9 @@ function efStudentDetail(){
 function efDetailNPP(k){
   const lvl = state.efPathLevel || k.level || 1;
   return `${state.showAddBlok ? blokFormHtml(k) : ''}
+    ${inhalenHtml(k,false)}
     ${nivoChipsHtml(lvl,'setEfPathLevel')}
-    <div style="background:var(--blue-soft);color:var(--blue);border-radius:10px;padding:8px 11px;font-size:11px;font-weight:800;margin-bottom:10px">📘 ${L('Tik op een les of sura om af te vinken. Bloktoets per blok invoeren.','Dodirni lekciju ili suru da označiš. Blok-test unosiš po bloku.')}</div>
+    <div style="background:var(--blue-soft);color:var(--blue);border-radius:10px;padding:8px 11px;font-size:11px;font-weight:800;margin-bottom:10px">📘 ${L('Per week: onderwerp + sura/dova. Tik om als beheerst af te vinken. "Gehad/gemist" volgt uit aanwezigheid + les van de dag.','Po sedmici: tema + sura/dova. Dodirni da označiš savladano. "Obrađeno/propušteno" slijedi iz prisustva + časa dana.')}</div>
     ${learnedHtml(k, lvl, true)}
     ${sectionTitle(L('Koran lezen','Učenje Kur’ana'))}
     ${quranHtml(k, true)}`;
