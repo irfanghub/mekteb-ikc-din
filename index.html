@@ -4976,8 +4976,7 @@ function currentBlok(k){ const n=k.level||1; for(let b=1;b<=4;b++){ const t=blok
 function kidTests(k){ return OCJENE.filter(o=>o.kidId===k.id && o.oblast==='blok'); }
 function kidTestAvg(k){ const t=kidTests(k); return t.length ? t.reduce((s,o)=>s+parseFloat(o.ocjena),0)/t.length : null; }
 function kidAttPct(k){
-  const today=new Date().toISOString().slice(0,10); const held=new Set();
-  KIDS.forEach(x=>(ATTENDANCE[x.id]||[]).forEach(a=>{ if(a.present) held.add(a.date); }));
+  const today=attToday(); const held=new Set(mektebDates()); // zelfde definitie als dashboards
   const w=(ATTENDANCE[k.id]||[]).filter(a=>a.date<=today && held.has(a.date));
   return w.length ? Math.round(w.filter(a=>a.present).length/w.length*100) : null;
 }
@@ -5022,7 +5021,7 @@ function ocjeneCardHtml(k, max){
 }
 function attCardHtml(k){
   const today=new Date().toISOString().slice(0,10);
-  const held=new Set(); KIDS.forEach(x=>(ATTENDANCE[x.id]||[]).forEach(a=>{ if(a.present) held.add(a.date); }));
+  const held=new Set(mektebDates());
   const w=(ATTENDANCE[k.id]||[]).filter(a=>a.date<=today && held.has(a.date)).slice(-10);
   const pct=kidAttPct(k);
   return `<div class="card" style="margin-bottom:12px">
@@ -5211,18 +5210,18 @@ function kidHome(){
   <div class="screen">
     <div class="greeting"><h1>${T('salam')}, ${k.name.split(' ')[0]}!</h1></div>
     ${wasAbsent?`<div style="background:#fef3c7;border:1px solid #fde68a;border-radius:16px;padding:12px 14px;margin-bottom:12px;font-size:13px;font-weight:700;color:#92400e">🤍 ${L('We hebben je gemist bij de laatste mekteb. Tot zondag!','Nedostajao/la si nam na posljednjem mektebu. Vidimo se u nedjelju!')}</div>`:''}
+    ${attCardHtml(k)}
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-weight:900;font-size:14px;margin-bottom:8px">📢 ${L('Mededelingen & huiswerk','Obavijesti i zadaće')}</div>
+      ${myHw.length ? myHw.map(h=>hwCard(h,true)).join('') : `<div style="font-size:12px;color:var(--muted);font-weight:700">${T('noHw')}</div>`}
+    </div>
+    ${ocjeneCardHtml(k,5)}
     <div class="hero" onclick="state.openIlmCat='${st.cat?st.cat.id:''}';state.pathLevel=${nivo};setNav('path')">
       <div class="hero-label">📘 ${L('Niveau','Nivo')} ${nivo} · ${L('nu bezig met','trenutno')} Blok ${b}</div>
       <div class="hero-title">${st.cat?L(st.cat.name,st.cat.name_bs).replace(/^Blok \d · /,''):''}</div>
       <div style="font-size:12px;font-weight:800;opacity:.9;margin:4px 0 8px">${L('Lessen','Lekcije')} ${st.ld}/${st.les.length} · ${L('Suras/dua’s','Sure/dove')} ${st.sd}/${st.su.length}${next?` · ${L('volgende','sljedeće')}: ${L(next.naam,next.naam_bs)}`:''}</div>
       <button class="hero-cta">${L('Wat leer ik?','Šta učim?')} →</button>
     </div>
-    ${ocjeneCardHtml(k,5)}
-    <div class="card" style="margin-bottom:12px">
-      <div style="font-weight:900;font-size:14px;margin-bottom:8px">📢 ${L('Mededelingen & huiswerk','Obavijesti i zadaće')}</div>
-      ${myHw.length ? myHw.map(h=>hwCard(h,true)).join('') : `<div style="font-size:12px;color:var(--muted);font-weight:700">${T('noHw')}</div>`}
-    </div>
-    ${attCardHtml(k)}
   </div>
   ${kidNav()}`;
 }
