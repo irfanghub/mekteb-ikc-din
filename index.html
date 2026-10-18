@@ -5116,10 +5116,73 @@ function openBlokForm(kidId, nivo, blok){
 }
 
 // ─── KIND ───
-function kidNav(){ return navBar([['home',L('Start','Početna')],['path',L('Geleerd','Naučeno')],['leader','Ranking']]); }
+
+// ═══ GELEERD-OVERZICHT: sure · dove · Kur'an-stand (okt 2026) ═══
+const isDova = x => x.sub==='dova';
+function learnedItems(k, type){ // type: 'sura' | 'dova'
+  const out=[]; LEVELS.forEach(n=>kidStations(k,'suras',n).forEach((x,i)=>{ if((type==='dova')===isDova(x)) out.push({...x, nivo:n, idx:i, done:x.status==='done'}); }));
+  return out;
+}
+function learnedSummaryHtml(k){
+  const su=learnedItems(k,'sura'), du=learnedItems(k,'dova'), ks=kuranStand(k);
+  const sd=su.filter(x=>x.done).length, dd=du.filter(x=>x.done).length;
+  const tile=(type,icon,num,lbl,sub,col,bg)=>`<div onclick="openLearnSheet('${k.id}','${type}')" style="cursor:pointer;background:${bg};border-radius:18px;padding:12px 6px 10px;text-align:center;position:relative;box-shadow:0 2px 8px rgba(0,0,0,.05)">
+      <div style="font-size:20px;line-height:1">${icon}</div>
+      <div style="font-size:26px;font-weight:900;color:${col};line-height:1.1;margin-top:4px">${num}</div>
+      <div style="font-size:11px;font-weight:900;color:${col}">${lbl}</div>
+      <div style="font-size:9px;font-weight:800;color:var(--muted);margin-top:2px">${sub}</div>
+      <div style="position:absolute;top:7px;right:9px;font-size:12px;color:${col};opacity:.6;font-weight:900">›</div>
+    </div>`;
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+    ${tile('sura','📖',sd,L('Sure','Sure'),L('geleerd','naučeno'),'#2563eb','#eff6ff')}
+    ${tile('dova','🤲',dd,L('Dua’s','Dove'),L('geleerd','naučeno'),'#7c3aed','#f5f3ff')}
+    ${tile('quran',ks.track===1?'ا':'📿',ks.track===1?'Sufara':'Tedžvid',L('les','lekcija')+' '+ks.les,`${ks.done}/${ks.tot} ${L('klaar','gotovo')}`,'#a16207','#fefce8').replace(/font-size:26px/,'font-size:17px;padding:5px 0 2px')}
+  </div>`;
+}
+function openLearnSheet(kidId,type){ state.learnSheet={kidId,type}; render(); }
+function closeLearnSheet(){ state.learnSheet=null; render(); }
+function learnSheetHtml(){
+  const ls=state.learnSheet; if(!ls) return '';
+  const k=KIDS.find(x=>x.id===ls.kidId) || state.me; if(!k) return '';
+  let head='', body='';
+  if(ls.type==='quran'){
+    const ks=kuranStand(k);
+    head=`<div style="font-size:30px">📿</div><div style="font-weight:900;font-size:19px">${L('Kur’an lezen','Učenje Kur’ana')}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--muted)">${L('Nu bij','Trenutno')}: ${ks.track===1?'Sufara':'Tedžvid'} · ${L('les','lekcija')} ${ks.les}</div>`;
+    body=[1,2].map(q=>{ const st=kidStations(k,'quran',q), d=st.filter(x=>x.status==='done').length; const curIdx = ks.track===q ? st.findIndex(x=>x.status!=='done') : -1;
+      return `<div style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 2px 8px"><div style="font-weight:900;font-size:14px">${q===1?'ا Sufara':'📿 Tedžvid'}</div><div style="font-size:12px;font-weight:900;color:#a16207">${d}/${st.length}</div></div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">${st.map((x,i)=>{ const dn=x.status==='done', cur=i===curIdx;
+          return `<div title="${x.label}" style="aspect-ratio:1;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;${dn?'background:linear-gradient(135deg,#facc15,#d4a017);color:#fff':cur?'background:#fff;border:2.5px solid #d4a017;color:#a16207':'background:var(--bg);color:#cbd5e1'}"><div style="font-size:14px">${dn?'✓':i+1}</div>${cur?`<div style="font-size:7px;letter-spacing:.3px">${L('NU','SAD')}</div>`:''}</div>`;}).join('')}</div>
+        ${curIdx>=0?`<div style="font-size:12px;font-weight:800;color:#a16207;margin-top:8px">👉 ${L('Volgende','Sljedeće')}: ${st[curIdx].label}</div>`:''}</div>`;}).join('');
+  } else {
+    const items=learnedItems(k,ls.type), d=items.filter(x=>x.done);
+    const col= ls.type==='sura' ? '#2563eb' : '#7c3aed', soft = ls.type==='sura' ? '#eff6ff' : '#f5f3ff';
+    const pct = items.length?Math.round(d.length/items.length*100):0;
+    head=`<div style="font-size:30px">${ls.type==='sura'?'📖':'🤲'}</div><div style="font-weight:900;font-size:19px">${ls.type==='sura'?L('Mijn sure','Moje sure'):L('Mijn dua’s','Moje dove')}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--muted)">${d.length} ${L('geleerd','naučeno')}${d.length?' · Maša’Allah! 🌟':''}</div>
+      <div style="height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin:10px auto 0;max-width:220px"><div style="height:100%;width:${pct}%;background:${col}"></div></div>`;
+    const card=(x,dn)=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;margin-bottom:7px;${dn?`background:${soft};border:1.5px solid ${col}33`:'background:var(--bg);opacity:.6'}">
+        <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0;${dn?`background:${col};color:#fff`:'background:#fff;color:#cbd5e1;border:1.5px dashed #cbd5e1'}">${dn?'✓':'·'}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:900;font-size:14px;${dn?'':'color:var(--muted)'}">${x.label}</div><div style="font-size:11px;font-weight:700;color:var(--muted)">${x.sub==='dova'?L('dua','dova'):x.sub} · N${x.nivo}</div></div>
+      </div>`;
+    const todo=items.filter(x=>!x.done && x.nivo===(k.level||1));
+    body = (d.length ? `<div style="font-size:11px;font-weight:900;color:${col};text-transform:uppercase;letter-spacing:.5px;margin:0 2px 8px">✨ ${L('Geleerd','Naučeno')}</div>${d.map(x=>card(x,true)).join('')}`
+                     : `<div style="text-align:center;padding:18px;color:var(--muted);font-weight:800;font-size:13px">${L('Nog niets afgevinkt — de efendija vinkt af wat je beheerst. Insha’Allah snel de eerste!','Još ništa označeno — efendija označava šta si savladao/la. Inša’Allah uskoro prva!')}</div>`)
+         + (todo.length ? `<div style="font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:14px 2px 8px">🎯 ${L('Nog te leren in niveau','Još za naučiti u nivou')} ${k.level||1}</div>${todo.map(x=>card(x,false)).join('')}` : '');
+  }
+  return `<div onclick="closeLearnSheet()" style="position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:2000;display:flex;align-items:flex-end;justify-content:center">
+    <div onclick="event.stopPropagation()" style="background:var(--card);width:100%;max-width:520px;max-height:86vh;overflow-y:auto;border-radius:24px 24px 0 0;padding:10px 16px calc(24px + env(safe-area-inset-bottom,0px));animation:slideUp .25s ease">
+      <div style="width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 12px"></div>
+      <div style="text-align:center;margin-bottom:16px">${head}</div>
+      ${body}
+      <button onclick="closeLearnSheet()" style="width:100%;margin-top:10px;padding:13px;border-radius:14px;background:var(--bg);font-weight:900;font-size:14px">${L('Sluiten','Zatvori')}</button>
+    </div>
+  </div>
+  <style>@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}</style>`;
+}
+function kidNav(){ return navBar([['home',L('Start','Početna')],['path',L('Geleerd','Naučeno')]]); }
 function kidApp(){
   if(state.nav==='path')   return kidLearned();
-  if(state.nav==='leader') return kidRanking();
   return kidHome();
 }
 function topbarKid(){
@@ -5171,18 +5234,14 @@ function kidLearned(){
       <div style="width:42px"></div>
     </div>
     <div class="screen" style="padding-bottom:120px">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
-        <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--green)">${c.les}</div><div style="font-size:10px;font-weight:800;color:var(--muted)">${L('lessen','lekcija')}</div></div>
-        <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--blue)">${c.su}</div><div style="font-size:10px;font-weight:800;color:var(--muted)">${L('suras/dua’s','sura/dova')}</div></div>
-        <div class="card" style="padding:10px;text-align:center"><div style="font-size:20px;font-weight:900;color:var(--gold)">${c.qu}</div><div style="font-size:10px;font-weight:800;color:var(--muted)">Sufara/Tedžvid</div></div>
-      </div>
+      ${learnedSummaryHtml(k)}
       ${nivoChipsHtml(lvl,'setPathLevel')}
       ${learnedHtml(k, lvl, false)}
       ${sectionTitle(L('Koran lezen','Učenje Kur’ana'))}
       ${quranHtml(k,false)}
       <div style="text-align:center;font-size:11px;color:var(--muted);font-weight:700;margin-top:10px">🏫 ${L('Efendija vinkt af wat je beheerst.','Efendija označava šta si savladao/la.')}</div>
     </div>
-    ${kidNav()}`;
+    ${kidNav()}${learnSheetHtml()}`;
 }
 function setRankMode(m){ state.rankMode=m; render(); }
 function kidRanking(){
@@ -5256,6 +5315,7 @@ function ouderHome(){
             <div style="font-size:12px;font-weight:800;color:var(--muted)">${c.les} ${L('lessen','lekcija')} · ${c.su} ${L('suras/dua’s','sura/dova')} ${open?'▲':'▼'}</div>
           </div>
           <div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px">${L('Deze blok','Ovaj blok')}: ${L('lessen','lekcije')} ${st.ld}/${st.les.length} · ${L('suras/dua’s','sure/dove')} ${st.sd}/${st.su.length}</div>
+          <div style="margin-top:10px">${learnedSummaryHtml(k)}</div>
           ${open?`<div style="margin-top:10px">${learnedHtml(k,nivo,false)}${quranHtml(k,false)}</div>`:''}
         </div>
         ${(k.notities||'').trim()?`<div class="card" style="margin-bottom:12px"><div style="font-weight:900;font-size:13px;margin-bottom:5px">💬 ${L('Notitie efendija','Bilješka efendije')}</div><div style="font-size:13px;white-space:pre-wrap">${k.notities}</div></div>`:''}
@@ -5272,7 +5332,7 @@ function ouderHome(){
       <div style="font-weight:900;font-size:14px;margin-bottom:8px">📢 ${L('Mededelingen & huiswerk','Obavijesti i zadaće')}</div>
       ${allHw.length ? allHw.map(h=>{ const hk=KIDS.find(x=>x.id===h.kidId); return (kids.length>1?`<div style="font-size:11px;font-weight:800;color:var(--muted);padding:4px 2px 2px">👦 ${hk?.name||''}</div>`:'')+hwCard(h,true); }).join('') : `<div style="font-size:12px;color:var(--muted);font-weight:700">${T('noHw')}</div>`}
     </div>
-  </div>`;
+  </div>${learnSheetHtml()}`;
 }
 
 // ─── EFENDIJA: leerling-detail ───
